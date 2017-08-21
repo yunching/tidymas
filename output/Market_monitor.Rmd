@@ -17,7 +17,7 @@ ggTS <- function(ticker, title = ticker){
   data <- getData(ticker = ticker)
 
   ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
-    ggplot2::geom_line() +
+    ggplot2::geom_line(colour = "navyblue") +
     ggplot2::labs(title = title, y = "Price", x = "Date")
 
 }
@@ -26,8 +26,8 @@ ggTS <- function(ticker, title = ticker){
 
 ## Rates
 ```{r rates, echo=FALSE}
-ggTS("GTDEM10Y Govt")
-ggTS("GTGBP10Y Govt")
+ggTS("GTDEM10Y Govt", title = "German Govt 10Y")
+ggTS("GTGBP10Y Govt", title = "UK Govt 10Y")
 ```
 
 ## FX 
@@ -37,13 +37,16 @@ ggTS("GBPEUR Curncy")
 ```
 
 ##Equities
+All charts are price return (instead of total returns).
+
 ```{r equities, echo=FALSE}
 ggTS("SPX Index")
 ggTS("INDU Index", title = "Dow Jones Industrial Average")
 ggTS("CCMP Index", title = "NASDAQ Composite Index")
-ggTS("SX5E Index")
+ggTS("SX5E Index", title = "EuroStoxx 50")
 ```
 
 ##Team positions
 ```{r team_pos, echo=FALSE}
+#TODO Add team positions
 ```
