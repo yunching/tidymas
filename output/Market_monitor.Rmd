@@ -1,0 +1,47 @@
+---
+title: "Market monitor"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(Rblpapi)
+
+blpConnect()
+
+getData <- function(Ticker){
+  bdh(Ticker, c("PX_LAST"), start.date = Sys.Date()-365)
+}
+
+ggTS <- function(Ticker, Title = Ticker){
+  data <- getData(Ticker = Ticker)
+
+  ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
+    ggplot2::geom_line() +
+    ggplot2::labs(title = Ticker, y = "Price", x = "Date")
+
+}
+
+```
+
+## Rates
+```{r rates, echo=FALSE}
+ggTS("GTDEM10Y Govt")
+ggTS("GTGBP10Y Govt")
+```
+
+## FX 
+```{r FX, echo=FALSE}
+ggTS("GBPUSD Curncy")
+ggTS("GBPEUR Curncy")
+```
+
+##Equities
+```{r equities, echo=FALSE}
+ggTS("SPX Index")
+ggTS("SPX Index")
+```
+
+##Team positions
+```{r team_pos, echo=FALSE}
+```
