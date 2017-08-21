@@ -1,6 +1,6 @@
 ---
-title: "Market monitor"
-output: pdf_document
+title: "Market Monitor"
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -9,16 +9,16 @@ library(Rblpapi)
 
 blpConnect()
 
-getData <- function(Ticker){
-  bdh(Ticker, c("PX_LAST"), start.date = Sys.Date()-365)
+getData <- function(ticker){
+  bdh(ticker, c("PX_LAST"), start.date = Sys.Date()-365)
 }
 
-ggTS <- function(Ticker, Title = Ticker){
-  data <- getData(Ticker = Ticker)
+ggTS <- function(ticker, title = ticker){
+  data <- getData(ticker = ticker)
 
   ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
     ggplot2::geom_line() +
-    ggplot2::labs(title = Ticker, y = "Price", x = "Date")
+    ggplot2::labs(title = title, y = "Price", x = "Date")
 
 }
 
@@ -39,7 +39,9 @@ ggTS("GBPEUR Curncy")
 ##Equities
 ```{r equities, echo=FALSE}
 ggTS("SPX Index")
-ggTS("SPX Index")
+ggTS("INDU Index", title = "Dow Jones Industrial Average")
+ggTS("CCMP Index", title = "NASDAQ Composite Index")
+ggTS("SX5E Index")
 ```
 
 ##Team positions
