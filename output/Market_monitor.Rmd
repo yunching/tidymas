@@ -18,7 +18,7 @@ ggTS <- function(ticker, title = ticker){
 
   ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
     ggplot2::geom_line(colour = "navyblue") +
-    ggplot2::labs(title = title, y = "Price", x = "Date")
+    ggplot2::labs(title = title, subtitle = paste("Last done: ", data$PX_LAST[length(data$PX_LAST)]), y = "Price", x = "Date")
 
 }
 
