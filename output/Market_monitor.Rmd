@@ -13,12 +13,19 @@ getData <- function(ticker){
   bdh(ticker, c("PX_LAST"), start.date = Sys.Date()-365)
 }
 
+chart_subtitle <- function(data){
+  paste("Last done: ", data$PX_LAST[length(data$PX_LAST)],
+        " Change: ", round(data$PX_LAST[length(data$PX_LAST)] - data$PX_LAST[length(data$PX_LAST) - 1], 3),
+        " Low: ", min(data$PX_LAST),
+        " High: ", max(data$PX_LAST))
+}
+
 ggTS <- function(ticker, title = ticker){
   data <- getData(ticker = ticker)
 
   ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
     ggplot2::geom_line(colour = "navyblue") +
-    ggplot2::labs(title = title, subtitle = paste("Last done: ", data$PX_LAST[length(data$PX_LAST)]), y = "Price", x = "Date")
+    ggplot2::labs(title = title, subtitle = chart_subtitle(data = data), y = "Price", x = "Date")
 
 }
 
