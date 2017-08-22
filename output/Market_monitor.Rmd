@@ -53,6 +53,14 @@ ggTS("CCMP Index", title = "NASDAQ Composite Index")
 ggTS("SX5E Index", title = "EuroStoxx 50")
 ```
 
+##Commodities
+
+```{r commodities, echo=FALSE}
+ggTS("XAU Curncy", title = "Spot Gold")
+ggTS("CO1 Comdty", title = "Brent generic 1st contract")
+
+```
+
 ##Team positions
 ```{r team_pos, echo=FALSE}
 #TODO Add team positions
