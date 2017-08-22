@@ -39,6 +39,7 @@ ggTS("GTGBP10Y Govt", title = "UK Govt 10Y")
 
 ## FX 
 ```{r FX, echo=FALSE}
+ggTS("EURUSD Curncy")
 ggTS("GBPUSD Curncy")
 ggTS("GBPEUR Curncy")
 ```
