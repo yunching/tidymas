@@ -58,6 +58,7 @@ ggTS("SX5E Index", title = "EuroStoxx 50")
 ```{r commodities, echo=FALSE}
 ggTS("XAU Curncy", title = "Spot Gold")
 ggTS("CO1 Comdty", title = "Brent generic 1st contract")
+ggTS("XBTUSD COIN Curncy", title = "BitCoin")
 
 ```
 
