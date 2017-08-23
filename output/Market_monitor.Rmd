@@ -1,10 +1,13 @@
 ---
 title: "Market Monitor"
-output: html_document
+output: 
+  html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(magrittr)
 library(Rblpapi)
 library(lubridate)
 library(DT)
@@ -12,7 +15,18 @@ library(DT)
 blpConnect()
 
 getData <- function(ticker){
-  bdh(ticker, c("PX_LAST"), start.date = Sys.Date()-365)
+  Rblpapi::bdh(ticker, c("PX_LAST"), start.date = Sys.Date()-365)
+}
+
+getBarData <- function(ticker){
+  #Get 3 days worth of data, starting at 9am
+  my_data <- getBars(ticker, startTime = ymd(Sys.Date() - 3) + hm("8, 0"), endTime = ymd(Sys.Date()) + hm("8, 0"))  
+  my_data %<>% 
+    select(date = times, PX_LAST =  close) %>%
+    filter(PX_LAST != 0) %>%
+    as_tibble()
+  
+  my_data
 }
 
 chart_subtitle <- function(data){
@@ -23,7 +37,8 @@ chart_subtitle <- function(data){
         )
 }
 
-ggTS <- function(ticker, title = ticker){
+ggNTS <- function(ticker, title = ticker){
+  #Get normal (non-intraday) time series
   data <- getData(ticker = ticker)
 
   ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
@@ -31,6 +46,26 @@ ggTS <- function(ticker, title = ticker){
     ggplot2::labs(title = title, subtitle = chart_subtitle(data = data), y = "Price", x = "Date")
 
 }
+
+ggITS <- function(ticker, title = ticker){
+  #Get intraday time series
+  data <- getBarData(ticker = ticker)
+
+  ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
+    ggplot2::geom_line(colour = "navyblue") +
+    ggplot2::labs(title = title, subtitle = chart_subtitle(data = data), y = "Price", x = "Date")
+
+}
+
+ggTS <- function(ticker, title = ticker){
+  #normal_chart <- ggNTS(ticker, title = title)
+  ggNTS(ticker, title = title)
+  #intraday_chart <- ggITS(ticker, title = title)
+
+  #gridExtra::grid.arrange(normal_chart, intraday_chart,
+                          # layout_matrix = matrix(c(1, 1, 2), ncol = 3))
+}
+
 
 ```
 
