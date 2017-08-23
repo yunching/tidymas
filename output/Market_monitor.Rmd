@@ -6,6 +6,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(Rblpapi)
+library(lubridate)
 library(DT)
 
 blpConnect()
@@ -59,6 +60,10 @@ ggTS("SPX Index")
 ggTS("INDU Index", title = "Dow Jones Industrial Average")
 ggTS("CCMP Index", title = "NASDAQ Composite Index")
 ggTS("SX5E Index", title = "EuroStoxx 50")
+ggTS("E300 Index", title = "EuroFirst 300")
+ggTS("UKX Index", title = "FTSE 100")
+ggTS("ASX Index", title = "FTSE All-Share")
+ggTS("NKY Index", title = "Nikkei 225")
 ```
 
 ##Commodities
@@ -66,6 +71,8 @@ ggTS("SX5E Index", title = "EuroStoxx 50")
 ```{r commodities, echo=FALSE}
 ggTS("XAU Curncy", title = "Spot Gold")
 ggTS("CO1 Comdty", title = "Brent generic 1st contract")
+ggTS("HG1 Comdty", title = "Copper generic 1st contract")
+ggTS("LN1 Comdty", title = "Nickel generic 1st contract")
 ggTS("XBTUSD COIN Curncy", title = "BitCoin")
 
 ```
