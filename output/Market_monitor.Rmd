@@ -70,6 +70,12 @@ ggTS("XBTUSD COIN Curncy", title = "BitCoin")
 
 ```
 
+##Volatility
+
+```{r volatility, echo=FALSE}
+ggTS("VIX Index")
+```
+
 ##Team positions
 ```{r team_pos, echo=FALSE}
 #TODO Add team positions
