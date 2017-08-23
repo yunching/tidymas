@@ -6,6 +6,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(Rblpapi)
+library(DT)
 
 blpConnect()
 
@@ -14,10 +15,11 @@ getData <- function(ticker){
 }
 
 chart_subtitle <- function(data){
-  paste("Last done: ", data$PX_LAST[length(data$PX_LAST)],
-        " Change: ", round(data$PX_LAST[length(data$PX_LAST)] - data$PX_LAST[length(data$PX_LAST) - 1], 3),
-        " Low: ", min(data$PX_LAST),
-        " High: ", max(data$PX_LAST))
+  paste("Last done: ", format(data$PX_LAST[length(data$PX_LAST)], big.mark = ","),
+        " Change: ", format(round(data$PX_LAST[length(data$PX_LAST)] - data$PX_LAST[length(data$PX_LAST) - 1], 3), big.mark = ","),
+        " Low: ", format(min(data$PX_LAST), big.mark = ","),
+        " High: ", format(max(data$PX_LAST), big.mark = ",")
+        )
 }
 
 ggTS <- function(ticker, title = ticker){
@@ -33,10 +35,11 @@ ggTS <- function(ticker, title = ticker){
 
 ## Rates
 ```{r rates, echo=FALSE}
+# datatable(head(mtcars), options = list(dom = 't'))
+
 ggTS("GTDEM10Y Govt", title = "German Govt 10Y")
 ggTS("DEYC2Y10 Index", title = "German Sell 2Y Buy 10Y")
 ggTS("DEYC1030 Index", title = "German Sell 10Y Buy 30Y")
-ggTS("GTDEM10Y Govt", title = "German Govt 10Y")
 ggTS("GTGBP10Y Govt", title = "UK Govt 10Y")
 ```
 
@@ -45,6 +48,7 @@ ggTS("GTGBP10Y Govt", title = "UK Govt 10Y")
 ggTS("EURUSD Curncy")
 ggTS("GBPUSD Curncy")
 ggTS("GBPEUR Curncy")
+ggTS("DXY Index", title = "US Dollar Index")
 ```
 
 ##Equities
