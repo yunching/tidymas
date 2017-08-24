@@ -66,13 +66,31 @@ ggTS <- function(ticker, title = ticker){
                           # layout_matrix = matrix(c(1, 1, 2), ncol = 3))
 }
 
+get_country_rates <- function(country_code, country_name){
+  tenors <- c("2Y", "5Y", "10Y", "30Y")
+  bbg_ticker_list <- paste0("CT", country_code, tenors, " Corp")
+  yields <- bdp(bbg_ticker_list, fields = "YLD_YTM_MID")
+  rownames(yields) <- tenors
+  colnames(yields) <- country_name
+  
+  yields
+}
 
 ```
 
 ## Rates
-```{r rates, echo=FALSE}
-# datatable(head(mtcars), options = list(dom = 't'))
+```{r rates_heatmap, echo=FALSE}
+eur_yields <- cbind(get_country_rates("DEM", "Germany"),
+                    get_country_rates("FRF", "France"),
+                    get_country_rates("ITL", "Italy"),
+                    get_country_rates("ESP", "Spain"),
+                    get_country_rates("PTE", "Portugal"),
+                    get_country_rates("GBP", "United Kingdom")
+                    ) %>% 
+  format(digits = 3, big.mark = ",")
+```
 
+```{r rates, echo=FALSE}
 ggTS("GTDEM10Y Govt", title = "German Govt 10Y")
 ggTS("DEYC2Y10 Index", title = "German Sell 2Y Buy 10Y")
 ggTS("DEYC1030 Index", title = "German Sell 10Y Buy 30Y")
@@ -85,6 +103,7 @@ ggTS("EURUSD Curncy")
 ggTS("GBPUSD Curncy")
 ggTS("GBPEUR Curncy")
 ggTS("DXY Index", title = "US Dollar Index")
+ggTS("USDJPY Curncy")
 ```
 
 ##Equities
@@ -99,6 +118,7 @@ ggTS("E300 Index", title = "EuroFirst 300")
 ggTS("UKX Index", title = "FTSE 100")
 ggTS("ASX Index", title = "FTSE All-Share")
 ggTS("NKY Index", title = "Nikkei 225")
+ggTS("HSI Index")
 ```
 
 ##Commodities
