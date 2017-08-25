@@ -88,6 +88,16 @@ eur_yields <- cbind(get_country_rates("DEM", "Germany"),
                     get_country_rates("GBP", "United Kingdom")
                     ) %>% 
   format(digits = 3, big.mark = ",")
+
+key_tenors <- c("2Y", "5Y", "10Y", "30Y")
+country_factors <- rev(c("Germany", "France",  "Italy", "Spain", "Portugal", "United Kingdom"))
+
+eur_yields %>% 
+  rownames_to_column("Tenor") %>% 
+  gather("Country", "Yield", -Tenor) %>% 
+  select(Country, Tenor, Yield) %>% 
+  mutate(Country = factor(Country, levels = country_factors), Tenor = factor(Tenor, levels = key_tenors), Yield = as.numeric(Yield)) %>% 
+  ggplot(aes(x = Tenor, y = Country, fill = Yield)) + geom_tile() + geom_text(aes(label = Yield)) + scale_fill_gradient2(low = "red", mid = "white", high = "green")
 ```
 
 ```{r rates, echo=FALSE}
