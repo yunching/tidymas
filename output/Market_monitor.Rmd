@@ -8,9 +8,9 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(magrittr)
-library(Rblpapi)
 library(lubridate)
 library(DT)
+library(Rblpapi)
 
 blpConnect()
 
@@ -81,11 +81,11 @@ get_country_rates <- function(country_code, country_name){
 ## Rates
 ```{r rates_heatmap, echo=FALSE}
 eur_yields <- cbind(get_country_rates("DEM", "Germany"),
+                    get_country_rates("GBP", "United Kingdom"),
                     get_country_rates("FRF", "France"),
-                    get_country_rates("ITL", "Italy"),
                     get_country_rates("ESP", "Spain"),
-                    get_country_rates("PTE", "Portugal"),
-                    get_country_rates("GBP", "United Kingdom")
+                    get_country_rates("ITL", "Italy"),
+                    get_country_rates("PTE", "Portugal")
                     ) %>% 
   format(digits = 3, big.mark = ",")
 
@@ -141,6 +141,9 @@ ggTS("LN1 Comdty", title = "Nickel generic 1st contract")
 ggTS("XBTUSD COIN Curncy", title = "BitCoin")
 
 ```
+
+* Gold
+    + Climbing on the back of Trump rally unwinding.
 
 ##Volatility
 
