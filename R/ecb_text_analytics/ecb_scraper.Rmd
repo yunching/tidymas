@@ -70,6 +70,7 @@ crawl_ecb <- function(url, baseurl = "https://www.ecb.europa.eu/") {
     
     speech_text <- html_text(data[1:(qaRow-1)])
     qa_data <- trimws(html_text(data[(qaRow+1):length(data)]))
+      
     
     # Further break Q&A
     
@@ -98,7 +99,7 @@ crawl_ecb <- function(url, baseurl = "https://www.ecb.europa.eu/") {
     } 
   
     qnRows <- which(grepl("^[Qq]uestion.*:", tolower(qa_data)) | grepl("^ *[Qq]:", qa_data))
-    qn_text <- qa_data[qnRows]
+    qn_text <- trimws(str_split(qa_data[qnRows],"^[Qq].*?:", n=2, simplify=TRUE)[,2])  # Remove the leading "Question:"
     speaker_ans_text <- qa_data[-qnRows]
     
     ## Split answer into speaker and text
@@ -139,7 +140,6 @@ rm(list=c("l")) # Clear some memory
 # Set names properly
 
 ```{r}
-
 people <- data_frame(Duisenberg = c("Introductory statement Willem F. Duisenberg", "(Duisenberg", "Willem F. Duisenberg", "WFD"),
               Trichet = c("held by Jean-Claude Trichet", "Jean-Claude Trichet", "Trichet (translation)", "Trichet (Translation)"),
               Draghi = c("Mario Draghi"),
@@ -151,8 +151,12 @@ people <- data_frame(Duisenberg = c("Introductory statement Willem F. Duisenberg
   gather(to, from) %>%
   unique
 
+replace_text <- data_frame(from = c("\u2019"),
+                           to = c(""))
+
 df <- df %>%
-  mutate(speaker = plyr::mapvalues(speaker, people$from, people$to))
+  mutate(speaker = plyr::mapvalues(speaker, people$from, people$to),
+         text = iconv(text, "UTF-8", "ASCII", ""))
 
 ```
 
@@ -173,5 +177,5 @@ g + geom_point(aes(colour = type)) +
 # Write to file
 
 ```{r}
-write.csv(df, file = "data/ecb_speeches.csv")
+write.csv(df, file = "data/ecb_speeches.csv", row.names = FALSE)
 ```
