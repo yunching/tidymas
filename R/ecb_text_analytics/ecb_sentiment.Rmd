@@ -19,7 +19,7 @@ df <- read.csv("data/ecb_speeches.csv", stringsAsFactors = FALSE) %>%
 
 # Extract press speech and answers
 df_ecb <- df %>%
-  mutate(text = iconv(text, to="latin1", sub="")) %>%
+  #mutate(text = iconv(text, to="latin1", sub="")) %>%
   filter(type %in% c("press speech", "answer")) %>%
   group_by(date) %>%
   summarise(text = paste0(text, collapse = "."))
@@ -38,12 +38,12 @@ custom_stop_words = bind_rows(data_frame(word = c(as.character(1980:2030)),
                                stop_words)
 
 ecb_unigrams <- df_ecb %>%
-  make_ngrams(custom_stop_words = custom_stop_words)
+  make_ngrams(custom_stop_words = custom_stop_words) 
 
 ecb_unigrams %>%
   count_ngrams %>%
   filter(n > 1000) %>%
-  #mutate(word = reorder(word, n)) %>%
+  mutate(word = reorder(word, n)) %>%
   ggplot(aes(word, n)) +
     geom_col() +
     xlab(NULL) +
@@ -52,33 +52,37 @@ ecb_unigrams %>%
 
 # Single word sentiment analysis
 
+## List of top words and their associated sentiments
+
 ```{r}
+# Compare how words categorization differs across sets
+ecb_unigrams %>%
+  count_ngrams %>%
+  add_sentiments(c("afinn", "loughran", "nrc", "bing")) %>%
+  compare_words_sentiment
+
+```
+
+## Calculating a sentiment score
+
+```{r}
+ecb_sentiment <- ecb_unigrams %>%
+  add_sentiments %>%
+  filter(sentiment %in% c("positive", "negative")) %>%
+  group_by(method, date, sentiment) %>%
+  summarise(n = sum(n)) %>%
+  ungroup %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative,
+         negative = -negative)
+
 afinn <- ecb_unigrams %>%
   inner_join(get_sentiments("afinn")) %>%
   group_by(date) %>%
-  summarise(sentiment = sum(score)) %>%
+  summarise(sentiment = sum(score * n)) %>%
   mutate(method = "AFINN")
 
-bing_nrc_lou <- bind_rows(ecb_unigrams %>%
-                            inner_join(get_sentiments("bing")) %>%
-                            mutate(method = "Bing"),
-                          ecb_unigrams %>%
-                            inner_join(get_sentiments("nrc") %>%
-                                         filter(sentiment %in% c("positive", "negative"))) %>%
-                            mutate(method = "NRC"),
-                          ecb_unigrams %>%
-                            inner_join(get_sentiments("loughran") %>%
-                                         filter(sentiment %in% c("positive", "negative"))) %>%
-                            mutate(method = "Loughran")) %>%
-  count(method, date = date, sentiment)%>%
-  spread(sentiment, n, fill = 0) %>%
-  mutate(sentiment = positive - negative)
-
-all_sentiment <- bind_rows(afinn, bing_nrc_lou) %>%
-  group_by(method) %>%
-  mutate(negative = -negative, 
-         positive = positive,
-         sentiment = sentiment)
+all_sentiment <- bind_rows(afinn, ecb_sentiment) 
 
 g <- all_sentiment %>%  
   gather(type, value, -date, -method) %>%
@@ -86,130 +90,43 @@ g <- all_sentiment %>%
 g + geom_line() + 
   geom_hline(yintercept = 0) +
   facet_wrap(~method, ncol = 1, scales = "free_y")
-
 ```
 
-```{r}
-sentiment_words <- bind_rows(ecb_unigrams %>%
-                            inner_join(get_sentiments("bing")) %>%
-                            mutate(method = "Bing"),
-                          ecb_unigrams %>%
-                            inner_join(get_sentiments("nrc") %>%
-                                         filter(sentiment %in% c("positive", "negative"))) %>%
-                            mutate(method = "NRC"),
-                          ecb_unigrams %>%
-                            inner_join(get_sentiments("loughran") %>%
-                                         filter(sentiment %in% c("positive", "negative"))) %>%
-                            mutate(method = "Loughran")) %>%
-  count(method, word, sentiment)
+# High scoring words from the dictionary
 
-sentiment_words %>%
-  mutate(score = n * ifelse(sentiment == "negative", -1, 1)) %>%
+```{r}
+ecb_unigrams %>%
+  add_sentiments %>%
+  filter(sentiment %in% c("positive", "negative")) %>%
+  group_by(method, word, sentiment) %>%
+  summarise(score = sum(n * ifelse(sentiment == "negative", -1, 1))) %>%
   group_by(method) %>%
   top_n(10, abs(score)) %>%
   ungroup %>%
   mutate(word = reorder(word, score)) %>%
   ggplot(aes(word, score, fill=sentiment)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~method, scales = "free_y") +
-  coord_flip()
-
-
-```
-
-```{r}
-# bing_word_counts <- ecb_unigrams %>%
-#   inner_join(get_sentiments("bing")) %>%
-#   group_by(year = year(date)) %>%
-#   count(word, sentiment, sort = TRUE) %>%
-#   ungroup()
-# 
-# bing_word_counts %>%
-#   group_by(sentiment, year) %>%
-#   top_n(5) %>%
-#   ungroup() %>%
-#   mutate(word = reorder(word, n)) %>%
-#   ggplot(aes(word, n, fill = sentiment)) +
-#   geom_col() +
-#   facet_wrap(~year, scales = "free_y") +
-#   labs(y = "Contribution to sentiment",
-#        x = NULL) +
-#   coord_flip()
-
-bing_word_counts <- ecb_unigrams %>%
-  inner_join(get_sentiments("bing")) %>%
-  count(word, sentiment, sort = TRUE) %>%
-  ungroup()
-
-bing_word_counts %>%
-  group_by(sentiment) %>%
-  top_n(10) %>%
-  ungroup() %>%
-  mutate(word = reorder(word, n)) %>%
-  ggplot(aes(word, n, fill = sentiment)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~sentiment, scales = "free_y") +
-  labs(y = "Contribution to sentiment",
-       x = NULL) +
-  coord_flip()
-```
-```{r}
-ecb_words <- ecb_unigrams %>%
-  group_by(date) %>%
-  count_ngrams %>%
-  ungroup
-
-total_words <- ecb_words %>%
-  group_by(date) %>%
-  summarize(total = sum(n))
-
-meeting_words <- left_join(ecb_words, total_words)
-
-g <- ggplot(meeting_words, aes(n/total), fill = year(date))
-g + geom_histogram(show.legend = FALSE) +
-  xlim(NA, 0.005) +
-  facet_wrap(~year(date), ncol = 3, scales = "free_y")
-
-```
-# Ranking of the words
-
-According to Zipf's law, frequency of a word is inversely proportional to its rank
-
-```{r}
-freq_by_rank <- meeting_words %>%
-  group_by(year = year(date)) %>%
-  mutate(rank = row_number(),
-         'term frequency' = n/total)
-
-freq_by_rank %>% 
-  ggplot(aes(rank, `term frequency`, color = as.factor(year))) + 
-  geom_line(size = 1.2, alpha = 0.8) + 
-  scale_x_log10() +
-  scale_y_log10()
+    geom_col(show.legend = FALSE) +
+    facet_wrap(~method, scales = "free_y") +
+    coord_flip()
 ```
 
 # Calculate ranking for inverse document frequency
 
 ```{r}
-meeting_words <- meeting_words %>%
-  bind_tf_idf(word, date, n)
-
-meeting_words %>%
-  select(-total) %>%
-  arrange(desc(tf_idf))
-
-plot_ecb <- meeting_words %>%
+unigrams_wt <- ecb_unigrams %>%
+  group_by(date) %>%
+  count_ngrams %>%
+  bind_tf_idf(word, date, n) %>%
+  select(-tf, -idf) %>%
   arrange(desc(tf_idf)) %>%
-  mutate(word = factor(word, levels = rev(unique(word))))
+  ungroup
 
-plot_ecb %>% 
+unigrams_wt %>% 
   top_n(20) %>%
-  ggplot(aes(word, tf_idf, fill = as.factor(year(date)))) +
-  geom_col() +
-  labs(x = NULL, y = "tf-idf") +
-  coord_flip()
-
-
+  ggplot(aes(factor(word, levels = rev(unique(word))), tf_idf, fill = as.factor(year(date)))) +
+    geom_col() +
+    labs(x = NULL, y = "tf-idf") +
+    coord_flip()
 ```
 
 # Words with high weights
@@ -217,18 +134,73 @@ plot_ecb %>%
 Below we see words with high weights due to the uniqueness of their appearance for each of the years
 
 ```{r}
-plot_ecb %>% 
+unigrams_wt %>% 
   ungroup %>%
   filter(year(date) > 2008) %>%
   group_by(year = as.factor(year(date))) %>% 
   top_n(15, tf_idf) %>% 
   ungroup %>%
-  ggplot(aes(word, tf_idf, fill = year)) +
-  geom_col(show.legend = FALSE) +
-  labs(x = NULL, y = "tf-idf") +
-  facet_wrap(~year, ncol = 3, scales = "free") +
-  coord_flip()
+  ggplot(aes(factor(word, levels = rev(unique(word))), tf_idf, fill = year)) +
+    geom_col(show.legend = FALSE) +
+    labs(x = NULL, y = "tf-idf") +
+    facet_wrap(~year, ncol = 3, scales = "free") +
+    coord_flip()
 ```
+
+# Calculation of weighted scores
+
+```{r}
+weighted_score <- unigrams_wt %>%
+  add_sentiments %>%
+  filter(sentiment %in% c("positive", "negative")) %>%
+  mutate(score = tf_idf * ifelse(sentiment == "positive", 1, -1)) %>%
+  group_by(date, method) %>%
+  summarise(score = sum(score))
+
+weighted_afinn <- unigrams_wt %>%
+  inner_join(get_sentiments("afinn")) %>%
+  mutate(score = score * tf_idf) %>%
+  group_by(date) %>%
+  summarise(score = sum(score)) %>%
+  mutate(method = "afinn")
+
+weighted_score <- bind_rows(weighted_afinn, weighted_score) 
+
+# Centre all scores and plot on the same chart
+weighted_score %>%
+  group_by(method) %>%
+  mutate(score = scale(score)) %>%
+  ggplot(aes(date, score, colour = method)) +
+  geom_line()
+
+# Plot all scores on different charts
+ggplot(weighted_score, aes(date, score, colour = method)) + 
+  geom_line() + 
+  geom_hline(yintercept = 0) +
+  facet_wrap(~method, ncol = 1, scales = "free_y")
+```
+
+## TODO 1: Comparison of weighted vs unweighted on the same chart
+## TODO 2: Words that produced the highest contributions in the recent years
+## TODO 3: Subtracting negation words using bigrams
+
+## Diagnostics of using different dictionaries
+
+### Comparison of weighted scores across the different dictionaries
+
+Weighted scores look more or less correlated, although not very strongly
+
+```{r}
+library(GGally)
+weighted_score %>%
+  spread(method, score) %>%
+  select(-date) %>%
+  ggpairs
+```
+
+
+# Dealing with bigrams and negation words
+
 ```{r}
 
 bigrams_separated <- df_ecb %>%
@@ -260,7 +232,7 @@ bigrams_filtered %>%
 
 AFINN <- get_sentiments("afinn")
 
-negation_words <- c("not", "no", "never", "without")
+negation_words <- c("not", "no", "never", "without", "negative", "weak")
 
 negated_words <- bigrams_separated %>%
   filter(word1 %in% negation_words) %>%
@@ -319,6 +291,8 @@ word_cors %>%
   facet_wrap(~ item1, scales = "free") +
   coord_flip()
 ```
+
+# Unrelated stock mining
 
 ```{r}
 library(tm.plugin.webmining)

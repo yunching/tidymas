@@ -4,6 +4,89 @@ library(igraph)
 library(ggraph)
 library(stringr)
 
+#' Calculate the sentiment score
+#'
+#' @param ngrams 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+calculate_sentiment_score <- function(ngrams) {
+  others <- ngrams %>%
+    filter(method != "afinn") %>%
+    
+  
+  if ("afinn" %in% ngrams$method) {
+    afinn <- ngrams %>%
+      filter(method = "afinn") %>%
+      summarise(sentiment = sum(score))
+  }
+  
+  
+}
+#' Compare words sentiment in wide form
+#'
+#' @param ngrams long form dataframe with columns "method" and "sentiment"
+#'
+#' @return
+#' @export
+#'
+#' @examples
+compare_words_sentiment <- function(ngrams) {
+  temp_grams <- ngrams %>%
+    group_by(word, method) %>%
+    summarise(sentiment = paste0(sentiment, collapse="|")) %>%
+    distinct(word, sentiment, method) %>% 
+    spread(method, sentiment, convert = TRUE)
+  
+  left_join(ngrams, temp_grams, by = "word") %>%
+    select(-sentiment, -method)
+}
+
+#' To add sentiment/s to dataframe on matching with "word" column
+#'
+#' @param ngram dataframe of ngram with column "word"
+#' @param sentiment_libs library of sentiments "afinn", "bing", "nrc" or "loughran"
+#' @param name_using_method use the input methods as name of columns, always truE if multiple sentiments are used
+#'
+#' @return dataframe with added column for sentiment
+#' @export
+#'
+#' @examples
+add_sentiments <- function(ngrams, sentiment_libs = c("loughran", "nrc", "bing")) {
+  bind_rows(lapply(sentiment_libs, function(x) {single_add_sentiment(ngrams, x)}))
+}
+
+#' Helper method to add sentiment to dataframe on matching with "word" column, avoid using directly, use add_sentiments() instead
+#'
+#' @param ngram dataframe of ngram with column "word"
+#' @param sentiment_lib library of sentiments "afinn", "bing", "nrc" or "loughran"
+#' @param name_using_method use the input methods as name of columns
+
+#'
+#' @return dataframe with added columns
+#' @export
+#'
+#' @examples
+single_add_sentiment <- function(ngrams, sentiment_lib) {
+  temp_grams <- ngrams %>%
+    inner_join(get_sentiments(sentiment_lib), by = "word") %>%
+    mutate(method = sentiment_lib)
+  
+  if (sentiment_lib == "afinn") {
+    temp_grams <- temp_grams %>%
+      mutate(sentiment = as.character(score)) %>%
+      select(-score)
+  }
+
+  if ("method" %in% names(ngrams) && ("sentiment" %in% names(ngrams) || "score" %in% names(ngrams))) {
+    bind_rows(ngrams, temp_grams)
+  } else {
+    temp_grams
+  }
+}
+
 
 #' Remove standard stopwords or custom stopwords from a unigram or bigram
 #'
@@ -72,7 +155,7 @@ make_unigrams <- function(dataset, custom_stop_words = NULL, remove_stop_words =
 #'#' library(gutenbergr)
 #'#' kjv <- gutenberg_download(10)
 #'#' kjv_bigrams <- kjv %>% make_bigrams
-make_ngrams <- function(dataset, n = 1, custom_stop_words = NULL, remove_stop_words = TRUE) {
+make_ngrams <- function(dataset, n = 1, custom_stop_words = NULL, remove_stop_words = TRUE, summarise_count = TRUE) {
   temp_gram <- dataset %>%
     unnest_tokens(word, text, token = "ngrams", n = n)
   
@@ -85,6 +168,13 @@ make_ngrams <- function(dataset, n = 1, custom_stop_words = NULL, remove_stop_wo
   # Remove stop words if necessary
   if (remove_stop_words) 
     temp_gram <- remove_stopwords(temp_gram, custom_stop_words)
+  
+  if (summarise_count) 
+    temp_gram <- temp_gram %>%
+      group_by_(.dots = names(.)) %>%
+      summarise(n = n()) %>%
+      ungroup %>%
+      arrange(desc(n))
   
   temp_gram
 }
@@ -99,18 +189,23 @@ make_ngrams <- function(dataset, n = 1, custom_stop_words = NULL, remove_stop_wo
 #' @examples
 #'#' library(gutenbergr)
 #'#' kjv <- gutenberg_download(10)
-#'#' kjv_bigrams <- kjv %>% make_bigrams %>% count_bigrams
+#'#' kjv_bigrams <- kjv %>% make_ngrams(2) %>% count_ngrams
 count_ngrams <- function(ngrams, reorder = TRUE) {
   word_found <- names(ngrams) %>%
     .[grepl("^word[0-9]{0,1}", .)]
   
-  temp_grams <- ngrams %>%
-    count_(paste(word_found, sep=", "), sort = TRUE) 
-  
-  if (reorder) {
-    temp_grams[[word_found[1]]] <- reorder(temp_grams[[word_found[1]]], temp_grams$n)
+  if ("n" %in% names(ngrams)) {
+    ngrams %>% 
+      group_by(.dots = word_found, add = TRUE) %>%
+      summarise(n = sum(n)) %>%
+      ungroup() %>%
+      arrange(desc(n))
   }
-    
+  else {
+    ngrams %>%
+      count_(paste(word_found, sep=", ")) %>%
+      arrange(desc(n))
+  }
 }
 
 #' Visualize bigrams as a directed graph
