@@ -11,6 +11,8 @@ library(tidytext)
 library(lubridate)
 library(ggplot2)
 library(tidyverse)
+library(tidytext)
+source("text_analytics.R")
 ```
 
 # Read in ECB speeches as scraped
@@ -32,9 +34,6 @@ str(df_ecb)
 # Preprocess by tokenising words and removing stop words
 
 ```{r text_preprocessing}
-library(tidytext)
-source("text_analytics.R")
-
 #Remove years as stop words
 custom_stop_words = bind_rows(data_frame(word = c(as.character(1980:2030)),
                                           lexicon = c("custom")),
@@ -203,47 +202,45 @@ weighted_scores %>%
 bigrams_separated <- df_ecb %>%
   make_ngrams(2, remove_stop_words = FALSE)
 
-#bigrams_united <- bigrams_separated %>%
-#  unite(bigram, word1, word2, sep = " ")
-
-#bigram_tf_idf <- bigrams_united %>%
-#  count(year = year(date), bigram) %>%
-#  bind_tf_idf(bigram, year, n) %>%
-#  arrange(desc(tf_idf))
-
 negation_words <- c("not", "no", "never", "without", "negative", "weak")
 
 negated_words <- bigrams_separated %>%
   filter(word1 %in% negation_words) %>%
-  #inner_join(get_sentiments("afinn"), by = c(word2 = "word")) %>%
   ungroup()
 
-# adjust unweighted
-#negated_words %>% 
+##################
+# adjust weighted scores
+##################
 
-# adjust weighted
+# Calculate negative scores from negated words
 negative_scores <- negated_words %>% 
   rename(n2 = n, word = word2) %>%
   inner_join(unigrams_wt, by = c("date", "word")) %>%
-  mutate(tf_idf2 = (n2 * 2 * -1)/n * tf_idf) %>%
+  mutate(tf_idf2 = (n2 * 2 * -1)/n * tf_idf) %>%  # We subtract twice to adjust for the "wrong" impact on the raw score
   add_sentiments(all = TRUE) %>%
   group_by(date) %>%
   calc_sentiment_score(wt = "tf_idf2") 
 
-
-
-temp <- negative_scores %>%
+# Join negative scores to original weighted scores, and recalculated combined scores
+combined_scores <- negative_scores %>%
   select(-negative, -positive) %>%
   rename(score2 = score) %>%
   right_join(weighted_scores, by = c("date", "method")) %>%
   mutate(score3 = ifelse(is.na(score2), score, score + score2))
 
-temp %>% select(date, method, score, score2, score3) %>%
+# Plot combined weighted scores scores
+combined_scores %>% select(date, method, score, score2, score3) %>%
   gather(score_type, scores, -date, -method) %>%
   ggplot(aes(date, scores, colour = score_type)) +
   geom_line() +
   facet_wrap(~method, ncol=1, scales = "free_y") +
   geom_hline(yintercept = 0, lwd=0.3, lty = 5) 
+
+####################
+# adjust unweighted scores
+####################
+
+#negated_words %>% 
 
 # weighted_scores
 # weighted_scores %>% inner_join(negative_scores, by = c("date", "method"))
@@ -291,7 +288,7 @@ library(widyr)
 word_cors <- ecb_year_words %>%
   filter(section == 2016) %>%
   group_by(word) %>%
-  filter(n() >= 20) %>%
+  filter(n >= 20) %>%
   pairwise_cor(word, date, sort = TRUE)
  
 word_cors %>%
