@@ -66,27 +66,13 @@ ecb_unigrams %>%
 ## Calculating a sentiment score
 
 ```{r}
-ecb_sentiment <- ecb_unigrams %>%
-  add_sentiments %>%
-  filter(sentiment %in% c("positive", "negative")) %>%
-  group_by(method, date, sentiment) %>%
-  summarise(n = sum(n)) %>%
-  ungroup %>%
-  spread(sentiment, n, fill = 0) %>%
-  mutate(sentiment = positive - negative,
-         negative = -negative)
-
-afinn <- ecb_unigrams %>%
-  inner_join(get_sentiments("afinn")) %>%
+ecb_scores <- ecb_unigrams %>%
+  add_sentiments(all = TRUE) %>%
   group_by(date) %>%
-  summarise(sentiment = sum(score * n)) %>%
-  mutate(method = "AFINN")
+  calc_sentiment_score(wt = "n")
 
-all_sentiment <- bind_rows(afinn, ecb_sentiment) 
-
-g <- all_sentiment %>%  
-  gather(type, value, -date, -method) %>%
-  ggplot(aes(date, value, colour = type)) 
+g <- ecb_scores %>%  
+  ggplot(aes(date, score, colour = method)) 
 g + geom_line() + 
   geom_hline(yintercept = 0) +
   facet_wrap(~method, ncol = 1, scales = "free_y")
@@ -96,15 +82,14 @@ g + geom_line() +
 
 ```{r}
 ecb_unigrams %>%
-  add_sentiments %>%
-  filter(sentiment %in% c("positive", "negative")) %>%
-  group_by(method, word, sentiment) %>%
-  summarise(score = sum(n * ifelse(sentiment == "negative", -1, 1))) %>%
+  add_sentiments(all = TRUE) %>%
+  group_by(word) %>%
+  calc_sentiment_score(wt = "n") %>%
   group_by(method) %>%
   top_n(10, abs(score)) %>%
   ungroup %>%
-  mutate(word = reorder(word, score)) %>%
-  ggplot(aes(word, score, fill=sentiment)) +
+  mutate(word = reorder(word, score)) %>% 
+  ggplot(aes(word, score, fill=factor(score > 0))) +
     geom_col(show.legend = FALSE) +
     facet_wrap(~method, scales = "free_y") +
     coord_flip()
@@ -117,8 +102,6 @@ unigrams_wt <- ecb_unigrams %>%
   group_by(date) %>%
   count_ngrams %>%
   bind_tf_idf(word, date, n) %>%
-  select(-tf, -idf) %>%
-  arrange(desc(tf_idf)) %>%
   ungroup
 
 unigrams_wt %>% 
@@ -149,39 +132,50 @@ unigrams_wt %>%
 
 # Calculation of weighted scores
 
-```{r}
-weighted_score <- unigrams_wt %>%
-  add_sentiments %>%
-  filter(sentiment %in% c("positive", "negative")) %>%
-  mutate(score = tf_idf * ifelse(sentiment == "positive", 1, -1)) %>%
+Adjusting for weighted score, we compare with the unweighted scores. We see that directionally, both looks quite similar. 
+
+```{r, fig.height = 5}
+weighted_scores <- unigrams_wt %>%
+  add_sentiments(all = TRUE) %>%
   group_by(date, method) %>%
-  summarise(score = sum(score))
+  calc_sentiment_score(wt = "tf_idf") 
 
-weighted_afinn <- unigrams_wt %>%
-  inner_join(get_sentiments("afinn")) %>%
-  mutate(score = score * tf_idf) %>%
-  group_by(date) %>%
-  summarise(score = sum(score)) %>%
-  mutate(method = "afinn")
+combined_scores <- bind_rows(ecb_scores %>% mutate(weight = "unweighted"),
+                            weighted_scores %>% mutate(weight = "weighted"))
 
-weighted_score <- bind_rows(weighted_afinn, weighted_score) 
-
-# Centre all scores and plot on the same chart
-weighted_score %>%
-  group_by(method) %>%
+# Centre all scores and plot weight and unweighted on the same chart
+combined_scores %>%
+  group_by(method, weight) %>%
   mutate(score = scale(score)) %>%
-  ggplot(aes(date, score, colour = method)) +
-  geom_line()
-
-# Plot all scores on different charts
-ggplot(weighted_score, aes(date, score, colour = method)) + 
-  geom_line() + 
-  geom_hline(yintercept = 0) +
-  facet_wrap(~method, ncol = 1, scales = "free_y")
+  ggplot(aes(date, score, colour = weight)) +
+  geom_line() +
+  facet_wrap(~method, ncol = 1, scales = "free_y") +
+  geom_hline(yintercept = 0, lwd=0.3, lty = 5) +
+  ggtitle("Standardized sentiment scores")
 ```
 
-## TODO 1: Comparison of weighted vs unweighted on the same chart
-## TODO 2: Words that produced the highest contributions in the recent years
+# Top weighting words
+
+We analyse the in the weighted sentiment, which are the words which are the top contributors to the sentiment scores in each of the recent years since 2008
+
+```{r fig.height = 13, fig.width=10}
+unigrams_wt %>%
+  add_sentiments(all = TRUE) %>%
+  group_by(date, word) %>%
+  calc_sentiment_score(wt = "tf_idf") %>%
+  group_by(year = year(date), word, method) %>%
+  summarise(score = sum(score)) %>%
+  group_by(year, method) %>%
+  filter(year > 2012) %>%
+  top_n(10, abs(score)) %>%
+  ungroup %>%
+  ggplot(aes(factor(word, levels = unique(word[order(score)])), score, fill = factor(sign(score)))) +
+    geom_col(show.legend = FALSE) +
+    labs(x = NULL, y = "tf-idf") +
+    facet_grid(year~method, scales = "free") +
+    coord_flip()
+```
+
 ## TODO 3: Subtracting negation words using bigrams
 
 ## Diagnostics of using different dictionaries
@@ -192,7 +186,8 @@ Weighted scores look more or less correlated, although not very strongly
 
 ```{r}
 library(GGally)
-weighted_score %>%
+weighted_scores %>%
+  select(-negative, -positive) %>%
   spread(method, score) %>%
   select(-date) %>%
   ggpairs
@@ -201,58 +196,74 @@ weighted_score %>%
 
 # Dealing with bigrams and negation words
 
-```{r}
-
+```{r, fig.height=10, fig.width=8}
 bigrams_separated <- df_ecb %>%
   make_ngrams(2, remove_stop_words = FALSE)
 
-bigram_date_counts <- bigrams_separated %>% 
-  group_by(date) %>%
-  count_ngrams() %>%
-  ungroup
+#bigrams_united <- bigrams_separated %>%
+#  unite(bigram, word1, word2, sep = " ")
 
-# Trigrams
-df_ecb %>% make_ngrams(3) %>%
-  count_ngrams
-```
-
-```{r}
-bigrams_united <- df_ecb %>%
-  make_ngrams(2, remove_stop_words = FALSE) %>%
-  unite(bigram, word1, word2, sep = " ")
-
-bigram_tf_idf <- bigrams_united %>%
-  count(year = year(date), bigram) %>%
-  bind_tf_idf(bigram, year, n) %>%
-  arrange(desc(tf_idf))
-
-bigrams_filtered %>%
-  filter(word1 == "not") %>%
-  count(word1, word2, sort = TRUE)
-
-AFINN <- get_sentiments("afinn")
+#bigram_tf_idf <- bigrams_united %>%
+#  count(year = year(date), bigram) %>%
+#  bind_tf_idf(bigram, year, n) %>%
+#  arrange(desc(tf_idf))
 
 negation_words <- c("not", "no", "never", "without", "negative", "weak")
 
 negated_words <- bigrams_separated %>%
   filter(word1 %in% negation_words) %>%
-  inner_join(AFINN, by = c(word2 = "word")) %>%
-  count(word1, word2, score, sort = TRUE) %>%
+  #inner_join(get_sentiments("afinn"), by = c(word2 = "word")) %>%
   ungroup()
 
-negated_words %>%
-  mutate(contribution = n * score) %>%
-  group_by(word1) %>%
-  top_n(10, desc(abs(contribution))) %>%
-  arrange(contribution) %>%
-  ungroup %>%
-  mutate(word2 = reorder(word2, contribution)) %>%
-  ggplot(aes(word2, n * score, fill = n * score > 0)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~word1, ncol = 2, scales = "free_y") +
-  xlab("Words preceded by \"not\"") +
-  ylab("Sentiment score * number of occurrences") +
-  coord_flip()
+# adjust unweighted
+#negated_words %>% 
+
+# adjust weighted
+negative_scores <- negated_words %>% 
+  rename(n2 = n, word = word2) %>%
+  inner_join(unigrams_wt, by = c("date", "word")) %>%
+  mutate(tf_idf2 = (n2 * 2 * -1)/n * tf_idf) %>%
+  add_sentiments(all = TRUE) %>%
+  group_by(date) %>%
+  calc_sentiment_score(wt = "tf_idf2") 
+
+
+
+temp <- negative_scores %>%
+  select(-negative, -positive) %>%
+  rename(score2 = score) %>%
+  right_join(weighted_scores, by = c("date", "method")) %>%
+  mutate(score3 = ifelse(is.na(score2), score, score + score2))
+
+temp %>% select(date, method, score, score2, score3) %>%
+  gather(score_type, scores, -date, -method) %>%
+  ggplot(aes(date, scores, colour = score_type)) +
+  geom_line() +
+  facet_wrap(~method, ncol=1, scales = "free_y") +
+  geom_hline(yintercept = 0, lwd=0.3, lty = 5) 
+
+# weighted_scores
+# weighted_scores %>% inner_join(negative_scores, by = c("date", "method"))
+# 
+# negated_words %>%
+#   rename(word = word2) %>%
+#   add_sentiments(all = TRUE) %>%
+#   group_by(date, word1, word) %>%
+#   calc_sentiment_score(wt = "") %>%
+#   mutate(contribution = n * score) %>%
+#   group_by(word1) %>%
+#   top_n(10, desc(abs(contribution))) %>%
+#   arrange(contribution) %>%
+#   ungroup %>%
+#   mutate(word2 = reorder(word2, contribution)) %>%
+#   ggplot(aes(word2, n * score, fill = n * score > 0)) +
+#   geom_col(show.legend = FALSE) +
+#   facet_wrap(~word1, ncol = 2, scales = "free_y") +
+#   xlab("Words preceded by \"not\"") +
+#   ylab("Sentiment score * number of occurrences") +
+#   coord_flip() +
+#   scale_color_manual(labels = c("original", "negatives", "adjusted"), values = c("red", "green", "blue"))
+
 ```
 
 # Visualizing network of bigrams

@@ -3,7 +3,25 @@ library(tidytext)
 library(igraph)
 library(ggraph)
 library(stringr)
-
+#' INCOMPLETE AND UNUSED FUNCTION: Add term frequency - inverse document frequency as the weight, see bind_tf_idf
+#'
+#' @param ngrams	A tidy text dataset with one-row-per-term-per-document
+#' @param term	Column containing terms as string or symbol
+#' @param document Column containing document IDs as string or symbol
+#' @param n1 Column containing document-term counts as string or symbol
+#'
+#' @return
+#' @export
+#'
+#' @examples
+add_tf_idf_wt <- function(ngrams, ...) {
+  # WARNING: FUNCTION IS INCOMPLETE AND CURRENTLY NOT IN USED
+  ngrams %>% 
+    bind_tf_idf(...) %>%
+    dplyr::select(-tf, -idf) %>%
+    rename(wt = tf_idf) %>%
+    arrange(desc(n))
+}
 #' Calculate the sentiment score
 #'
 #' @param ngrams 
@@ -12,18 +30,38 @@ library(stringr)
 #' @export
 #'
 #' @examples
-calculate_sentiment_score <- function(ngrams) {
-  others <- ngrams %>%
-    filter(method != "afinn") %>%
-    
+calc_sentiment_score <- function(ngrams, wt) {
+  #column_names <- names(ngrams)
+  #column_names <- column_names[!column_names %in% c("n", "idf", "tf", "tf_idf", wt)]
   
+  temp_grams <- NULL
+  
+  if (sum(ngrams$method != "afinn") > 1) {
+    temp_grams <- ngrams %>%
+      filter(method != "afinn") %>%
+      filter(sentiment %in% c("positive", "negative")) %>%
+      #group_by_(.dots = column_names, add = TRUE) %>%
+      group_by(method, sentiment, add = TRUE) %>%
+      summarise_(.dots = list("n" = sprintf("sum(%s)", wt))) %>%
+      ungroup(method, sentiment) %>%
+      spread(sentiment, n, fill = 0) %>%
+      mutate(score = positive - negative,
+             negative = -negative)
+  }
+    
   if ("afinn" %in% ngrams$method) {
     afinn <- ngrams %>%
-      filter(method = "afinn") %>%
-      summarise(sentiment = sum(score))
+      filter(method == "afinn") %>%
+      #group_by_(.dots = column_names[column_names != "sentiment"]) %>%
+      mutate_(.dots = list("score" = sprintf("%s * as.numeric(as.character(sentiment))", wt))) %>%
+      group_by(method, add = TRUE) %>%
+      summarise(score = sum(score, na.rm = TRUE)) %>%
+      ungroup(method, sentiment)
+    
+    temp_grams <- bind_rows(temp_grams, afinn)
   }
   
-  
+  temp_grams
 }
 #' Compare words sentiment in wide form
 #'
@@ -34,14 +72,14 @@ calculate_sentiment_score <- function(ngrams) {
 #'
 #' @examples
 compare_words_sentiment <- function(ngrams) {
-  temp_grams <- ngrams %>%
-    group_by(word, method) %>%
+  ngrams %>%
+    group_by(word, n, method) %>%
     summarise(sentiment = paste0(sentiment, collapse="|")) %>%
     distinct(word, sentiment, method) %>% 
-    spread(method, sentiment, convert = TRUE)
+    spread(method, sentiment, convert = TRUE) %>%
+    arrange(desc(n))
   
-  left_join(ngrams, temp_grams, by = "word") %>%
-    select(-sentiment, -method)
+  #left_join(ngrams, temp_grams, by = "word") 
 }
 
 #' To add sentiment/s to dataframe on matching with "word" column
@@ -54,7 +92,10 @@ compare_words_sentiment <- function(ngrams) {
 #' @export
 #'
 #' @examples
-add_sentiments <- function(ngrams, sentiment_libs = c("loughran", "nrc", "bing")) {
+add_sentiments <- function(ngrams, sentiment_libs = c("loughran", "nrc", "bing"), all = FALSE) {
+  if (all) {
+    sentiment_libs = c("loughran", "nrc", "bing", "afinn")
+  }
   bind_rows(lapply(sentiment_libs, function(x) {single_add_sentiment(ngrams, x)}))
 }
 
@@ -75,9 +116,9 @@ single_add_sentiment <- function(ngrams, sentiment_lib) {
     mutate(method = sentiment_lib)
   
   if (sentiment_lib == "afinn") {
-    temp_grams <- temp_grams %>%
+    temp_grams <- temp_grams %>% 
       mutate(sentiment = as.character(score)) %>%
-      select(-score)
+      dplyr::select(-score)
   }
 
   if ("method" %in% names(ngrams) && ("sentiment" %in% names(ngrams) || "score" %in% names(ngrams))) {
