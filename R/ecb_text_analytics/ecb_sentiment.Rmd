@@ -33,6 +33,7 @@ str(df_ecb)
 library(tidytext)
 source("text_analytics.R")
 
+#Remove years as stop words
 custom_stop_words = bind_rows(data_frame(word = c(as.character(1980:2030)),
                                           lexicon = c("custom")),
                                stop_words)
