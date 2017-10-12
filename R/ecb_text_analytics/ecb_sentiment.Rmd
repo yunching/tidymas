@@ -1,9 +1,11 @@
 ---
 title: "ECB Text Analytics"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
-```{r, message = FALSE}
+```{r setup, message = FALSE}
 library(dplyr)
 library(tidytext)
 library(lubridate)
@@ -13,7 +15,7 @@ library(tidyverse)
 
 # Read in ECB speeches as scraped
 
-```{r}
+```{r read_ecb_speeches}
 df <- read.csv("data/ecb_speeches.csv", stringsAsFactors = FALSE) %>%
   mutate(date = ymd(date), type = as.factor(type), speaker = as.factor(speaker))
 
@@ -29,7 +31,7 @@ str(df_ecb)
 
 # Preprocess by tokenising words and removing stop words
 
-```{r}
+```{r text_preprocessing}
 library(tidytext)
 source("text_analytics.R")
 
@@ -55,7 +57,7 @@ ecb_unigrams %>%
 
 ## List of top words and their associated sentiments
 
-```{r}
+```{r 1gram_lexicon_comparison}
 # Compare how words categorization differs across sets
 ecb_unigrams %>%
   count_ngrams %>%
@@ -66,7 +68,7 @@ ecb_unigrams %>%
 
 ## Calculating a sentiment score
 
-```{r}
+```{r 1gram_sentiment_scoring}
 ecb_scores <- ecb_unigrams %>%
   add_sentiments(all = TRUE) %>%
   group_by(date) %>%
@@ -81,7 +83,7 @@ g + geom_line() +
 
 # High scoring words from the dictionary
 
-```{r}
+```{r 1gram_top_abs_scorers}
 ecb_unigrams %>%
   add_sentiments(all = TRUE) %>%
   group_by(word) %>%
