@@ -1,6 +1,8 @@
 ---
 title: "ECB Text Analytics"
-output: html_notebook
+output:
+  html_document: default
+  html_notebook: default
 ---
 
 ```{r, message = FALSE}
@@ -9,6 +11,7 @@ library(tidytext)
 library(lubridate)
 library(ggplot2)
 library(tidyverse)
+source("text_analytics.R")
 ```
 
 # Read in ECB speeches as scraped
@@ -20,7 +23,7 @@ df <- read.csv("data/ecb_speeches.csv", stringsAsFactors = FALSE) %>%
 # Extract press speech and answers
 df_ecb <- df %>%
   #mutate(text = iconv(text, to="latin1", sub="")) %>%
-  filter(type %in% c("press speech", "answer")) %>%
+  filter(type %in% c("speech", "answer")) %>%
   group_by(date) %>%
   summarise(text = paste0(text, collapse = "."))
 
@@ -30,9 +33,6 @@ str(df_ecb)
 # Preprocess by tokenising words and removing stop words
 
 ```{r}
-library(tidytext)
-source("text_analytics.R")
-
 #Remove years as stop words
 custom_stop_words = bind_rows(data_frame(word = c(as.character(1980:2030)),
                                           lexicon = c("custom")),
@@ -212,17 +212,22 @@ negated_words <- bigrams_separated %>%
 ##################
 
 # Calculate negative scores from negated words
-negative_scores <- negated_words %>% 
+negative_scores_by_word <- negated_words %>% 
   rename(n2 = n, word = word2) %>%
   inner_join(unigrams_wt, by = c("date", "word")) %>%
   mutate(tf_idf2 = (n2 * 2 * -1)/n * tf_idf) %>%  # We subtract twice to adjust for the "wrong" impact on the raw score
   add_sentiments(all = TRUE) %>%
-  group_by(date) %>%
+  group_by(date, word, word1) %>%
   calc_sentiment_score(wt = "tf_idf2") 
+
+# Total negative scores by date
+negative_scores <- negative_scores_by_word %>%
+  group_by(date, method) %>%
+  summarise(score = sum(score))
 
 # Join negative scores to original weighted scores, and recalculated combined scores
 combined_scores <- negative_scores %>%
-  select(-negative, -positive) %>%
+ # select(-negative, -positive) %>%
   rename(score2 = score) %>%
   right_join(weighted_scores, by = c("date", "method")) %>%
   mutate(score3 = ifelse(is.na(score2), score, score + score2))
@@ -234,6 +239,18 @@ combined_scores %>% select(date, method, score, score2, score3) %>%
   geom_line() +
   facet_wrap(~method, ncol=1, scales = "free_y") +
   geom_hline(yintercept = 0, lwd=0.3, lty = 5) 
+
+# Plot words with negated contributions
+# negative_scores_by_word %>%
+#   group_by(word, word1) %>%
+#   summarise(score = sum(score)) %>%
+#   top_n(20, desc(abs(score))) %>%
+#   mutate(full_word = paste(word1, word)) %>%
+#   ggplot(aes(score, full_word, fill = score > 0)) %>%
+#     geom_col() %>%
+#     coord_flip()
+  
+  
 
 ####################
 # adjust unweighted scores
@@ -302,69 +319,3 @@ word_cors %>%
   coord_flip()
 ```
 
-# Unrelated stock mining
-
-```{r}
-library(tm.plugin.webmining)
-library(purrr)
-library(tidyverse)
-library(tidytext)
-
-company <- c("Microsoft", "Apple")
-symbol <- c("MSFT", "AAPL")
-
-download_articles <- function(symbol) {
-  WebCorpus(GoogleFinanceSource(paste0("NASDAQ:", symbol)))
-}
-
-stock_articles <- data_frame(company = company,
-                             symbol = symbol) %>%
-  mutate(corpus = map(symbol, download_articles))
-
-stock_tokens <- stock_articles %>%
-  unnest(map(corpus, tidy)) %>%
-  unnest_tokens(word, text) %>%
-  select(company, datetimestamp, word, id, heading)
-
-library(stringr)
-
-stock_tf_idf <- stock_tokens %>%
-  count(company, word) %>%
-  filter(!str_detect(word, "\\d+")) %>%
-  bind_tf_idf(word, company, n) %>%
-  arrange(-tf_idf)
-
-```
-
-```{r}
-stock_tokens %>%
-  count(word) %>%
-  inner_join(get_sentiments("loughran"), by = "word") %>%
-  group_by(sentiment) %>%
-  top_n(5, n) %>%
-  ungroup() %>%
-  mutate(word = reorder(word, n)) %>%
-  ggplot(aes(word, n)) +
-  geom_col() +
-  coord_flip() +
-  facet_wrap(~ sentiment, scales = "free") +
-  ylab("Frequency of this word in the recent financial articles")
-```
-
-
-```{r}
-stock_sentiment_count <- stock_tokens %>%
-  inner_join(get_sentiments("loughran"), by = "word") %>%
-  count(sentiment, company) %>%
-  spread(sentiment, n, fill = 0)
-
-stock_sentiment_count %>%
-  mutate(score = (positive - negative) / (positive + negative)) %>%
-  mutate(company = reorder(company, score)) %>%
-  ggplot(aes(company, score, fill = score > 0)) +
-  geom_col(show.legend = FALSE) +
-  coord_flip() +
-  labs(x = "Company",
-       y = "Positivity score among 20 recent news articles")
-
-```

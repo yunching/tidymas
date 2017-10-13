@@ -115,7 +115,7 @@ crawl_ecb <- function(url, baseurl = "https://www.ecb.europa.eu/") {
   }
   x <- data.frame(text = c(speech_text, qn_text, ans_text), 
          date = press_date, 
-         type = c(rep("press speech", length(speech_text)),
+         type = c(rep("speech", length(speech_text)),
                   rep("question", length(qn_text)),
                   rep("answer", length(ans_text))),
          speaker = c(rep(speech_speaker, length(speech_text)),
