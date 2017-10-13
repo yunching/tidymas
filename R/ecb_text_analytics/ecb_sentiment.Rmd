@@ -11,7 +11,8 @@ output:
 
 We explored the possibility of determining ECB's sentiment based on their press conference speech and answers. 
 
-```{r setup, message = FALSE}
+```{r setup, include = FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
 library(dplyr)
 library(tidytext)
 library(lubridate)
