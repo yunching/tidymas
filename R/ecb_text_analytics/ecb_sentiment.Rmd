@@ -1,6 +1,7 @@
 ---
 title: "ECB Text Sentiment Analysis"
 output:
+  word_document: default
   html_notebook: default
   html_document:
     df_print: paged
@@ -72,10 +73,10 @@ After obtaining the count of the words, we now need to find their associated sen
 
 | Dictionary | Description |
 |------------|-------------|
-| AFINN      |
-| Loughran   |
-| NRC        |
-| Bing       |
+| AFINN      | Scale of -5 (very negative) to +5 (very positive) |
+| Loughran   | For financial applications, various types of sentiments |
+| NRC        | Crowd sourced emotion-based |
+| Bing       | Labels as positive or negative |
 
 From an extract of the top words with associated sentiments, we see that the sentiments associated with each dictionary is quite varied.
 
