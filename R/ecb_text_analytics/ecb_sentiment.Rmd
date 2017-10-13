@@ -1,14 +1,14 @@
 ---
-title: "ECB Text Analytics"
+title: "ECB Text Sentiment Analysis"
 output:
-<<<<<<< HEAD
-  html_document: default
   html_notebook: default
-=======
   html_document:
     df_print: paged
->>>>>>> cb63b95588d5bb45ea768e3cd25a3e360b80a0d8
 ---
+
+## Executive summary
+
+We explored the possibility of determining ECB's sentiment based on their press conference speech and answers. 
 
 ```{r setup, message = FALSE}
 library(dplyr)
@@ -16,14 +16,13 @@ library(tidytext)
 library(lubridate)
 library(ggplot2)
 library(tidyverse)
-<<<<<<< HEAD
-=======
-library(tidytext)
->>>>>>> cb63b95588d5bb45ea768e3cd25a3e360b80a0d8
+library(GGally)
 source("text_analytics.R")
 ```
 
-# Read in ECB speeches as scraped
+### Read in ECB speeches as scraped
+
+The transcript of ECB press conference speeches were separately scraped from the ECB website, and we start by reading them into dataframes. We filter out text which are questions asked by the press audience
 
 ```{r read_ecb_speeches}
 df <- read.csv("data/ecb_speeches.csv", stringsAsFactors = FALSE) %>%
@@ -31,7 +30,6 @@ df <- read.csv("data/ecb_speeches.csv", stringsAsFactors = FALSE) %>%
 
 # Extract press speech and answers
 df_ecb <- df %>%
-  #mutate(text = iconv(text, to="latin1", sub="")) %>%
   filter(type %in% c("speech", "answer")) %>%
   group_by(date) %>%
   summarise(text = paste0(text, collapse = "."))
@@ -39,13 +37,15 @@ df_ecb <- df %>%
 str(df_ecb)
 ```
 
-# Preprocess by tokenising words and removing stop words
+## Preprocess: Tokenising words and removing stop words
 
-<<<<<<< HEAD
-```{r}
-=======
+The next step is to convert paragraphs of text to individual words, in a process known as tokenising. We start by analysing single words, also referred to as unigrams. 
+
+In addition, we remove stop words which are words used very often which convey no meaning such as "is", "the" etc. We added our own custom stop words to remove years.
+
+Performing a simple count analysis on the unigrams, we observe that words like "euro", "growth" are used very often in the speeches. 
+
 ```{r text_preprocessing}
->>>>>>> cb63b95588d5bb45ea768e3cd25a3e360b80a0d8
 #Remove years as stop words
 custom_stop_words = bind_rows(data_frame(word = c(as.character(1980:2030)),
                                           lexicon = c("custom")),
@@ -64,9 +64,20 @@ ecb_unigrams %>%
     coord_flip()
 ```
 
-# Single word sentiment analysis
+## Single word sentiment analysis
 
-## List of top words and their associated sentiments
+### List of top words and their associated sentiments
+
+After obtaining the count of the words, we now need to find their associated sentiments. We use four dictionaries to measure sentiment, however these dictionaries are not optimised for central bank or macroeconomic analysis and is sub optimal.
+
+| Dictionary | Description |
+|------------|-------------|
+| AFINN      |
+| Loughran   |
+| NRC        |
+| Bing       |
+
+From an extract of the top words with associated sentiments, we see that the sentiments associated with each dictionary is quite varied.
 
 ```{r 1gram_lexicon_comparison}
 # Compare how words categorization differs across sets
@@ -77,7 +88,11 @@ ecb_unigrams %>%
 
 ```
 
-## Calculating a sentiment score
+### Calculating a sentiment score
+
+We then calculate a sentiment score by adding to the score when a positive word appears and subtracting when a negative word appears. In the case of the AFINN dictionary, we multiple the word count `n` by the sentiment score before summing them together. Here we observe that each indicator is fairly diferent, suggesting that the dictionary has significant impact on your final results.
+
+Using zero as a baseline, we observe that most of the dictionaries tend to give a positive overall sentiment to the minutes, but Loughran views the speeches negatively in most cases
 
 ```{r 1gram_sentiment_scoring}
 ecb_scores <- ecb_unigrams %>%
@@ -92,7 +107,9 @@ g + geom_line() +
   facet_wrap(~method, ncol = 1, scales = "free_y")
 ```
 
-# High scoring words from the dictionary
+### High scoring words from the dictionary
+
+To account for the differences, we extracted the top contributors to scores both negative and positive across the dictionaries, and see that they are indeed picking out quite different words
 
 ```{r 1gram_top_abs_scorers}
 ecb_unigrams %>%
@@ -109,7 +126,13 @@ ecb_unigrams %>%
     coord_flip()
 ```
 
-# Calculate ranking for inverse document frequency
+### Calculate ranking for tf-idf
+
+It is arguable that a pure word count is an accurate reflection of the sentiments in a set of minutes. As words like growth or inflation may be used very often in any ECB speech. Hence we may wish to adjust for the frequency of these terms appearing in the documents. 
+
+We use term frequency - inverse document frequency (tf-idt) as a weight. tf-idf measures how unique a particular word is in the other documents. If it is relatively unique, it is given a higher weight, while if it appears frequently in every single document, it would be given a smaller weight.
+
+Below we see words with high weights due to the uniqueness of their appearance for each of the years
 
 ```{r}
 unigrams_wt <- ecb_unigrams %>%
@@ -118,19 +141,6 @@ unigrams_wt <- ecb_unigrams %>%
   bind_tf_idf(word, date, n) %>%
   ungroup
 
-unigrams_wt %>% 
-  top_n(20) %>%
-  ggplot(aes(factor(word, levels = rev(unique(word))), tf_idf, fill = as.factor(year(date)))) +
-    geom_col() +
-    labs(x = NULL, y = "tf-idf") +
-    coord_flip()
-```
-
-# Words with high weights
-
-Below we see words with high weights due to the uniqueness of their appearance for each of the years
-
-```{r}
 unigrams_wt %>% 
   ungroup %>%
   filter(year(date) > 2008) %>%
@@ -144,9 +154,9 @@ unigrams_wt %>%
     coord_flip()
 ```
 
-# Calculation of weighted scores
+### Calculation of weighted scores
 
-Adjusting for weighted score, we compare with the unweighted scores. We see that directionally, both looks quite similar. 
+With the weights, we do a multiplication of the weights with the sentiment to give us the weighted score. To compare with the unweighted scores, we standardize both the weighted and unweighted scores to compare them on the same scale. We see that directionally, both looks quite similar. 
 
 ```{r, fig.height = 5}
 weighted_scores <- unigrams_wt %>%
@@ -154,8 +164,8 @@ weighted_scores <- unigrams_wt %>%
   group_by(date, method) %>%
   calc_sentiment_score(wt = "tf_idf") 
 
-combined_scores <- bind_rows(ecb_scores %>% mutate(weight = "unweighted"),
-                            weighted_scores %>% mutate(weight = "weighted"))
+combined_scores <- bind_rows(ecb_scores %>% mutate(weight = "unwt"),
+                            weighted_scores %>% mutate(weight = "wt"))
 
 # Centre all scores and plot weight and unweighted on the same chart
 combined_scores %>%
@@ -168,9 +178,9 @@ combined_scores %>%
   ggtitle("Standardized sentiment scores")
 ```
 
-# Top weighting words
+### Top contributors to weighted score
 
-We analyse the in the weighted sentiment, which are the words which are the top contributors to the sentiment scores in each of the recent years since 2008
+Here are the list of top contributors to weighted score for each of the recent years since 2011
 
 ```{r fig.height = 13, fig.width=10}
 unigrams_wt %>%
@@ -180,7 +190,7 @@ unigrams_wt %>%
   group_by(year = year(date), word, method) %>%
   summarise(score = sum(score)) %>%
   group_by(year, method) %>%
-  filter(year > 2012) %>%
+  filter(year > 2011) %>%
   top_n(10, abs(score)) %>%
   ungroup %>%
   ggplot(aes(factor(word, levels = unique(word[order(score)])), score, fill = factor(sign(score)))) +
@@ -190,25 +200,32 @@ unigrams_wt %>%
     coord_flip()
 ```
 
-## TODO 3: Subtracting negation words using bigrams
-
 ## Diagnostics of using different dictionaries
 
 ### Comparison of weighted scores across the different dictionaries
 
-Weighted scores look more or less correlated, although not very strongly
+Correlations are quite weak across dictionaries as well as when considering weighted or unweighted
 
 ```{r}
-library(GGally)
-weighted_scores %>%
-  select(-negative, -positive) %>%
+combined_scores %>%
+  mutate(method = paste(method, weight)) %>%
+  select(-negative, -positive, -weight) %>%
   spread(method, score) %>%
   select(-date) %>%
   ggpairs
 ```
 
+## Adjusting for bigrams
 
-# Dealing with bigrams and negation words
+### Removing negation words
+
+Unigram analysis may not be sufficient, as there are words which are used with opposite intentions, such as "negative growth" or "no money". Hence we extend the analysis to bigrams, which are essentially words paired together with their adjacent words.
+
+From an algorithm perspective, you may have noticed that to do such bigram analysis, we cannot remove stop words when tokenizing, as words like "not", "no" are considered stop words.
+
+We identify common negation words such as "not", "no" etc.
+
+From the identified word list, we do see that in the unigram analysis, we would have misclassified the sentiment of these words
 
 ```{r, fig.height=10, fig.width=8}
 bigrams_separated <- df_ecb %>%
@@ -219,6 +236,18 @@ negation_words <- c("not", "no", "never", "without", "negative", "weak")
 negated_words <- bigrams_separated %>%
   filter(word1 %in% negation_words) %>%
   ungroup()
+
+negated_words %>% 
+  rename(word = word2) %>% 
+  add_sentiments %>% 
+  filter(sentiment %in% c("positive", "negative"))
+```
+
+### Adjusting for negated words
+
+To adjust the negated words, we have to first remove its original impact, then add the new impact, which is equivalent to adding twice its new established impact
+
+```{r}
 
 ##################
 # adjust weighted scores
@@ -239,14 +268,14 @@ negative_scores <- negative_scores_by_word %>%
   summarise(score = sum(score))
 
 # Join negative scores to original weighted scores, and recalculated combined scores
-combined_scores <- negative_scores %>%
+bigram_adjusted_scores <- negative_scores %>%
  # select(-negative, -positive) %>%
   rename(score2 = score) %>%
   right_join(weighted_scores, by = c("date", "method")) %>%
   mutate(score3 = ifelse(is.na(score2), score, score + score2))
 
 # Plot combined weighted scores scores
-combined_scores %>% select(date, method, score, score2, score3) %>%
+bigram_adjusted_scores %>% select(date, method, score, score2, score3) %>%
   gather(score_type, scores, -date, -method) %>%
   ggplot(aes(date, scores, colour = score_type)) +
   geom_line() +
@@ -295,7 +324,11 @@ combined_scores %>% select(date, method, score, score2, score3) %>%
 
 ```
 
-# Visualizing network of bigrams
+# Other text analytics tools
+
+## Visualizing network of bigrams
+
+Other functionalities for future work include chaining of bigrams, which allow for deeper sentence analysis, but can be complicated to execute.
 
 ```{r}
 df_ecb %>%
@@ -304,31 +337,41 @@ df_ecb %>%
   visualize_bigrams(min.n = 100)
 ```
 
-# Counting and correlation among sections
+## Counting and correlation among sections
 
-```{r}
-## POSSIBLE IDEA: Break into individual years, and find change in correlation between words for key words like inflation,
-##                rate hikes, growth etc?
+We calculated the correlation of words within years to try and identify whether there is a change in how words are used across the years. But there seems to be no useful results.
 
+Another consideration is that using the count of words within each set of speech is not sufficient to accurately reflect correlation. We might want to consider calculating the correlation of words within paragraphs.
+
+```{r, fig.height = 13, fig.width=10}
 ecb_year_words <- ecb_unigrams %>%
   mutate(section = year(date))
 
 library(widyr)
-word_cors <- ecb_year_words %>%
-  filter(section == 2016) %>%
-  group_by(word) %>%
-  filter(n >= 20) %>%
-  pairwise_cor(word, date, sort = TRUE)
- 
+
+# Calculating annual correlation
+word_cors <- bind_rows(
+  lapply(unique(ecb_year_words$section), 
+         function(x) {
+           ecb_year_words %>%
+             filter(section == x) %>%
+             group_by(word) %>%
+             filter(n >= 10) %>%
+             pairwise_cor(word, date, n, sort = TRUE, use = "complete.obs") %>%
+             mutate(section = x)
+}))
+
 word_cors %>%
-  filter(item1 %in% c("inflation", "growth")) %>%
-  group_by(item1) %>%
-  top_n(6) %>%
+  filter(item1 %in% c("growth", "inflation")) %>%
+  group_by(item1, section) %>%
+  top_n(6, desc(abs(correlation))) %>%
   ungroup() %>%
+  arrange(desc(correlation)) %>%
   mutate(item2 = reorder(item2, correlation)) %>%
+  filter(section > 2010) %>%
   ggplot(aes(item2, correlation)) +
-  geom_bar(stat = "identity") +
-  facet_wrap(~ item1, scales = "free") +
-  coord_flip()
+    geom_bar(stat = "identity") +
+    facet_wrap(~ section + item1, ncol = 2, scales = "free") +
+    coord_flip()
 ```
 
