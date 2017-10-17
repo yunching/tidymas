@@ -15,7 +15,8 @@ output:
 
 In the report below, we performed text sentiment analysis on the ECB press conference speeches. Four different sentiment dictionaries were used for comparison, with words identified as positive contributing a positive score and negative words contributing a negative score. The analysis is done on unigrams (single word) basis, with adjustment for negation words through bigrams. The sentiment indicator is then built up from the summation of the scores and its change measured across time. 
 
-```{r setup, message = FALSE}
+```{r setup, include = FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
 library(dplyr)
 library(tidytext)
 library(lubridate)
