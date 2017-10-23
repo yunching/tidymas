@@ -1,0 +1,32 @@
+---
+title: "GFI"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(Rblpapi)
+blpConnect()
+```
+
+## EZ - Short duration
+
+```{r EZ_sd}
+tmp <- rbind(bdp("GDBR10 Index", "Chg_Net_5D"), bdp("USGG10YR Index", "Chg_Net_5D"))
+tmp %>% 
+  rownames_to_column() %>% 
+  ggplot(aes(x = rowname, y = Chg_Net_5D, fill = rowname)) + geom_col()
+
+
+```
+
+## Equity
+
+```{r equity}
+tmp <- rbind(bdp("SPX Index", "Chg_Pct_5D"), bdp("SX5E Index", "Chg_Pct_5D"), bdp("UKX Index", "Chg_Pct_5D"))
+tmp %>% 
+  rownames_to_column() %>% 
+  ggplot(aes(x = rowname, y = Chg_Pct_5D, fill = rowname)) + geom_col()
+
+```
