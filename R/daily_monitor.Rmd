@@ -9,22 +9,51 @@ output:
 knitr::opts_chunk$set(echo = FALSE)
 
 library(tidyverse)
+library(grid)
 library(gridExtra)
 library(Rblpapi)
+library(xts)
 
+#Establish connection with Bloomberg
 blpConnect()
 
-getData <- function(Ticker){
-  bdh(Ticker, c("PX_LAST"), start.date = Sys.Date()-365)
+getData <- function(ticker){
+  bbg_data <- bdh(ticker, c("PX_LAST"), start.date = Sys.Date()-365)
 }
 
-ggTS <- function(Ticker, Title = Ticker){
-  data <- getData(Ticker = Ticker)
+getData_xts <- function(ticker){
+  bbg_data <- bdh(ticker, c("PX_OPEN", "PX_HIGH","PX_LOW","PX_LAST"), start.date = Sys.Date()-365)
+  my_ts <- xts(cbind(bbg_data$PX_OPEN, bbg_data$PX_HIGH, bbg_data$PX_LOW, bbg_data$PX_LAST), order.by = bbg_data$date)
+  colnames(my_ts) <- c("Open", "High", "Low", "Close")
+  my_ts
+}
+#tmp <- getData_xts("GBPUSD Curncy")
 
-  ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
+ggTS <- function(ticker, title = ticker, yield_mode = FALSE){
+  data <- getData(ticker = ticker)
+  if (yield_mode == FALSE){
+    my_subtitle <- paste("Low:", min(data$PX_LAST), 
+                       "High:", max(data$PX_LAST), 
+                       "Last:", data$PX_LAST[-1], 
+                       "1D return:", paste0(format(round((data$PX_LAST[-2] / data$PX_LAST[-1] - 1) * 100, 2), nsmall = 2), "%")
+                      )
+    ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
     ggplot2::geom_line() +
     ggplot2::geom_point(colour = "blue") +
-    ggplot2::labs(title = Ticker, y = "Price", x = "Date")
+    ggplot2::labs(title = title, y = "Price", x = "Date", subtitle = my_subtitle)
+  }
+  else {
+    my_subtitle <- paste("Low:", min(data$PX_LAST), 
+                       "High:", max(data$PX_LAST), 
+                       "Last:", data$PX_LAST[-1], 
+                       "1D yld chg:", paste0(format(round(data$PX_LAST[-1] - data$PX_LAST[-2] , 2), nsmall = 2), "%")
+                      )
+    ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
+    ggplot2::geom_line() +
+    ggplot2::geom_point(colour = "blue") +
+    ggplot2::labs(title = title, y = "Yield", x = "Date", subtitle = my_subtitle)
+  }
+  
 
 }
 ```
@@ -41,17 +70,36 @@ grid.arrange(g1, g2, nrow = 2)
 
 ```
 
-## UK Yields
+## UK Nominal Yields
 
 ```{r UK_yields}
-uk_2y <- ggTS("GTGBP2Y Govt")
-uk_5y <- ggTS("GTGBP5Y Govt")
-uk_10y <- ggTS("GTGBP10Y Govt")
-uk_30y <- ggTS("GTGBP30Y Govt")
+uk_2y <- ggTS("GTGBP2Y Govt", yield_mode = TRUE)
+uk_5y <- ggTS("GTGBP5Y Govt", yield_mode = TRUE)
+uk_10y <- ggTS("GTGBP10Y Govt", yield_mode = TRUE)
+uk_30y <- ggTS("GTGBP30Y Govt", yield_mode = TRUE)
 grid.arrange(uk_2y, uk_5y, uk_10y, uk_30y, nrow = 2)
 ```
 
-#Germany
+## UK Breakevens
+```{r uk_breakevens}
+#2Y BE not available
+#uk_2y_r <- ggTS("UKGGBE02Y Index")
+blank <- grid.rect(gp=gpar(col="white"), draw = FALSE)
+uk_5y_r <- ggTS("UKGGBE05Y Index", yield_mode = TRUE)
+uk_10y_r <- ggTS("UKGGBE10Y Index", yield_mode = TRUE)
+uk_30y_r <- ggTS("UKGGBE30Y Index", yield_mode = TRUE)
+grid.arrange(blank, uk_5y_r, uk_10y_r, uk_30y_r, nrow = 2)
+```
+
+## UK Equities
+```{r UK_equities}
+ftse100 <- ggTS("UKX Index", title = "FTSE 100")
+ftse250 <- ggTS("MCX Index", title = "FTSE 250")
+ftse_all <- ggTS("ASX Index", title = "FTSE All Share")
+grid.arrange(ftse100, ftse250, ftse_all, nrow = 2)
+```
+
+#Europe
 
 ## EUR
 
@@ -61,12 +109,39 @@ g2 <- ggTS("EURGBP Curncy")
 grid.arrange(g1, g2, nrow = 2)
 ```
 
-## UK Yields
+## German Nominal Yields
 
 ```{r DEM_yields}
-dem_2y <- ggTS("GTDEM2Y Govt")
-dem_5y <- ggTS("GTDEM5Y Govt")
-dem_10y <- ggTS("GTDEM10Y Govt")
-dem_30y <- ggTS("GTDEM30Y Govt")
+dem_2y <- ggTS("GTDEM2Y Govt", yield_mode = TRUE)
+dem_5y <- ggTS("GTDEM5Y Govt", yield_mode = TRUE)
+dem_10y <- ggTS("GTDEM10Y Govt", yield_mode = TRUE)
+dem_30y <- ggTS("GTDEM30Y Govt", yield_mode = TRUE)
 grid.arrange(dem_2y, dem_5y, dem_10y, dem_30y, nrow = 2)
 ```
+
+## Europe Equities
+```{r ez_equities}
+sx5e <- ggTS("SX5E Index", title = "EuroStoxx")
+dax <- ggTS("DAX Index", title = "German DAX")
+cac <- ggTS("CAC Index", title = "France CAC")
+grid.arrange(sx5e, dax, cac, nrow = 2)
+```
+
+#Select Equities
+
+##US Indices
+```{r us_indices}
+spx <- ggTS("SPX Index", title = "S&P500")
+dow_jones <- ggTS("INDU Index", title = "Dow Jones")
+nasdaq <- ggTS("CCMP Index", title = "NASDAQ Composite")
+russell_2000 <- ggTS("RTY Index", title = "Russell 2000")
+grid.arrange(spx, dow_jones, nasdaq, russell_2000, nrow = 2)
+```
+
+## FANGS
+
+## US Banks
+
+## Asset Managers
+
+## Asia
