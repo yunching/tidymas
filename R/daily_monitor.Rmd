@@ -138,7 +138,17 @@ russell_2000 <- ggTS("RTY Index", title = "Russell 2000")
 grid.arrange(spx, dow_jones, nasdaq, russell_2000, nrow = 2)
 ```
 
-## FANGS
+## FAANGS
+```{r FAANGS}
+facebook <- ggTS("FB US Equity", title = "Facebook")
+apple <- ggTS("AAPL US Equity", title = "Apple")
+amazon <- ggTS("AMZN US Equity", title = "Amazon")
+netflix <- ggTS("NFLX US Equity", title = "Netflix")
+google <- ggTS("GOOG US Equity", title = "Alphabet")
+blank <- grid.rect(gp=gpar(col="white"), draw = FALSE)
+grid.arrange(facebook, apple, amazon, netflix, google, blank, ncol = 3)
+#TODO Google's last price seems to be off
+```
 
 ## US Banks
 
