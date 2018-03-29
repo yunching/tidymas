@@ -1,0 +1,72 @@
+---
+title: "Daily Monitor"
+output:
+  beamer_presentation: default
+  slidy_presentation: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(tidyverse)
+library(gridExtra)
+library(Rblpapi)
+
+blpConnect()
+
+getData <- function(Ticker){
+  bdh(Ticker, c("PX_LAST"), start.date = Sys.Date()-365)
+}
+
+ggTS <- function(Ticker, Title = Ticker){
+  data <- getData(Ticker = Ticker)
+
+  ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
+    ggplot2::geom_line() +
+    ggplot2::geom_point(colour = "blue") +
+    ggplot2::labs(title = Ticker, y = "Price", x = "Date")
+
+}
+```
+
+
+#UK
+
+## GBPUSD
+
+```{r GBPUSD}
+g1 <- ggTS("GBPUSD Curncy")
+g2 <- ggTS("GBPEUR Curncy")
+grid.arrange(g1, g2, nrow = 2)
+
+```
+
+## UK Yields
+
+```{r UK_yields}
+uk_2y <- ggTS("GTGBP2Y Govt")
+uk_5y <- ggTS("GTGBP5Y Govt")
+uk_10y <- ggTS("GTGBP10Y Govt")
+uk_30y <- ggTS("GTGBP30Y Govt")
+grid.arrange(uk_2y, uk_5y, uk_10y, uk_30y, nrow = 2)
+```
+
+#Germany
+
+## EUR
+
+```{r EURUSD}
+g1 <- ggTS("EURUSD Curncy")
+g2 <- ggTS("EURGBP Curncy")
+grid.arrange(g1, g2, nrow = 2)
+```
+
+## UK Yields
+
+```{r DEM_yields}
+dem_2y <- ggTS("GTDEM2Y Govt")
+dem_5y <- ggTS("GTDEM5Y Govt")
+dem_10y <- ggTS("GTDEM10Y Govt")
+dem_30y <- ggTS("GTDEM30Y Govt")
+grid.arrange(dem_2y, dem_5y, dem_10y, dem_30y, nrow = 2)
+```
