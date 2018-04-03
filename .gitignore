@@ -8,3 +8,4 @@ inst/doc
 *_cache
 *_files
 *.csv
+*.Rpres
