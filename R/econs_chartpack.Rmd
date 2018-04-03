@@ -10,14 +10,16 @@ source("C:\\Users\\ylim\\Documents\\R projects\\tidymas\\R\\convenience.R")
 
 #UK
 
-## Lead indicators
+## Lead indicators - UK PMIs
+```{r uk_lead, message = FALSE}
+ggXTS(getMB("markit_pmigbmanpm")["2008/9999"], title = "UK Manufacturing PMI") + geom_hline(yintercept = 50, color = "black", linetype = "dashed")
 
-## UK PMIs
-```{r uk_lead}
-ggTS("MPMIGBMA Index", title = "Manufacturing PMI", start_date = ymd("20080101"))
 ```
 
 ## Consumption
+```{r uk_consumption}
+ggXTS(getMB("gbsurv0515")["2008/9999"], title = "GfK Consumer")
+```
 
 ## Investments
 
