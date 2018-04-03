@@ -49,3 +49,24 @@ ggTS <- function(ticker, title = ticker, yield_mode = FALSE, start_date = Sys.Da
 
 
 }
+
+getMB <- function(mb_ticker){
+  my_data <- FetchOneTimeSeries(mb_ticker)
+  if (getIsError(my_data))
+    stop(getErrorMessage(my_data))
+
+  as.xts(my_data)
+}
+
+ggXTS <- function(my_xts, title = "Value", series_subset = ""){
+  if (length(colnames(my_xts)) > 1){
+    stop("Multiple data series detected in plot.")
+  }
+
+  subtitle <- paste("Last:", my_xts[length(my_xts), 1], paste0("(",index(my_xts)[length(my_xts)], ")"),
+                    "Prev:", my_xts[length(my_xts) - 1, 1],
+                    "Chg:", format((coredata(my_xts[length(my_xts), 1]) - coredata(my_xts[length(my_xts) - 1, 1])), nsmall = 2)
+  )
+
+  ggplot(my_xts, aes(x = Index, y = my_xts[,1])) + geom_line()  + geom_point(color = "blue") + labs(title = title, subtitle = subtitle, y = "Index", x = "Date")
+}
