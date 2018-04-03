@@ -140,6 +140,8 @@ ase <- ggTS("ASE Index", title = "Greece ASE")
 grid.arrange(ibex, mib, psi, ase, nrow = 2)
 ```
 
+# Volatility
+
 ## Volatility
 ```{r vol}
 vix <- ggTS("VIX Index", title = "VIX")
