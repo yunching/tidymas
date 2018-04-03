@@ -163,6 +163,17 @@ grid.arrange(facebook, apple, amazon, netflix, google, blank, ncol = 3)
 #TODO Google's last price seems to be off
 ```
 
+## Tech
+```{r tech_stocks}
+nvda <- ggTS("NVDA US Equity", title = "Nvidia")
+intc <- ggTS("INTC US Equity", title = "Intel")
+tsla <- ggTS("TSLA US Equity", title = "Tesla")
+msft <- ggTS("MSFT US Equity", title = "Microsoft")
+csco <- ggTS("CSCO US Equity", title = "CISCO")
+ibm <- ggTS("IBM US Equity", title = "IBM")
+grid.arrange(nvda, intc, tsla, msft, csco, ibm, ncol = 3)
+```
+
 ## US Banks
 
 ## Asset Managers
