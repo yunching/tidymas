@@ -2,8 +2,10 @@ library(tidyverse)
 library(grid)
 library(gridExtra)
 library(Rblpapi)
+library(MacrobondAPI)
 library(xts)
 library(lubridate)
+library(forecast)
 
 #Establish connection with Bloomberg
 blpConnect()
