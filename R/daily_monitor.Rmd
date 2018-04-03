@@ -32,9 +32,9 @@ getData_xts <- function(ticker){
 ggTS <- function(ticker, title = ticker, yield_mode = FALSE){
   data <- getData(ticker = ticker)
   if (yield_mode == FALSE){
-    my_subtitle <- paste("Low:", min(data$PX_LAST), 
-                       "High:", max(data$PX_LAST), 
-                       "Last:", data$PX_LAST[-1], 
+    my_subtitle <- paste("Low:", format(min(data$PX_LAST), big.mark = ","), 
+                       "High:", format(max(data$PX_LAST), big.mark = ","), 
+                       "Last:", format(data$PX_LAST[-1], big.mark = ","), 
                        "1D return:", paste0(format(round((data$PX_LAST[length(data$PX_LAST)] / data$PX_LAST[length(data$PX_LAST) - 1] - 1) * 100, 2), nsmall = 2), "%")
                       )
     ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
@@ -66,7 +66,10 @@ ggTS <- function(ticker, title = ticker, yield_mode = FALSE){
 ```{r GBPUSD}
 g1 <- ggTS("GBPUSD Curncy")
 g2 <- ggTS("GBPEUR Curncy")
-grid.arrange(g1, g2, nrow = 2)
+g3 <- ggTS("UKTWBROA Index", title = "BoE Broad FX index")
+#BoE stopped publishing 
+#g4 <- ggTS("CEERUKEN Index", title = "BoE Narrow FX index")
+grid.arrange(g1, g2, g3, nrow = 2)
 
 ```
 
@@ -119,12 +122,22 @@ dem_30y <- ggTS("GTDEM30Y Govt", yield_mode = TRUE)
 grid.arrange(dem_2y, dem_5y, dem_10y, dem_30y, nrow = 2)
 ```
 
-## Europe Equities
-```{r ez_equities}
+## Core Europe Equities
+```{r core_ez_equities}
 sx5e <- ggTS("SX5E Index", title = "EuroStoxx")
 dax <- ggTS("DAX Index", title = "German DAX")
 cac <- ggTS("CAC Index", title = "France CAC")
-grid.arrange(sx5e, dax, cac, nrow = 2)
+smi <- ggTS("SMI Index", title = "Swiss SMI")
+grid.arrange(sx5e, dax, cac, smi, nrow = 2)
+```
+
+## Periphery Europe Equities
+```{r peri_ez_equities}
+ibex <- ggTS("IBEX Index", title = "Spain IBEX")
+mib <- ggTS("FTSEMIB Index", title = "Italy MIB")
+psi <- ggTS("BVLX Index", title = "Portugal PSI")
+ase <- ggTS("ASE Index", title = "Greece ASE")
+grid.arrange(ibex, mib, psi, ase, nrow = 2)
 ```
 
 #Select Equities
