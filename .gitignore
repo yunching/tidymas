@@ -4,7 +4,6 @@
 .Ruserdata
 inst/doc
 *.html
-*.pdf
 *_cache
 *_files
 *.csv
