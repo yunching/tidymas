@@ -16,3 +16,13 @@ source("C:\\Users\\ylim\\Documents\\R projects\\tidymas\\R\\convenience.R")
 ```{r uk_lead}
 ggTS("MPMIGBMA Index", title = "Manufacturing PMI", start_date = ymd("20080101"))
 ```
+
+## Consumption
+
+## Investments
+
+## Govt
+
+## Exports
+
+## Imports
