@@ -105,7 +105,7 @@ gold <- ggTS("XAU Curncy", title = "Gold")
 silver <- ggTS("XAG Curncy", title = "Silver")
 corn <- ggTS("C 1 Comdty", title = "Corn")
 wheat <- ggTS("W 1 Comdty", title = "Wheat")
-grid.arrange(wti, gold, corn, brent, silver, wheat, ncol = 2)
+grid.arrange(wti, gold, corn, brent, silver, wheat, ncol = 3)
 ```
 
 # Select Equities
@@ -173,7 +173,7 @@ kkr <- ggTS("KKR US Equity", title = "KKR & Co LP")
 apo <- ggTS("APO US Equity", title = "Apollo Global")
 cg <- ggTS("CG US Equity", title = "Carlyle Group")
 oak <- ggTS("OAK US Equity", title = "Oaktree Capital")
-threei <- ggTS("3IN LN Equity", title = "3i")
+iii <- ggTS("III LN Equity", title = "3i")
 grid.arrange(bs, kkr, apo, cg, oak, threei, nrow = 2)
 ```
 
