@@ -2,7 +2,6 @@
 title: "Daily Monitor"
 output:
   beamer_presentation: default
-  slidy_presentation: default
 ---
 
 ```{r setup, include=FALSE}
@@ -11,7 +10,7 @@ source("C:\\Users\\ylim\\Documents\\R projects\\tidymas\\R\\convenience.R")
 ```
 
 
-#UK
+# UK
 
 ## GBPUSD
 
@@ -19,10 +18,7 @@ source("C:\\Users\\ylim\\Documents\\R projects\\tidymas\\R\\convenience.R")
 g1 <- ggTS("GBPUSD Curncy")
 g2 <- ggTS("GBPEUR Curncy")
 g3 <- ggTS("UKTWBROA Index", title = "BoE Broad FX index")
-#BoE stopped publishing 
-#g4 <- ggTS("CEERUKEN Index", title = "BoE Narrow FX index")
 grid.arrange(g1, g2, g3, nrow = 2)
-
 ```
 
 ## UK Nominal Yields
@@ -37,8 +33,6 @@ grid.arrange(uk_2y, uk_5y, uk_10y, uk_30y, nrow = 2)
 
 ## UK Breakevens
 ```{r uk_breakevens}
-#2Y BE not available
-#uk_2y_r <- ggTS("UKGGBE02Y Index")
 blank <- grid.rect(gp=gpar(col="white"), draw = FALSE)
 uk_5y_r <- ggTS("UKGGBE05Y Index", yield_mode = TRUE)
 uk_10y_r <- ggTS("UKGGBE10Y Index", yield_mode = TRUE)
@@ -54,7 +48,7 @@ ftse_all <- ggTS("ASX Index", title = "FTSE All Share")
 grid.arrange(ftse100, ftse250, ftse_all, nrow = 2)
 ```
 
-#Europe
+# Europe
 
 ## EUR
 
@@ -103,20 +97,20 @@ vftse <- ggTS("VFTSE Index", title = "VFTSE")
 grid.arrange(vix, v2x, vdax, vftse, nrow = 2)
 ```
 
-
-# Commodities
-```{r commodities}
+## Commodities
+```{r commods}
 wti <- ggTS("CL1 Comdty", title = "WTI 1st contract")
 brent <- ggTS("CO1 Comdty", title = "Brent 1st contract")
 gold <- ggTS("XAU Curncy", title = "Gold")
 silver <- ggTS("XAG Curncy", title = "Silver")
 corn <- ggTS("C 1 Comdty", title = "Corn")
 wheat <- ggTS("W 1 Comdty", title = "Wheat")
-grid.arrange(wti, gold, corn, brent, silver, wheat, nrow = 2)
+grid.arrange(wti, gold, corn, brent, silver, wheat, ncol = 2)
 ```
-#Select Equities
 
-##US Indices
+# Select Equities
+
+## US Indices
 ```{r us_indices}
 spx <- ggTS("SPX Index", title = "S&P500")
 dow_jones <- ggTS("INDU Index", title = "Dow Jones")
@@ -126,6 +120,7 @@ grid.arrange(spx, dow_jones, nasdaq, russell_2000, nrow = 2)
 ```
 
 ## FAANGS
+
 ```{r FAANGS}
 facebook <- ggTS("FB US Equity", title = "Facebook")
 apple <- ggTS("AAPL US Equity", title = "Apple")
@@ -134,10 +129,10 @@ netflix <- ggTS("NFLX US Equity", title = "Netflix")
 google <- ggTS("GOOG US Equity", title = "Alphabet")
 blank <- grid.rect(gp=gpar(col="white"), draw = FALSE)
 grid.arrange(facebook, apple, amazon, netflix, google, blank, ncol = 3)
-#TODO Google's last price seems to be off
 ```
 
 ## Tech
+
 ```{r tech_stocks}
 nvda <- ggTS("NVDA US Equity", title = "Nvidia")
 intc <- ggTS("INTC US Equity", title = "Intel")
@@ -149,6 +144,7 @@ grid.arrange(nvda, intc, tsla, msft, csco, ibm, ncol = 3)
 ```
 
 ## US Banks
+
 ```{r us_banks}
 jpm <- ggTS("JPM US Equity", "JP Morgan")
 wf <- ggTS("WFC US Equity", "Wells Fargo")
@@ -160,6 +156,7 @@ grid.arrange(jpm, wf, bac, citi, gs, ms, nrow = 2)
 ```
 
 ## Asset Managers
+
 ```{r asset_mgmt}
 blk <- ggTS("BLK US Equity", title = "BlackRock")
 bony <- ggTS("BK US Equity", title = "Bank of New York")
@@ -169,6 +166,7 @@ grid.arrange(blk, bony, ss, nt, nrow = 2)
 ```
 
 ## Private equity
+
 ```{r private_equity}
 bs <- ggTS("BX US Equity", title = "BlackStone Group")
 kkr <- ggTS("KKR US Equity", title = "KKR & Co LP")
@@ -180,6 +178,7 @@ grid.arrange(bs, kkr, apo, cg, oak, threei, nrow = 2)
 ```
 
 ## Cryptocurrencies
+
 ```{r crypto}
 bitcoin <- ggTS("XBTUSD BGN Curncy", title = "Bitcoin")
 ripple <- ggTS("XRPUSD BGN Curncy", title = "Ripple")
