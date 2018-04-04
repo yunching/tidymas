@@ -105,7 +105,15 @@ grid.arrange(vix, v2x, vdax, vftse, nrow = 2)
 
 
 # Commodities
-
+```{r commodities}
+wti <- ggTS("CL1 Comdty", title = "WTI 1st contract")
+brent <- ggTS("CO1 Comdty", title = "Brent 1st contract")
+gold <- ggTS("XAU Curncy", title = "Gold")
+silver <- ggTS("XAG Curncy", title = "Silver")
+corn <- ggTS("C 1 Comdty", title = "Corn")
+wheat <- ggTS("W 1 Comdty", title = "Wheat")
+grid.arrange(wti, gold, corn, brent, silver, wheat, nrow = 2)
+```
 #Select Equities
 
 ##US Indices
@@ -141,11 +149,43 @@ grid.arrange(nvda, intc, tsla, msft, csco, ibm, ncol = 3)
 ```
 
 ## US Banks
+```{r us_banks}
+jpm <- ggTS("JPM US Equity", "JP Morgan")
+wf <- ggTS("WFC US Equity", "Wells Fargo")
+bac <- ggTS("BAC US Equity", "Bank of America")
+citi <- ggTS("C US Equity", "Citigroup")
+gs <- ggTS("GS US Equity", "Goldman Sachs")
+ms <- ggTS("MS US Equity", "Morgan Stanley")
+grid.arrange(jpm, wf, bac, citi, gs, ms, nrow = 2)
+```
 
 ## Asset Managers
+```{r asset_mgmt}
+blk <- ggTS("BLK US Equity", title = "BlackRock")
+bony <- ggTS("BK US Equity", title = "Bank of New York")
+ss <- ggTS("STT US Equity", title = "State Street")
+nt <- ggTS("NTRS US Equity", title = "Northern Trust")
+grid.arrange(blk, bony, ss, nt, nrow = 2)
+```
 
 ## Private equity
+```{r private_equity}
+bs <- ggTS("BX US Equity", title = "BlackStone Group")
+kkr <- ggTS("KKR US Equity", title = "KKR & Co LP")
+apo <- ggTS("APO US Equity", title = "Apollo Global")
+cg <- ggTS("CG US Equity", title = "Carlyle Group")
+oak <- ggTS("OAK US Equity", title = "Oaktree Capital")
+threei <- ggTS("3IN LN Equity", title = "3i")
+grid.arrange(bs, kkr, apo, cg, oak, threei, nrow = 2)
+```
 
 ## Cryptocurrencies
+```{r crypto}
+bitcoin <- ggTS("XBTUSD BGN Curncy", title = "Bitcoin")
+ripple <- ggTS("XRPUSD BGN Curncy", title = "Ripple")
+ethereum <- ggTS("XETUSD BGN Curncy", title = "Ethereum")
+litecoin  <- ggTS("XLCUSD BGN Curncy", title = "Litecoin")
+grid.arrange(bitcoin, ripple, ethereum, litecoin, nrow = 2)
+```
 
 ## Asia
