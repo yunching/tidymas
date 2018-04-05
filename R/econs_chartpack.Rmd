@@ -10,15 +10,18 @@ source("C:\\Users\\ylim\\Documents\\R projects\\tidymas\\R\\convenience.R")
 
 #UK
 
-## GDP
+## UK Growth
 ```{r uk_gdp}
-uk_ngdp_yoy <- getMB("gbnaac00412") %>% q_yoy() %>% ggXTS(title = "UK Nominal GDP YoY") + hline(0)
-uk_rgdp_yoy <- getMB("gbnaac00512") %>% q_yoy() %>% ggXTS(title = "UK Real GDP YoY") + hline(0)
-grid.arrange(uk_ngdp_yoy, uk_rgdp_yoy, nrow = 2)
+uk_qtr_rgdp_yoy <- getMB("gbnaac00072")["2008/9999"] %>%  q_yoy()  %>% ggXTS(title = "UK Real Quarterly GDP YoY") + hline(0)
+# uk_qtr_ngdp_yoy <- getMB("gbnaac00052")["2008/9999"] %>% q_yoy() %>% ggXTS(title = "UK Nominal Quarterly GDP YoY") + hline(0)
+uk_ann_rgdp_yoy <- getMB("gbnaac00072")["2008/9999"] %>% apply.yearly(sum) %>% y_yoy() %>% ggXTS(title = "UK Real Annual GDP YoY") + hline(0) + geom_point()
+# uk_ann_ngdp_yoy <- getMB("gbnaac00052")["2008/9999"] %>%  apply.yearly(sum) %>% y_yoy() %>% ggXTS(title = "UK Nominal Annual GDP YoY") + hline(0)
+grid.arrange(uk_qtr_rgdp_yoy, uk_ann_rgdp_yoy, nrow=2)
+# grid.arrange(uk_qtr_rgdp_yoy, uk_qtr_ngdp_yoy, uk_ann_rgdp_yoy, uk_ann_ngdp_yoy, nrow = 2)
 
 ```
 
-## Inflation
+## UK Inflation
 ```{r uk_inf}
 uk_cpi_yoy <- getMB("gbpric00011") %>% m_yoy %>% ggXTS("UK CPI YoY") + hline(2)
 uk_cpi_mom <- getMB("gbpric00011") %>% m_mom %>% ggXTS("UK CPI MoM") 
