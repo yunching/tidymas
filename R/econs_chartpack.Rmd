@@ -94,10 +94,32 @@ grid.arrange(de_comp_pmi, de_manu_pmi, de_cons_pmi, de_svcs_pmi, ncol = 2)
 # France
 
 ## France PMI
+```{r fr_pmi}
+fr_comp_pmi <- getMB("markit_pmifrcomob")["2008/9999"] %>% 
+  ggXTS(title = "France Composite PMI") + hline(50)
+fr_manu_pmi <- getMB("markit_pmifrmanpm")["2008/9999"] %>% 
+  ggXTS(title = "France Manufacturing PMI") + hline(50)
+fr_cons_pmi <- getMB("markit_pmifrconob")["2008/9999"] %>% 
+  ggXTS(title = "France Construction PMI") + hline(50)
+fr_svcs_pmi <- getMB("markit_pmifrserob")["2008/9999"] %>% 
+  ggXTS(title = "France Services PMI") + hline(50)
+grid.arrange(fr_comp_pmi, fr_manu_pmi, fr_cons_pmi, fr_svcs_pmi, ncol = 2)
+```
 
 # Italy
 
 ## Italy PMI
+```{r it_pmi}
+it_comp_pmi <- getMB("markit_pmiitcomob")["2008/9999"] %>% 
+  ggXTS(title = "Italy Composite PMI") + hline(50)
+it_manu_pmi <- getMB("markit_pmiitmanpm")["2008/9999"] %>% 
+  ggXTS(title = "Italy Manufacturing PMI") + hline(50)
+it_cons_pmi <- getMB("markit_pmiitconob")["2008/9999"] %>% 
+  ggXTS(title = "Italy Construction PMI") + hline(50)
+it_svcs_pmi <- getMB("markit_pmiitserob")["2008/9999"] %>% 
+  ggXTS(title = "Italy Services PMI") + hline(50)
+grid.arrange(it_comp_pmi, it_manu_pmi, it_cons_pmi, it_svcs_pmi, ncol = 2)
+```
 
 # Spain
 
@@ -111,4 +133,18 @@ es_cons_pmi <- blank_chart() #Spain has no construction PMI
 es_svcs_pmi <- getMB("markit_pmiesserob")["2008/9999"] %>% 
   ggXTS(title = "Spain Services PMI") + hline(50)
 grid.arrange(es_comp_pmi, es_manu_pmi, es_cons_pmi, es_svcs_pmi, ncol = 2)
+```
+# Ireland
+
+## Ireland PMI
+```{r ie_pmi}
+ie_comp_pmi <- getMB("markit_pmiiecomob")["2008/9999"] %>% 
+  ggXTS(title = "Ireland Composite PMI") + hline(50)
+ie_manu_pmi <- getMB("markit_pmiiemanpm")["2008/9999"] %>% 
+  ggXTS(title = "Ireland Manufacturing PMI") + hline(50)
+ie_cons_pmi <- getMB("markit_pmiieconob")["2008/9999"] %>% 
+  ggXTS(title = "Ireland Construction PMI") + hline(50)
+ie_svcs_pmi <- getMB("markit_pmiieserob")["2008/9999"] %>% 
+  ggXTS(title = "Ireland Services PMI") + hline(50)
+grid.arrange(ie_comp_pmi, ie_manu_pmi, ie_cons_pmi, ie_svcs_pmi, ncol = 2)
 ```
