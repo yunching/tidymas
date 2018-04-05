@@ -95,6 +95,11 @@ q_yoy <- function(series){
   na.omit(result)
 }
 
+y_yoy <- function(series){
+  result <- (series / lag(series, 1) - 1) * 100
+  na.omit(result)
+}
+
 hline <- function(y_val){
   geom_hline(yintercept = y_val, color = "black", linetype = "dashed")
 }
