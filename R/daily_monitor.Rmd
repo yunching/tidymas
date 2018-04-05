@@ -9,6 +9,8 @@ knitr::opts_chunk$set(echo = FALSE)
 source("C:\\Users\\ylim\\Documents\\R projects\\tidymas\\R\\convenience.R")
 ```
 
+# Themes for 18Q2
+- Low vol world is over (DB)
 
 # UK
 
@@ -174,7 +176,7 @@ apo <- ggTS("APO US Equity", title = "Apollo Global")
 cg <- ggTS("CG US Equity", title = "Carlyle Group")
 oak <- ggTS("OAK US Equity", title = "Oaktree Capital")
 iii <- ggTS("III LN Equity", title = "3i")
-grid.arrange(bs, kkr, apo, cg, oak, threei, nrow = 2)
+grid.arrange(bs, kkr, apo, cg, oak, iii, nrow = 2)
 ```
 
 ## Cryptocurrencies
