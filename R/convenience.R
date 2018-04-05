@@ -65,7 +65,7 @@ ggXTS <- function(my_xts, title = "Value", series_subset = ""){
   }
 
   subtitle <- paste("Last:", round(my_xts[length(my_xts), 1], digits = 2),
-                    paste0("(",index(my_xts)[length(my_xts)], ")"),
+                    paste0("(",format(index(my_xts)[length(my_xts)], "%b-%y"), ")"),
                     "Prev:", round(my_xts[length(my_xts) - 1, 1], digits = 2),
                     "Chg:", format(round((coredata(my_xts[length(my_xts), 1]) - coredata(my_xts[length(my_xts) - 1, 1])), digits = 2), nsmall = 2)
   )
