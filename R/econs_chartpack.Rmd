@@ -10,16 +10,21 @@ source("C:\\Users\\ylim\\Documents\\R projects\\tidymas\\R\\convenience.R")
 
 #UK
 
-## Lead indicators - UK PMIs
+## UK PMIs
 ```{r uk_lead}
+uk_comp_pmi <- getMB("markit_pmigbcomob")["2008/9999"] %>% 
+  ggXTS(title = "UK Composite PMI") + 
+  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
 uk_manu_pmi <- getMB("markit_pmigbmanpm")["2008/9999"] %>% 
   ggXTS(title = "UK Manufacturing PMI") + 
   geom_hline(yintercept = 50, color = "black", linetype = "dashed")
 uk_cons_pmi <- getMB("markit_pmigbconob")["2008/9999"] %>% 
   ggXTS(title = "UK Construction PMI") + 
   geom_hline(yintercept = 50, color = "black", linetype = "dashed")
-grid.arrange(uk_manu_pmi, uk_cons_pmi, nrow = 2)
-
+uk_svcs_pmi <- getMB("markit_pmigbserob")["2008/9999"] %>% 
+  ggXTS(title = "UK Services PMI") + 
+  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+grid.arrange(uk_comp_pmi, uk_manu_pmi, uk_cons_pmi, uk_svcs_pmi, ncol = 2)
 ```
 
 ## GDP
@@ -51,6 +56,23 @@ grid.arrange(uk_gfk, uk_nw_yoy, nrow = 2)
 ## Headlines
 ```{r ez_headlines}
 ez_core_inf_yoy <- getMB("eupric0151") %>% m_yoy() %>% ggXTS(title = "EZ Core Inflation")
-ez_unemp <- getMB("eulama3600") %>% ggXTS(title = "EZ Unemployment")
+ez_unemp <- getMB("eulama3600") %>% ggXTS(title = "EZ Unemployment Rate")
 grid.arrange(ez_core_inf_yoy, ez_unemp)
+```
+
+## EZ PMIs
+```{r ez_pmis}
+ez_comp_pmi <- getMB("markit_pmiezcomob")["2008/9999"] %>% 
+  ggXTS(title = "EZ Composite PMI") + 
+  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+ez_manu_pmi <- getMB("markit_pmiezmanpm")["2008/9999"] %>% 
+  ggXTS(title = "EZ Manufacturing PMI") + 
+  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+ez_cons_pmi <- getMB("markit_pmiezconob")["2008/9999"] %>% 
+  ggXTS(title = "EZ Construction PMI") + 
+  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+ez_svcs_pmi <- getMB("markit_pmiezserob")["2008/9999"] %>% 
+  ggXTS(title = "EZ Services PMI") + 
+  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+grid.arrange(ez_comp_pmi, ez_manu_pmi, ez_cons_pmi, ez_svcs_pmi, ncol = 2)
 ```
