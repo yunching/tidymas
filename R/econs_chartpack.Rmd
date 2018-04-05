@@ -10,29 +10,32 @@ source("C:\\Users\\ylim\\Documents\\R projects\\tidymas\\R\\convenience.R")
 
 #UK
 
+## GDP
+```{r uk_gdp}
+uk_ngdp_yoy <- getMB("gbnaac00412") %>% q_yoy() %>% ggXTS(title = "UK Nominal GDP YoY") + hline(0)
+uk_rgdp_yoy <- getMB("gbnaac00512") %>% q_yoy() %>% ggXTS(title = "UK Real GDP YoY") + hline(0)
+grid.arrange(uk_ngdp_yoy, uk_rgdp_yoy, nrow = 2)
+
+```
+
+## Inflation
+```{r uk_inf}
+uk_cpi_yoy <- getMB("gbpric00011") %>% m_yoy %>% ggXTS("UK CPI YoY") + hline(2)
+uk_cpi_mom <- getMB("gbpric00011") %>% m_mom %>% ggXTS("UK CPI MoM") 
+grid.arrange(uk_cpi_yoy, uk_cpi_mom, nrow = 2)
+```
+
 ## UK PMIs
 ```{r uk_lead}
 uk_comp_pmi <- getMB("markit_pmigbcomob")["2008/9999"] %>% 
-  ggXTS(title = "UK Composite PMI") + 
-  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+  ggXTS(title = "UK Composite PMI") + hline(50)
 uk_manu_pmi <- getMB("markit_pmigbmanpm")["2008/9999"] %>% 
-  ggXTS(title = "UK Manufacturing PMI") + 
-  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+  ggXTS(title = "UK Manufacturing PMI") + hline(50)
 uk_cons_pmi <- getMB("markit_pmigbconob")["2008/9999"] %>% 
-  ggXTS(title = "UK Construction PMI") + 
-  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+  ggXTS(title = "UK Construction PMI") + hline(50) 
 uk_svcs_pmi <- getMB("markit_pmigbserob")["2008/9999"] %>% 
-  ggXTS(title = "UK Services PMI") + 
-  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+  ggXTS(title = "UK Services PMI") + hline(50)
 grid.arrange(uk_comp_pmi, uk_manu_pmi, uk_cons_pmi, uk_svcs_pmi, ncol = 2)
-```
-
-## GDP
-```{r uk_gdp}
-uk_ngdp_yoy <- getMB("gbnaac00412") %>% q_yoy() %>% ggXTS(title = "UK Nominal GDP YoY")
-uk_rgdp_yoy <- getMB("gbnaac00512") %>% q_yoy() %>% ggXTS(title = "UK Real GDP YoY")
-grid.arrange(uk_ngdp_yoy, uk_rgdp_yoy, nrow = 2)
-
 ```
 
 ## Consumption
@@ -63,16 +66,49 @@ grid.arrange(ez_core_inf_yoy, ez_unemp)
 ## EZ PMIs
 ```{r ez_pmis}
 ez_comp_pmi <- getMB("markit_pmiezcomob")["2008/9999"] %>% 
-  ggXTS(title = "EZ Composite PMI") + 
-  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+  ggXTS(title = "EZ Composite PMI") + hline(50)
 ez_manu_pmi <- getMB("markit_pmiezmanpm")["2008/9999"] %>% 
-  ggXTS(title = "EZ Manufacturing PMI") + 
-  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+  ggXTS(title = "EZ Manufacturing PMI") + hline(50)
 ez_cons_pmi <- getMB("markit_pmiezconob")["2008/9999"] %>% 
-  ggXTS(title = "EZ Construction PMI") + 
-  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+  ggXTS(title = "EZ Construction PMI") + hline(50)
 ez_svcs_pmi <- getMB("markit_pmiezserob")["2008/9999"] %>% 
-  ggXTS(title = "EZ Services PMI") + 
-  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+  ggXTS(title = "EZ Services PMI") + hline(50)
 grid.arrange(ez_comp_pmi, ez_manu_pmi, ez_cons_pmi, ez_svcs_pmi, ncol = 2)
+```
+
+# Germany
+
+## German PMI
+```{r de_pmi}
+de_comp_pmi <- getMB("markit_pmidecomob")["2008/9999"] %>% 
+  ggXTS(title = "Germany Composite PMI") + hline(50)
+de_manu_pmi <- getMB("markit_pmidemanpm")["2008/9999"] %>% 
+  ggXTS(title = "Germany Manufacturing PMI") + hline(50)
+de_cons_pmi <- getMB("markit_pmideconob")["2008/9999"] %>% 
+  ggXTS(title = "Germany Construction PMI") + hline(50)
+de_svcs_pmi <- getMB("markit_pmideserob")["2008/9999"] %>% 
+  ggXTS(title = "Germany Services PMI") + hline(50)
+grid.arrange(de_comp_pmi, de_manu_pmi, de_cons_pmi, de_svcs_pmi, ncol = 2)
+```
+
+# France
+
+## France PMI
+
+# Italy
+
+## Italy PMI
+
+# Spain
+
+## Spain PMI
+```{r es_pmi}
+es_comp_pmi <- getMB("markit_pmiescomob")["2008/9999"] %>% 
+  ggXTS(title = "Spain Composite PMI") + hline(50)
+es_manu_pmi <- getMB("markit_pmiesmanpm")["2008/9999"] %>% 
+  ggXTS(title = "Spain Manufacturing PMI") + hline(50)
+es_cons_pmi <- blank_chart() #Spain has no construction PMI
+es_svcs_pmi <- getMB("markit_pmiesserob")["2008/9999"] %>% 
+  ggXTS(title = "Spain Services PMI") + hline(50)
+grid.arrange(es_comp_pmi, es_manu_pmi, es_cons_pmi, es_svcs_pmi, ncol = 2)
 ```
