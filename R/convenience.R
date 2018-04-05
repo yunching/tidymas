@@ -27,7 +27,7 @@ ggTS <- function(ticker, title = ticker, yield_mode = FALSE, start_date = Sys.Da
   if (yield_mode == FALSE){
     my_subtitle <- paste("Low:", format(min(data$PX_LAST), big.mark = ","),
                          "High:", format(max(data$PX_LAST), big.mark = ","),
-                         "Last:", format(data$PX_LAST[-1], big.mark = ","),
+                         "Last:", format(data$PX_LAST[length(data$PX_LAST)], big.mark = ","),
                          "1D return:", paste0(format(round((data$PX_LAST[length(data$PX_LAST)] / data$PX_LAST[length(data$PX_LAST) - 1] - 1) * 100, 2), nsmall = 2), "%")
     )
     ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
@@ -38,7 +38,7 @@ ggTS <- function(ticker, title = ticker, yield_mode = FALSE, start_date = Sys.Da
   else {
     my_subtitle <- paste("Low:", min(data$PX_LAST),
                          "High:", max(data$PX_LAST),
-                         "Last:", data$PX_LAST[-1],
+                         "Last:", data$PX_LAST[length(data$PX_LAST)],
                          "1D yld chg:", paste0(format(round(data$PX_LAST[length(data$PX_LAST)] - data$PX_LAST[length(data$PX_LAST)-1] , 2), nsmall = 3), "%")
     )
     ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
