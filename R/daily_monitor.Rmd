@@ -145,6 +145,13 @@ ibm <- ggTS("IBM US Equity", title = "IBM")
 grid.arrange(nvda, intc, tsla, msft, csco, ibm, ncol = 3)
 ```
 
+## Robotics
+
+```{r robotics}
+fanuc <- ggTS("6954 JT Equity", title = "FANUC")
+grid.arrange(fanuc)
+```
+
 ## US Banks
 
 ```{r us_banks}
@@ -189,4 +196,11 @@ litecoin  <- ggTS("XLCUSD BGN Curncy", title = "Litecoin")
 grid.arrange(bitcoin, ripple, ethereum, litecoin, nrow = 2)
 ```
 
-## Asia
+## Asia indices
+```{r asia_indices}
+nikkei <- ggTS("NKY Index", title = "Nikkei")
+hang_seng <- ggTS("HSI Index", title = "Hang Seng")
+kospi <- ggTS("KOSPI Index", title = "KOSPI")
+sti <- ggTS("STI Index", title = "STI")
+grid.arrange(nikkei, hang_seng, kospi, sti, nrow = 2)
+```
