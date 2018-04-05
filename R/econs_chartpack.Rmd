@@ -21,6 +21,12 @@ grid.arrange(uk_qtr_rgdp_yoy, uk_ann_rgdp_yoy, nrow=2)
 
 ```
 
+## UK growth contributors
+```{r gdp_growth_comp}
+
+```
+
+
 ## UK Inflation
 ```{r uk_inf}
 uk_cpi_yoy <- getMB("gbpric00011") %>% m_yoy %>% ggXTS("UK CPI YoY") + hline(2)
@@ -139,6 +145,7 @@ es_svcs_pmi <- getMB("markit_pmiesserob")["2008/9999"] %>%
   ggXTS(title = "Spain Services PMI") + hline(50)
 grid.arrange(es_comp_pmi, es_manu_pmi, es_cons_pmi, es_svcs_pmi, ncol = 2)
 ```
+
 # Ireland
 
 ## Ireland PMI
