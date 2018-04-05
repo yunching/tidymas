@@ -94,3 +94,11 @@ q_yoy <- function(series){
   result <- (series / lag(series, 4) - 1) * 100
   na.omit(result)
 }
+
+hline <- function(y_val){
+  geom_hline(yintercept = y_val, color = "black", linetype = "dashed")
+}
+
+blank_chart <- function(){
+  grid.rect(gp=gpar(col="white"), draw = FALSE)
+}
