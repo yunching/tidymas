@@ -4,21 +4,38 @@ output: beamer_presentation
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 source("C:\\Users\\ylim\\Documents\\R projects\\tidymas\\R\\convenience.R")
 ```
 
 #UK
 
 ## Lead indicators - UK PMIs
-```{r uk_lead, message = FALSE}
-ggXTS(getMB("markit_pmigbmanpm")["2008/9999"], title = "UK Manufacturing PMI") + geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+```{r uk_lead}
+uk_manu_pmi <- getMB("markit_pmigbmanpm")["2008/9999"] %>% 
+  ggXTS(title = "UK Manufacturing PMI") + 
+  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+uk_cons_pmi <- getMB("markit_pmigbconob")["2008/9999"] %>% 
+  ggXTS(title = "UK Construction PMI") + 
+  geom_hline(yintercept = 50, color = "black", linetype = "dashed")
+grid.arrange(uk_manu_pmi, uk_cons_pmi, nrow = 2)
+
+```
+
+## GDP
+```{r uk_gdp}
+uk_ngdp_yoy <- getMB("gbnaac00412") %>% q_yoy() %>% ggXTS(title = "UK Nominal GDP YoY")
+uk_rgdp_yoy <- getMB("gbnaac00512") %>% q_yoy() %>% ggXTS(title = "UK Real GDP YoY")
+grid.arrange(uk_ngdp_yoy, uk_rgdp_yoy, nrow = 2)
 
 ```
 
 ## Consumption
 ```{r uk_consumption}
-ggXTS(getMB("gbsurv0515")["2008/9999"], title = "GfK Consumer")
+uk_gfk <- getMB("gbsurv0515")["2008/9999"] %>% ggXTS(title = "GfK Consumer Survey")
+uk_nw_yoy <- getMB("gbcons0207")["2008/9999"] %>% m_yoy() %>% ggXTS(title = "Nationwide Price Index")
+grid.arrange(uk_gfk, uk_nw_yoy, nrow = 2)
+
 ```
 
 ## Investments
@@ -28,3 +45,12 @@ ggXTS(getMB("gbsurv0515")["2008/9999"], title = "GfK Consumer")
 ## Exports
 
 ## Imports
+
+# Eurozone
+
+## Headlines
+```{r ez_headlines}
+ez_core_inf_yoy <- getMB("eupric0151") %>% m_yoy() %>% ggXTS(title = "EZ Core Inflation")
+ez_unemp <- getMB("eulama3600") %>% ggXTS(title = "EZ Unemployment")
+grid.arrange(ez_core_inf_yoy, ez_unemp)
+```

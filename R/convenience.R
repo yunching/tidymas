@@ -6,6 +6,7 @@ library(MacrobondAPI)
 library(xts)
 library(lubridate)
 library(forecast)
+library(ggfortify)
 
 #Establish connection with Bloomberg
 blpConnect()
@@ -25,9 +26,9 @@ getData_xts <- function(ticker, start_date = Sys.Date()-365){
 ggTS <- function(ticker, title = ticker, yield_mode = FALSE, start_date = Sys.Date()-365){
   data <- getData(ticker = ticker, start_date = start_date)
   if (yield_mode == FALSE){
-    my_subtitle <- paste("Low:", format(min(data$PX_LAST), big.mark = ","),
-                         "High:", format(max(data$PX_LAST), big.mark = ","),
-                         "Last:", format(data$PX_LAST[length(data$PX_LAST)], big.mark = ","),
+    my_subtitle <- paste("Low:", format(round(min(data$PX_LAST, digits = 2)), big.mark = ","),
+                         "High:", format(round(max(data$PX_LAST), digits = 2), big.mark = ","),
+                         "Last:", format(round(data$PX_LAST[length(data$PX_LAST)], digits = 2), big.mark = ","),
                          "1D return:", paste0(format(round((data$PX_LAST[length(data$PX_LAST)] / data$PX_LAST[length(data$PX_LAST) - 1] - 1) * 100, 2), nsmall = 2), "%")
     )
     ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
@@ -63,10 +64,33 @@ ggXTS <- function(my_xts, title = "Value", series_subset = ""){
     stop("Multiple data series detected in plot.")
   }
 
-  subtitle <- paste("Last:", my_xts[length(my_xts), 1], paste0("(",index(my_xts)[length(my_xts)], ")"),
-                    "Prev:", my_xts[length(my_xts) - 1, 1],
-                    "Chg:", format((coredata(my_xts[length(my_xts), 1]) - coredata(my_xts[length(my_xts) - 1, 1])), nsmall = 2)
+  subtitle <- paste("Last:", round(my_xts[length(my_xts), 1], digits = 2),
+                    paste0("(",index(my_xts)[length(my_xts)], ")"),
+                    "Prev:", round(my_xts[length(my_xts) - 1, 1], digits = 2),
+                    "Chg:", format(round((coredata(my_xts[length(my_xts), 1]) - coredata(my_xts[length(my_xts) - 1, 1])), digits = 2), nsmall = 2)
   )
 
-  ggplot(my_xts, aes(x = Index, y = my_xts[,1])) + geom_line()  + geom_point(color = "blue") + labs(title = title, subtitle = subtitle, y = "Index", x = "Date")
+  #, ts.colour = 'dodgerblue3'
+  #autoplot(my_xts) + labs(title = title, subtitle = subtitle, y = "Index", x = "Date")
+  ggplot(my_xts, aes(x = Index, y = my_xts[,1])) + geom_line(col = "dodgerblue3")  + labs(title = title, subtitle = subtitle, y = "Index", x = "Date")
+}
+
+m_yoy <- function(series){
+  result <- (series / lag(series, 12) - 1) * 100
+  na.omit(result)
+}
+
+m_mom <- function(series){
+  result <- (series / lag(series, 1) - 1) * 100
+  na.omit(result)
+}
+
+q_qoq <- function(series){
+  result <- (series / lag(series, 1) - 1) * 100
+  na.omit(result)
+}
+
+q_yoy <- function(series){
+  result <- (series / lag(series, 4) - 1) * 100
+  na.omit(result)
 }
