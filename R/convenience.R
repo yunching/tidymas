@@ -26,10 +26,10 @@ getData_xts <- function(ticker, start_date = Sys.Date()-365){
 ggTS <- function(ticker, title = ticker, yield_mode = FALSE, start_date = Sys.Date()-365){
   data <- getData(ticker = ticker, start_date = start_date)
   if (yield_mode == FALSE){
-    my_subtitle <- paste("Low:", format(round(min(data$PX_LAST), digits = 2), big.mark = ","),
-                         "High:", format(round(max(data$PX_LAST), digits = 2), big.mark = ","),
-                         "Last:", format(round(data$PX_LAST[length(data$PX_LAST)], digits = 2), big.mark = ","),
-                         "1D return:", paste0(format(round((data$PX_LAST[length(data$PX_LAST)] / data$PX_LAST[length(data$PX_LAST) - 1] - 1) * 100, 2), nsmall = 2), "%")
+    my_subtitle <- paste("Last:", format(round(data$PX_LAST[length(data$PX_LAST)], digits = 2), big.mark = ","),
+                         "1D ret:", paste0(format(round((data$PX_LAST[length(data$PX_LAST)] / data$PX_LAST[length(data$PX_LAST) - 1] - 1) * 100, 2), nsmall = 2), "%"),
+                         "L:", format(round(min(data$PX_LAST), digits = 2), big.mark = ","),
+                         "H:", format(round(max(data$PX_LAST), digits = 2), big.mark = ",")
     )
     ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
       ggplot2::geom_line() +
@@ -37,10 +37,10 @@ ggTS <- function(ticker, title = ticker, yield_mode = FALSE, start_date = Sys.Da
       ggplot2::labs(title = title, y = "Price", x = "Date", subtitle = my_subtitle)
   }
   else {
-    my_subtitle <- paste("Low:", min(data$PX_LAST),
-                         "High:", max(data$PX_LAST),
-                         "Last:", data$PX_LAST[length(data$PX_LAST)],
-                         "1D yld chg:", paste0(format(round(data$PX_LAST[length(data$PX_LAST)] - data$PX_LAST[length(data$PX_LAST)-1] , 2), nsmall = 3), "%")
+    my_subtitle <- paste("Last:", data$PX_LAST[length(data$PX_LAST)],
+                         "1D yld chg:", paste0(format(round(data$PX_LAST[length(data$PX_LAST)] - data$PX_LAST[length(data$PX_LAST)-1] , 2), nsmall = 3), "%"),
+                         "L:", format(round(min(data$PX_LAST), digits = 2), big.mark = ","),
+                         "H:", format(round(max(data$PX_LAST), digits = 2), big.mark = ",")
     )
     ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
       ggplot2::geom_line() +
