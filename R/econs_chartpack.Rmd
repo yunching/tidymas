@@ -51,9 +51,10 @@ grid.arrange(uk_comp_pmi, uk_manu_pmi, uk_cons_pmi, uk_svcs_pmi, ncol = 2)
 
 ## Consumption
 ```{r uk_consumption}
-uk_gfk <- getMB("gbsurv0515")["2008/9999"] %>% ggXTS(title = "GfK Consumer Survey")
-uk_nw_yoy <- getMB("gbcons0207")["2008/9999"] %>% m_yoy() %>% ggXTS(title = "Nationwide Price Index")
-grid.arrange(uk_gfk, uk_nw_yoy, nrow = 2)
+uk_gfk <- getMB("gbsurv0515")["2008/9999"] %>% ggXTS(title = "GfK Consumer Survey") + hline(0)
+uk_nw_yoy <- getMB("gbcons0207")["2008/9999"] %>% m_yoy() %>% ggXTS(title = "Nationwide Price Index") + hline(0)
+uk_new_car_registrations <- getMB("gbsmmt0001")["2008/9999"] %>% m_yoy() %>% ggXTS(title = "New car registrations") + hline(0)
+grid.arrange(uk_gfk, uk_nw_yoy, uk_new_car_registrations, nrow = 2)
 
 ```
 
@@ -69,6 +70,7 @@ grid.arrange(uk_gfk, uk_nw_yoy, nrow = 2)
 
 ## Headlines
 ```{r ez_headlines}
+ez_real_qtr_gdp <- getMB("eunaac2903") %>% q_yoy() %>% ggXTS(title = "Eurozone Real Quarterly GDP  %YoY") + hline(0)
 ez_core_inf_yoy <- getMB("eupric0151") %>% m_yoy() %>% ggXTS(title = "EZ Core Inflation")
 ez_unemp <- getMB("eulama3600") %>% ggXTS(title = "EZ Unemployment Rate")
 grid.arrange(ez_core_inf_yoy, ez_unemp)
@@ -89,6 +91,12 @@ grid.arrange(ez_comp_pmi, ez_manu_pmi, ez_cons_pmi, ez_svcs_pmi, ncol = 2)
 
 # Germany
 
+## German Growth
+```{r de_growth}
+de_real_qtr_gdp <- getMB("denaac0152") %>% q_yoy() %>% ggXTS(title = "Germany Real Quarterly GDP  %YoY") + hline(0)
+grid.arrange(de_real_qtr_gdp)
+```
+
 ## German PMI
 ```{r de_pmi}
 de_comp_pmi <- getMB("markit_pmidecomob")["2008/9999"] %>% 
@@ -103,6 +111,12 @@ grid.arrange(de_comp_pmi, de_manu_pmi, de_cons_pmi, de_svcs_pmi, ncol = 2)
 ```
 
 # France
+
+## France Growth
+```{r fr_growth}
+fr_real_qtr_gdp <- getMB("frnaac0284") %>% q_yoy() %>% ggXTS(title = "France Real Quarterly GDP  %YoY") + hline(0)
+grid.arrange(fr_real_qtr_gdp)
+```
 
 ## France PMI
 ```{r fr_pmi}
@@ -119,6 +133,12 @@ grid.arrange(fr_comp_pmi, fr_manu_pmi, fr_cons_pmi, fr_svcs_pmi, ncol = 2)
 
 # Italy
 
+## Italy Growth
+```{r it_growth}
+it_real_qtr_gdp <- getMB("itnaac0466") %>% q_yoy() %>% ggXTS(title = "Italy Real Quarterly GDP  %YoY") + hline(0)
+grid.arrange(it_real_qtr_gdp)
+```
+
 ## Italy PMI
 ```{r it_pmi}
 it_comp_pmi <- getMB("markit_pmiitcomob")["2008/9999"] %>% 
@@ -134,6 +154,12 @@ grid.arrange(it_comp_pmi, it_manu_pmi, it_cons_pmi, it_svcs_pmi, ncol = 2)
 
 # Spain
 
+## Spain Growth
+```{r es_growth}
+es_real_qtr_gdp <- getMB("esnaac0097") %>% q_yoy() %>% ggXTS(title = "Spain Real Quarterly GDP  %YoY") + hline(0)
+grid.arrange(es_real_qtr_gdp)
+```
+
 ## Spain PMI
 ```{r es_pmi}
 es_comp_pmi <- getMB("markit_pmiescomob")["2008/9999"] %>% 
@@ -146,6 +172,23 @@ es_svcs_pmi <- getMB("markit_pmiesserob")["2008/9999"] %>%
 grid.arrange(es_comp_pmi, es_manu_pmi, es_cons_pmi, es_svcs_pmi, ncol = 2)
 ```
 
+# Netherlands
+
+## Netherlands Growth
+```{r nl_growth}
+nl_real_qtr_gdp <- getMB("nlnaac1067") %>% q_yoy() %>% ggXTS(title = "Netherlands Real Quarterly GDP  %YoY") + hline(0)
+grid.arrange(nl_real_qtr_gdp)
+```
+
+## Netherlands PMI
+```{r nl_pmi}
+nl_manu_pmi <- getMB("markit_pminlmanpm")["2008/9999"] %>% 
+  ggXTS(title = "Netherlands Manufacturing PMI") + hline(50)
+grid.arrange(nl_manu_pmi)
+```
+
+# Belgium
+
 # Ireland
 
 ## Ireland PMI
@@ -155,7 +198,7 @@ ie_comp_pmi <- getMB("markit_pmiiecomob")["2008/9999"] %>%
 ie_manu_pmi <- getMB("markit_pmiiemanpm")["2008/9999"] %>% 
   ggXTS(title = "Ireland Manufacturing PMI") + hline(50)
 ie_cons_pmi <- getMB("markit_pmiieconob")["2008/9999"] %>% 
-  ggXTS(title = "Ireland Construction PMI") + hline(50)
+ggXTS(title = "Ireland Construction PMI") + hline(50)
 ie_svcs_pmi <- getMB("markit_pmiieserob")["2008/9999"] %>% 
   ggXTS(title = "Ireland Services PMI") + hline(50)
 grid.arrange(ie_comp_pmi, ie_manu_pmi, ie_cons_pmi, ie_svcs_pmi, ncol = 2)
