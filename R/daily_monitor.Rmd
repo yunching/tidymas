@@ -128,8 +128,14 @@ apple <- ggTS("AAPL US Equity", title = "Apple")
 amazon <- ggTS("AMZN US Equity", title = "Amazon")
 netflix <- ggTS("NFLX US Equity", title = "Netflix")
 google <- ggTS("GOOG US Equity", title = "Alphabet")
+grid.arrange(facebook, apple, amazon, netflix, google, ncol = 3)
+```
+
+## Tech - special interest
+```{r tech_special}
 tsla <- ggTS("TSLA US Equity", title = "Tesla")
-grid.arrange(facebook, apple, amazon, netflix, google, tsla, ncol = 3)
+spotify <- ggTS("SPOT US Equity", title = "Spotify")
+grid.arrange(tsla, spotify)
 ```
 
 ## Tech - Software & Services
@@ -160,13 +166,15 @@ nvda <- ggTS("NVDA US Equity", title = "Nvidia")
 amd <- ggTS("AMD US Equity", title = "AMD")
 micron <- ggTS("MU US Equity", title = "Micron")
 txn <- ggTS("TXN US Equity", title = "Texas Instrument")
-grid.arrange(intc, nvda, amd, micron, txn, nrow = 2)
+amat <- ggTS("AMAT US Equity", title = "Applied Materials")
+grid.arrange(intc, nvda, amd, micron, txn, amat, nrow = 2)
 ```
 
 ## Robotics
 
 ```{r robotics}
 fanuc <- ggTS("6954 JT Equity", title = "FANUC")
+keyence <- ggTS("6861 JT Equity", title = "Keyence")
 grid.arrange(fanuc)
 ```
 
@@ -221,4 +229,31 @@ hang_seng <- ggTS("HSI Index", title = "Hang Seng")
 kospi <- ggTS("KOSPI Index", title = "KOSPI")
 sti <- ggTS("STI Index", title = "STI")
 grid.arrange(nikkei, hang_seng, kospi, sti, nrow = 2)
+```
+
+## Chinese stocks
+```{r chinese_stocks}
+hsbc <- ggTS("5 HK Equity", title = "HSBC")
+c_merc <- ggTS("144 HK Equity", title = "China Merchants")
+ccb <- ggTS("939 HK Equity", title = "China Construction Bank")
+c_mob <- ggTS("941 HK Equity", title = "China Mobile")
+icbc <- ggTS("1398 HK Equity", title = "ICBC")
+boc <- ggTS("3988 HK Equity", title = "Bank of China")
+grid.arrange(hsbc, c_merc, ccb, c_mob, icbc, boc, nrow = 2)
+```
+
+## BAT+
+```{r bat}
+baba <- ggTS("BABA US Equity", title = "Alibaba")
+baidu <- ggTS("BIDU US Equity", title = "Baidu")
+tencent <- ggTS("TCEHY US Equity", title = "Tencent")
+bzun <- ggTS("BZUN US Equity", title = "Baozun")
+grid.arrange(baba, baidu, tencent, bzun, nrow = 2)
+```
+
+## Singapore stocks
+```{r sgp_stocks}
+capland <- ggTS("CAPL SP Equity", title = "Capitaland")
+genting <- ggTS("GENS SP Equity", title = "Genting")
+grid.arrange(capland, genting)
 ```
