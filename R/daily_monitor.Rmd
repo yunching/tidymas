@@ -10,7 +10,7 @@ source("C:\\Users\\ylim\\Documents\\R projects\\tidymas\\R\\convenience.R")
 ```
 
 ## Themes for 18Q2
-- Low vol world is over (DB)
+- Low vol world is over (DB), but actually BLK says otherwise
 
 # UK
 
@@ -35,11 +35,10 @@ grid.arrange(uk_2y, uk_5y, uk_10y, uk_30y, nrow = 2)
 
 ## UK Breakevens
 ```{r uk_breakevens}
-blank <- grid.rect(gp=gpar(col="white"), draw = FALSE)
 uk_5y_r <- ggTS("UKGGBE05Y Index", yield_mode = TRUE)
 uk_10y_r <- ggTS("UKGGBE10Y Index", yield_mode = TRUE)
 uk_30y_r <- ggTS("UKGGBE30Y Index", yield_mode = TRUE)
-grid.arrange(blank, uk_5y_r, uk_10y_r, uk_30y_r, nrow = 2)
+grid.arrange(blank_chart(), uk_5y_r, uk_10y_r, uk_30y_r, nrow = 2)
 ```
 
 ## UK Equities
@@ -129,20 +128,39 @@ apple <- ggTS("AAPL US Equity", title = "Apple")
 amazon <- ggTS("AMZN US Equity", title = "Amazon")
 netflix <- ggTS("NFLX US Equity", title = "Netflix")
 google <- ggTS("GOOG US Equity", title = "Alphabet")
-blank <- grid.rect(gp=gpar(col="white"), draw = FALSE)
-grid.arrange(facebook, apple, amazon, netflix, google, blank, ncol = 3)
+tsla <- ggTS("TSLA US Equity", title = "Tesla")
+grid.arrange(facebook, apple, amazon, netflix, google, tsla, ncol = 3)
 ```
 
-## Tech
+## Tech - Software & Services
 
-```{r tech_stocks}
-nvda <- ggTS("NVDA US Equity", title = "Nvidia")
-intc <- ggTS("INTC US Equity", title = "Intel")
-tsla <- ggTS("TSLA US Equity", title = "Tesla")
+```{r tech_soft}
 msft <- ggTS("MSFT US Equity", title = "Microsoft")
-csco <- ggTS("CSCO US Equity", title = "CISCO")
+visa <- ggTS("V US Equity", title = "Visa")
+oracle <- ggTS("ORCL US Equity", title = "Oracle")
+ma <- ggTS("MA US Equity", title = "Mastercard")
+salesforce <- ggTS("CRM US Equity", title = "SalesForce")
 ibm <- ggTS("IBM US Equity", title = "IBM")
-grid.arrange(nvda, intc, tsla, msft, csco, ibm, ncol = 3)
+grid.arrange(msft, visa, oracle, ma, salesforce, ibm, ncol = 3)
+```
+
+## Tech - Hardware & Equipment
+
+```{r tech_hardware}
+csco <- ggTS("CSCO US Equity", title = "CISCO")
+grid.arrange(csco)
+```
+
+
+## Tech - Semiconductors & Equipment
+
+```{r tech_semicon}
+intc <- ggTS("INTC US Equity", title = "Intel")
+nvda <- ggTS("NVDA US Equity", title = "Nvidia")
+amd <- ggTS("AMD US Equity", title = "AMD")
+micron <- ggTS("MU US Equity", title = "Micron")
+txn <- ggTS("TXN US Equity", title = "Texas Instrument")
+grid.arrange(intc, nvda, amd, micron, txn, nrow = 2)
 ```
 
 ## Robotics
