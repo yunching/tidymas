@@ -33,7 +33,7 @@ ggTS <- function(ticker, title = ticker, yield_mode = FALSE, start_date = Sys.Da
     )
     ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
       ggplot2::geom_line() +
-      ggplot2::geom_point(colour = "blue") +
+      ggplot2::geom_point(colour = "blue", size = 0.8) +
       ggplot2::labs(title = title, y = "Price", x = "Date", subtitle = my_subtitle)
   }
   else {
@@ -44,7 +44,7 @@ ggTS <- function(ticker, title = ticker, yield_mode = FALSE, start_date = Sys.Da
     )
     ggplot2::ggplot(data, ggplot2::aes(x = date, y = PX_LAST)) +
       ggplot2::geom_line() +
-      ggplot2::geom_point(colour = "blue") +
+      ggplot2::geom_point(colour = "blue", size = 0.8) +
       ggplot2::labs(title = title, y = "Yield", x = "Date", subtitle = my_subtitle)
   }
 
