@@ -26,7 +26,7 @@ getData_xts <- function(ticker, start_date = Sys.Date()-365){
 ggTS <- function(ticker, title = ticker, yield_mode = FALSE, start_date = Sys.Date()-365){
   data <- getData(ticker = ticker, start_date = start_date)
   if (yield_mode == FALSE){
-    my_subtitle <- paste("Low:", format(round(min(data$PX_LAST, digits = 2)), big.mark = ","),
+    my_subtitle <- paste("Low:", format(round(min(data$PX_LAST), digits = 2), big.mark = ","),
                          "High:", format(round(max(data$PX_LAST), digits = 2), big.mark = ","),
                          "Last:", format(round(data$PX_LAST[length(data$PX_LAST)], digits = 2), big.mark = ","),
                          "1D return:", paste0(format(round((data$PX_LAST[length(data$PX_LAST)] / data$PX_LAST[length(data$PX_LAST) - 1] - 1) * 100, 2), nsmall = 2), "%")
