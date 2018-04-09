@@ -13,6 +13,7 @@ blpConnect()
 
 getData <- function(ticker, start_date = Sys.Date()-365){
   bbg_data <- bdh(ticker, c("PX_LAST"), start.date = start_date)
+  bbg_data
 }
 
 getData_xts <- function(ticker, start_date = Sys.Date()-365){
@@ -57,6 +58,12 @@ getMB <- function(mb_ticker){
     stop(getErrorMessage(my_data))
 
   as.xts(my_data)
+}
+
+#Get BBG data (for econs series). See getData() to get BBG market data.
+getBBG <- function(ticker, start_date = Sys.Date()-365* 10){
+  bbg_data <- bdh(ticker, c("PX_LAST"), start.date = start_date)
+  bbg_data
 }
 
 ggXTS <- function(my_xts, title = "Value", series_subset = ""){
