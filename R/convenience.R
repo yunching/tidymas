@@ -63,6 +63,8 @@ getMB <- function(mb_ticker){
 #Get BBG data (for econs series). See getData() to get BBG market data.
 getBBG <- function(ticker, start_date = Sys.Date()-365* 10){
   bbg_data <- bdh(ticker, c("PX_LAST"), start.date = start_date)
+  bbg_data <- xts(bbg_data[,-1], order.by = bbg_data[, 1])
+  colnames(bbg_data) <- ticker
   bbg_data
 }
 
