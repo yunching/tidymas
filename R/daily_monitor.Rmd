@@ -69,6 +69,17 @@ dem_30y <- ggTS("GTDEM30Y Govt", yield_mode = TRUE)
 grid.arrange(dem_2y, dem_5y, dem_10y, dem_30y, nrow = 2)
 ```
 
+# Equities Indices
+
+## US Indices
+```{r us_indices}
+spx <- ggTS("SPX Index", title = "S&P500")
+dow_jones <- ggTS("INDU Index", title = "Dow Jones")
+nasdaq <- ggTS("CCMP Index", title = "NASDAQ Composite")
+russell_2000 <- ggTS("RTY Index", title = "Russell 2000")
+grid.arrange(spx, dow_jones, nasdaq, russell_2000, nrow = 2)
+```
+
 ## Core Europe Equities
 ```{r core_ez_equities}
 sx5e <- ggTS("SX5E Index", title = "EuroStoxx")
@@ -87,9 +98,18 @@ ase <- ggTS("ASE Index", title = "Greece ASE")
 grid.arrange(ibex, mib, psi, ase, nrow = 2)
 ```
 
+## Asia indices
+```{r asia_indices}
+nikkei <- ggTS("NKY Index", title = "Nikkei")
+hang_seng <- ggTS("HSI Index", title = "Hang Seng")
+kospi <- ggTS("KOSPI Index", title = "KOSPI")
+sti <- ggTS("STI Index", title = "STI")
+grid.arrange(nikkei, hang_seng, kospi, sti, nrow = 2)
+```
+
 # Volatility
 
-## Volatility
+## Key Volatility Indices
 ```{r vol}
 vix <- ggTS("VIX Index", title = "VIX")
 v2x <- ggTS("V2X Index", title = "VSTOXX")
@@ -98,7 +118,9 @@ vftse <- ggTS("VFTSE Index", title = "VFTSE")
 grid.arrange(vix, v2x, vdax, vftse, nrow = 2)
 ```
 
-## Commodities
+# Commodities
+
+## Key Commodities Futures
 ```{r commods}
 wti <- ggTS("CL1 Comdty", title = "WTI 1st contract")
 brent <- ggTS("CO1 Comdty", title = "Brent 1st contract")
@@ -109,16 +131,7 @@ wheat <- ggTS("W 1 Comdty", title = "Wheat")
 grid.arrange(wti, gold, corn, brent, silver, wheat, ncol = 3)
 ```
 
-# Select Equities
-
-## US Indices
-```{r us_indices}
-spx <- ggTS("SPX Index", title = "S&P500")
-dow_jones <- ggTS("INDU Index", title = "Dow Jones")
-nasdaq <- ggTS("CCMP Index", title = "NASDAQ Composite")
-russell_2000 <- ggTS("RTY Index", title = "Russell 2000")
-grid.arrange(spx, dow_jones, nasdaq, russell_2000, nrow = 2)
-```
+# Select Names
 
 ## FAANGS
 
@@ -222,14 +235,6 @@ litecoin  <- ggTS("XLCUSD BGN Curncy", title = "Litecoin")
 grid.arrange(bitcoin, ripple, ethereum, litecoin, nrow = 2)
 ```
 
-## Asia indices
-```{r asia_indices}
-nikkei <- ggTS("NKY Index", title = "Nikkei")
-hang_seng <- ggTS("HSI Index", title = "Hang Seng")
-kospi <- ggTS("KOSPI Index", title = "KOSPI")
-sti <- ggTS("STI Index", title = "STI")
-grid.arrange(nikkei, hang_seng, kospi, sti, nrow = 2)
-```
 
 ## Chinese stocks
 ```{r chinese_stocks}
