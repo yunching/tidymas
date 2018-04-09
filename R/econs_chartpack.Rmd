@@ -97,7 +97,13 @@ grid.arrange(uk_nw_yoy, uk_halifax_yoy, uk_halifax_3m_yoy, nrow = 2)
 
 ```
 
-## Investments
+## UK Investments
+```{r uk_inv}
+grid.arrange(
+  getMB("gbsurv0010") %>% ggXTS("Investment Intentions (Services)"),
+  getMB("gbsurv0009") %>% ggXTS("Investment Intentions (Manufacturing)")
+)
+```
 
 ## Govt
 
