@@ -48,21 +48,53 @@ uk_svcs_pmi <- getMB("markit_pmigbserob")["2008/9999"] %>%
 grid.arrange(uk_comp_pmi, uk_manu_pmi, uk_cons_pmi, uk_svcs_pmi, ncol = 2)
 ```
 
-## Consumption
-```{r uk_consumption}
-uk_gfk <- getMB("gbsurv0515")["2008/9999"] %>% ggXTS(title = "GfK Consumer Survey") + hline(0)
-uk_nw_yoy <- getMB("gbcons0207")["2008/9999"] %>% m_yoy() %>% ggXTS(title = "Nationwide Price Index") + hline(0)
-uk_new_car_registrations <- getMB("gbsmmt0001")["2008/9999"] %>% m_yoy() %>% ggXTS(title = "New car registrations") + hline(0)
-uk_avg_wage <- getMB("gblama03032") %>%  q_yoy %>% ggXTS(title = "average weekly wages")
-grid.arrange(uk_gfk, uk_nw_yoy, uk_new_car_registrations, nrow = 2)
+# UK Consumers
 
+## Consumption
+```{r uk_consumption, results='asis'}
+uk_gfk <- getMB("gbsurv0515")["2008/9999"] %>% ggXTS(title = "GfK Consumer Survey") + hline(0)
+uk_new_car_registrations <- getMB("gbsmmt0001")["2008/9999"] %>% m_yoy() %>% ggXTS(title = "New car registrations") + hline(0)
+uk_retail_sales <- getMB("gbtrad1001") %>%  ggXTS("BRC Retail Sales, All Cateogories, %YoY")
+grid.arrange(uk_gfk, uk_new_car_registrations, uk_retail_sales, nrow = 2)
 ```
 
 ## UK Labour Market
-```{r uk_labour}
+```{r uk_labour, results = "asis"}
+uk_employment_rate <- getMB("gblama03431") %>%  ggXTS(title = "Employment rate") 
+uk_unemployment_rate <- getMB("gblama1207") %>% ggXTS("Unemployment rate")
+uk_awe <- getMB("gblama03032") %>%  q_yoy %>% ggXTS(title = "Average Weekly Wages")
+uk_unfilled_services<- getMB("gblama04491") %>% m_yoy() %>% ggXTS("Unfilled vacancies in all services jobs") + hline(0)
+grid.arrange(uk_employment_rate, uk_unemployment_rate, uk_awe, uk_unfilled_services, nrow = 2)
+```
+
+## UK Labour Market 2
+
+```{r uk_labour2}
+grid.arrange(
+  getMB("gblama00371") %>% m_yoy() %>% ggXTS("Actual hours worked") + hline(0),
+  getMB("gblama03022") %>% m_yoy() %>% ggXTS("Output per hour, constant prices, %YoY") + hline(0),
+  getMB("gbnaac08882") %>%  ggXTS("Household savings ratio"),
+  getMB("gbbank6176") %>%  ggXTS("Debt-to-Income Ratio for Households"),
+  nrow = 2
+)
+```
+
+## UK Labour Market 3
+
+```{r uk_labour 3}
 uk_awe_yoy <- getMB("gbinea00931") %>% ggXTS("Average Weekly Earnings, Whole Economy %YoY") + hline(0)
 uk_awe_3mmma_yoy <- getMB("gbinea00941") %>% ggXTS("Average Weekly Earnings, Whole Economy 3MMA %YoY") + hline(0)
 grid.arrange(uk_awe_yoy, uk_awe_3mmma_yoy)
+```
+
+
+## UK Housing
+```{r uk_housing}
+uk_nw_yoy <- getMB("gbcons0207")["2008/9999"] %>% m_yoy() %>% ggXTS(title = "Nationwide Price Index") + hline(0)
+uk_halifax_yoy <- getBBG("UKHBSAMM Index") %>% ggXTS(title = "UK Markit/Halifax House Prices All UK MoM SA") + hline(0)
+uk_halifax_3m_yoy <- getBBG("UKHB3MYR Index") %>% ggXTS(title = "UK Markit/Halifax House Prices 3mth YoY SA") 
+grid.arrange(uk_nw_yoy, uk_halifax_yoy, uk_halifax_3m_yoy, nrow = 2)
+
 ```
 
 ## Investments
