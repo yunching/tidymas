@@ -103,6 +103,7 @@ grid.arrange(
   getMB("gbsurv0010") %>% ggXTS("Investment Intentions (Services)"),
   getMB("gbsurv0009") %>% ggXTS("Investment Intentions (Manufacturing)")
 )
+#merge(getMB("gbsurv0010"), getMB("gbsurv0009")) %>% fortify()
 ```
 
 ## Govt
@@ -110,6 +111,18 @@ grid.arrange(
 ## Exports
 
 ## Imports
+
+## Politics
+```{r uk_politics}
+uk_polls <- getMB("gbpoli0011") %>% merge(getMB("gbpoli0012")) %>% fortify() 
+colnames(uk_polls) <- c("Index", "Conservative", "Labour")
+uk_polls_c <- uk_polls %>% gather("Party", "Poll", -Index)
+ggplot(uk_polls_c, aes(x = Index, y = Poll, col = Party)) + 
+  geom_line() + 
+  labs(title = "Britain Elect - Poll Results", y = "% votes", x = "Year") + 
+  scale_x_date(date_breaks = "1 year", date_labels = "%y")
+
+```
 
 # Eurozone
 
