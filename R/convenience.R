@@ -11,13 +11,13 @@ library(ggfortify)
 #Establish connection with Bloomberg
 blpConnect()
 
-getData <- function(ticker, start_date = Sys.Date()-365){
-  bbg_data <- bdh(ticker, c("PX_LAST"), start.date = start_date)
+getData <- function(ticker, start_date = Sys.Date()-365, end_date = today(), fields = c("PX_LAST")){
+  bbg_data <- bdh(ticker, fields, start.date = start_date, end.date = end_date)
   bbg_data
 }
 
-getData_xts <- function(ticker, start_date = Sys.Date()-365){
-  bbg_data <- bdh(ticker, c("PX_OPEN", "PX_HIGH","PX_LOW","PX_LAST"), start.date = start_date)
+getData_xts <- function(ticker, start_date = Sys.Date()-365, end_Date = today()){
+  bbg_data <- bdh(ticker, c("PX_OPEN", "PX_HIGH","PX_LOW","PX_LAST"), start.date = start_date, end.date = end_date)
   my_ts <- xts(cbind(bbg_data$PX_OPEN, bbg_data$PX_HIGH, bbg_data$PX_LOW, bbg_data$PX_LAST), order.by = bbg_data$date)
   colnames(my_ts) <- c("Open", "High", "Low", "Close")
   my_ts
