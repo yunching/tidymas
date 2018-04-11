@@ -1,5 +1,6 @@
 ---
 title: "EZ econs chart pack"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
 output: beamer_presentation
 ---
 
