@@ -11,8 +11,8 @@ library(ggfortify)
 #Establish connection with Bloomberg
 blpConnect()
 
-getData <- function(ticker, start_date = Sys.Date()-365){
-  bbg_data <- bdh(ticker, c("PX_LAST"), start.date = start_date)
+getData <- function(ticker, start_date = Sys.Date()-365, fields = c("PX_LAST")){
+  bbg_data <- bdh(ticker, fields, start.date = start_date)
   bbg_data
 }
 
