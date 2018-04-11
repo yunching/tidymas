@@ -22,6 +22,30 @@ grid.arrange(uk_qtr_rgdp_yoy, uk_ann_rgdp_yoy, nrow=2)
 
 ## UK growth contributors
 ```{r gdp_growth_comp}
+#getMB("gbnaac10802") %>% q_yoy() %>% ggXTS("UK Consumption %YoY")
+uk_c_yoy <- getMB("gbnaac10802") %>% q_yoy()
+uk_c_yoy <- getMB("gbnaac10802")
+pmi_comp  <- getMB("markit_pmigbcomob")
+tmp <- merge(uk_c_yoy, pmi_comp, join = "right", fill = na.locf)
+tmp
+
+ggAcf(uk_c_yoy)
+
+train <- uk_c_yoy[index(uk_c_yoy) < "2009-01-01"]
+test <-  uk_c_yoy[index(uk_c_yoy) >= "2009-01-01"]
+
+# fc <- auto.arima(train)
+fc <- train %>% tbats() 
+checkresiduals(fc)
+fc %>% forecast() %>% autoplot()
+
+
+fortify(fc) %>% ggplot(aes(x = Index, y = Data)) + geom_line() + geom_line(aes(x = Index, y = `Point Forecast`), col = "blue")
+
+
+#fc <- naive(train)
+fc <- auto.arima(train)
+autoplot(fc)
 
 ```
 
@@ -53,7 +77,7 @@ grid.arrange(uk_comp_pmi, uk_manu_pmi, uk_cons_pmi, uk_svcs_pmi, ncol = 2)
 ## Consumption
 ```{r uk_consumption, results='asis'}
 uk_gfk <- getMB("gbsurv0515")["2008/9999"] %>% ggXTS(title = "GfK Consumer Survey") + hline(0)
-uk_new_car_registrations <- getMB("gbsmmt0001")["2008/9999"] %>% m_yoy() %>% ggXTS(title = "New car registrations") + hline(0)
+uk_new_car_registrations <- getMB("gbsmmt0001")["2008/9999"] %>% m_yoy() %>% ggXTS(title = "New Car Registrations") + hline(0)
 uk_retail_sales <- getMB("gbtrad1001") %>%  ggXTS("BRC Retail Sales, All Cateogories, %YoY")
 grid.arrange(uk_gfk, uk_new_car_registrations, uk_retail_sales, nrow = 2)
 ```

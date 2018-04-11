@@ -57,7 +57,8 @@ getMB <- function(mb_ticker){
   if (getIsError(my_data))
     stop(getErrorMessage(my_data))
 
-  as.xts(my_data)
+  #as.xts(my_data)
+  xts(getValues(my_data), order.by = getDatesAtEndOfPeriod(my_data))
 }
 
 #Get BBG data (for econs series). See getData() to get BBG market data.
