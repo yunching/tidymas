@@ -1,7 +1,9 @@
 ---
 title: "Daily Monitor"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
 output:
   beamer_presentation: default
+toc: true
 ---
 
 ```{r setup, include=FALSE}
@@ -10,7 +12,12 @@ source("C:\\Users\\ylim\\Documents\\R projects\\tidymas\\R\\convenience.R")
 ```
 
 ## Themes for 18Q2
-- Low vol world is over (DB), but actually BLK says otherwise
+
+1. Room to run
+   - Test
+    
+2. Inflation come back
+3. Reduced reward for risk
 
 # UK
 
