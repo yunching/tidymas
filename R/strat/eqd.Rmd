@@ -17,8 +17,10 @@ emu_cycles <- data.frame(from = as.Date(c("1993-07-01", "2009-04-01", "2013-01-0
 ```{r emu_pe_cycle,fig.height = 3, fig.width = 6}
 plot_cycles_bbg("MXEM Index", "PE_RATIO", emu_cycles, 
             title = "PE Ratio, MSCI EMU, CEPR Business Cycles (Trough to Peak)",
-            ylab = "PE Ratio") %>%
-  format_plot("eqd_strat")
+            ylab = "PE Ratio") +
+  coord_cartesian(ylim = c(10, 40)) +
+  theme_strat() +
+  scale_color_strat()
 
 ```
 
@@ -26,7 +28,18 @@ plot_cycles_bbg("MXEM Index", "PE_RATIO", emu_cycles,
 
 plot_cycles_bbg("MXEM Index", "EQY_DVD_YLD_12M", emu_cycles, 
             title = "Dividend Yield, MSCI EMU, CEPR Business Cycles (Trough to Peak)",
-            ylab = "Dividend Yield (%)") %>%
-  format_plot("eqd_strat")
+            ylab = "Dividend Yield (%)") +
+  theme_strat() +
+  scale_color_strat()
+
+```
+
+```{r emu_div_cycle,fig.height = 3, fig.width = 6}
+
+plot_cycles_bbg("MXEM Index", "PROF_MARGIN", emu_cycles, 
+            title = "Profit Margin, MSCI EMU, CEPR Business Cycles (Trough to Peak)",
+            ylab = "Profit Margin (%)") +
+  theme_strat() +
+  scale_color_strat()
 
 ```
