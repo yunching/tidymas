@@ -3,6 +3,21 @@ library(ggplot2)
 library(Rblpapi)
 library(MacrobondAPI)
 
+#' Plot cycles chart
+#'
+#' @param df dataframe containing data and value
+#' @param cycles   dataframe containing cycles with columns `from` and `to` as Dates
+#' @param start_date  required start date if any
+#' @param title   title of the chart
+#' @param xlab   xlab for the chart
+#' @param ylab   ylab for the chart
+#'
+#' @examples emu_cycles <- data.frame(from = as.Date(c("1993-07-01", "2009-04-01", "2013-01-01")), to = c(as.Date(c("2008-04-1", "2011-10-01", "2018-12-31"))))
+#'           df <- getData(ticker, fields = "PE_RATIO")
+#'           plot_cycles(df, emu_cycles,
+#              title = "Dividend Yield, MSCI EMU, CEPR Business Cycles (Trough to Peak)",
+#              ylab = "Dividend Yield (%)")
+
 plot_cycles <- function(df, cycles, start_date = NA, title ="", xlab = "Proportion of cycle", ylab = "") {
   # create description for cycles if not present
   if (is.null(cycles$des)) {
@@ -49,7 +64,7 @@ plot_cycles <- function(df, cycles, start_date = NA, title ="", xlab = "Proporti
 #' @param xlab   xlab for the chart
 #' @param ylab   ylab for the chart
 #'
-#' @examples plot_cycles("MXEM Index", "EQY_DVD_YLD_12M", cycles,
+#' @examples plot_cycles_bbg("MXEM Index", "EQY_DVD_YLD_12M", cycles,
 #              title = "Dividend Yield, MSCI EMU, CEPR Business Cycles (Trough to Peak)",
 #              ylab = "Dividend Yield (%)")
 plot_cycles_bbg <- function(ticker, field, cycles, start_date = NA, title = "", xlab = "Proportion of cycle", ylab="") {
@@ -61,6 +76,13 @@ plot_cycles_bbg <- function(ticker, field, cycles, start_date = NA, title = "", 
 
   plot_cycles(df, cycles, start_date = start_date, title = title, xlab = xlab, ylab = ylab)
 }
+
+
+#############################################
+#
+#     GGPLOT THEMES AND COLOR SCHEMES
+#
+#############################################
 
 theme_strat <- function() {
     theme_bw() +
