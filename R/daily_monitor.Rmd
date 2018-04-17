@@ -254,6 +254,11 @@ boc <- ggTS("3988 HK Equity", title = "Bank of China")
 grid.arrange(hsbc, c_merc, ccb, c_mob, icbc, boc, nrow = 2)
 ```
 
+## Chinese stocks 2
+```{r chinese_stocks2}
+ggTS("1548 HK Equity", title = "Genscript")
+```
+
 ## BAT+
 ```{r bat}
 baba <- ggTS("BABA US Equity", title = "Alibaba")
