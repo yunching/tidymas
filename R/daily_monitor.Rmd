@@ -48,13 +48,6 @@ uk_30y_r <- ggTS("UKGGBE30Y Index", yield_mode = TRUE)
 grid.arrange(blank_chart(), uk_5y_r, uk_10y_r, uk_30y_r, nrow = 2)
 ```
 
-## UK Equities
-```{r UK_equities}
-ftse100 <- ggTS("UKX Index", title = "FTSE 100")
-ftse250 <- ggTS("MCX Index", title = "FTSE 250")
-ftse_all <- ggTS("ASX Index", title = "FTSE All Share")
-grid.arrange(ftse100, ftse250, ftse_all, nrow = 2)
-```
 
 # Europe
 
@@ -78,13 +71,21 @@ grid.arrange(dem_2y, dem_5y, dem_10y, dem_30y, nrow = 2)
 
 # Equities Indices
 
-## US Indices
+## US Equities
 ```{r us_indices}
 spx <- ggTS("SPX Index", title = "S&P500")
 dow_jones <- ggTS("INDU Index", title = "Dow Jones")
 nasdaq <- ggTS("CCMP Index", title = "NASDAQ Composite")
 russell_2000 <- ggTS("RTY Index", title = "Russell 2000")
 grid.arrange(spx, dow_jones, nasdaq, russell_2000, nrow = 2)
+```
+
+## UK Equities
+```{r UK_equities}
+ftse100 <- ggTS("UKX Index", title = "FTSE 100")
+ftse250 <- ggTS("MCX Index", title = "FTSE 250")
+ftse_all <- ggTS("ASX Index", title = "FTSE All Share")
+grid.arrange(ftse100, ftse250, ftse_all, nrow = 2)
 ```
 
 ## Core Europe Equities
@@ -105,7 +106,7 @@ ase <- ggTS("ASE Index", title = "Greece ASE")
 grid.arrange(ibex, mib, psi, ase, nrow = 2)
 ```
 
-## Asia indices
+## Asia Equities
 ```{r asia_indices}
 nikkei <- ggTS("NKY Index", title = "Nikkei")
 hang_seng <- ggTS("HSI Index", title = "Hang Seng")
@@ -274,3 +275,5 @@ capland <- ggTS("CAPL SP Equity", title = "Capitaland")
 genting <- ggTS("GENS SP Equity", title = "Genting")
 grid.arrange(capland, genting)
 ```
+
+# Watch
