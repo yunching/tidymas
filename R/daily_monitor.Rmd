@@ -48,6 +48,10 @@ uk_30y_r <- ggTS("UKGGBE30Y Index", yield_mode = TRUE)
 grid.arrange(blank_chart(), uk_5y_r, uk_10y_r, uk_30y_r, nrow = 2)
 ```
 
+## UK Hike Probability
+```{r uk_hike_prob}
+ggTS("GB0BPR Index", title = "OIS-implied hike probability at next MPC meeting", yield_mode = TRUE)
+```
 
 # Europe
 
