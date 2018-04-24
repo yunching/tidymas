@@ -13,10 +13,11 @@ blpConnect()
 
 getData <- function(ticker, start_date = Sys.Date()-365, end_date = today(), fields = c("PX_LAST")){
   bbg_data <- bdh(ticker, fields, start.date = start_date, end.date = end_date)
-  bbg_data
+  colnames(bbg_data) <- c("Date", "Close")
+  as_tibble(bbg_data)
 }
 
-getData_xts <- function(ticker, start_date = Sys.Date()-365, end_Date = today()){
+getData_xts <- function(ticker, start_date = Sys.Date()-365, end_date = today()){
   bbg_data <- bdh(ticker, c("PX_OPEN", "PX_HIGH","PX_LOW","PX_LAST"), start.date = start_date, end.date = end_date)
   my_ts <- xts(cbind(bbg_data$PX_OPEN, bbg_data$PX_HIGH, bbg_data$PX_LOW, bbg_data$PX_LAST), order.by = bbg_data$date)
   colnames(my_ts) <- c("Open", "High", "Low", "Close")
@@ -116,4 +117,12 @@ hline <- function(y_val){
 
 blank_chart <- function(){
   grid.rect(gp=gpar(col="white"), draw = FALSE)
+}
+
+sec_summary <- function(my_df){
+  Chg <- my_df %>% mutate(Chg = Close - lag(Close, 1)) %>% select(Chg)
+  Chg %>% summary() %>% print()
+  cat("\n")
+  paste("Standard deviation: ", round(sd(Chg$Chg, na.rm = TRUE), digits = 2)) %>%  cat()
+  Chg %>% na.omit() %>% ggplot(aes(Chg)) + geom_bar(stat = "bin", bins = 30)
 }
