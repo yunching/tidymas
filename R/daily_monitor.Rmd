@@ -73,6 +73,35 @@ dem_30y <- ggTS("GTDEM30Y Govt", yield_mode = TRUE)
 grid.arrange(dem_2y, dem_5y, dem_10y, dem_30y, nrow = 2)
 ```
 
+# US
+
+## USD
+
+```{r USD}
+ggTS("BBDXY Index", title = "Bloomberg Dollar Spot Index")
+```
+
+## US Nominal Yields
+
+```{r us_yields}
+us_2y <- ggTS("GT2 Govt", yield_mode = TRUE)
+us_5y <- ggTS("GT5 Govt", yield_mode = TRUE)
+us_10y <- ggTS("GT10 Govt", yield_mode = TRUE)
+us_30y <- ggTS("GT30 Govt", yield_mode = TRUE)
+grid.arrange(us_2y, us_5y, us_10y, us_30y, nrow = 2)
+```
+
+## US Breakeven Yields
+```{r us_breakevens}
+grid.arrange(
+  ggTS("USGGBE02 Index", yield_mode = TRUE),
+  ggTS("USGGBE05 Index", yield_mode = TRUE),
+  ggTS("USGGBE10 Index", yield_mode = TRUE),
+  ggTS("USGGBE30 Index", yield_mode = TRUE),
+  nrow = 2
+)
+```
+
 # Equities Indices
 
 ## US Equities
