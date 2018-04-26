@@ -73,6 +73,18 @@ dem_30y <- ggTS("GTDEM30Y Govt", yield_mode = TRUE)
 grid.arrange(dem_2y, dem_5y, dem_10y, dem_30y, nrow = 2)
 ```
 
+# Swiss
+
+## CHF
+
+```{r CHF}
+grid.arrange(
+  ggTS("EURCHF Curncy"),
+  ggTS("SNBN SW Equity"),
+  ncol = 2
+)
+```
+
 # US
 
 ## USD

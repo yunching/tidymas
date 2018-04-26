@@ -13,8 +13,8 @@ blpConnect()
 
 getData <- function(ticker, start_date = Sys.Date()-365, end_date = today(), fields = c("PX_LAST")){
   bbg_data <- bdh(ticker, fields, start.date = start_date, end.date = end_date)
-  colnames(bbg_data) <- c("Date", "Close")
-  as_tibble(bbg_data)
+  #colnames(bbg_data) <- c("Date", "Close")
+  #as_tibble(bbg_data)
 }
 
 getData_xts <- function(ticker, start_date = Sys.Date()-365, end_date = today()){
