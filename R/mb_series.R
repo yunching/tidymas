@@ -50,3 +50,10 @@ tmp <- list(name = "ih:mb:com:s1", #Use "ih:mb:com:xx" for company account, "ih:
       frequency = "Monthly")
 cat(tmp$name)
 
+
+tmp <- as.xts(AppendTimeSeriesAuto("ih:mb:com:ezcomppmi", "markit_pmieucomob"))
+c.xts(tmp$my_old_data.ts, tmp$my_new_data.ts)
+
+(x <- xts(c(5,4:10), Sys.Date()+3:10))
+(y <- xts(1:6, Sys.Date()+1:6))
+merge(x, y)
