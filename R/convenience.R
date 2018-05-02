@@ -11,8 +11,21 @@ library(ggfortify)
 #Establish connection with Bloomberg
 blpConnect()
 
+#' Get data from Bloomberg using the Rblpapi package
+#'
+#' @param ticker A character string containing a Bloomberg Ticker to download
+#' @param start_date Start date to retrieve data. Defaults to one year ago.
+#' @param end_date End date ti retrieve data. Defaults to today.
+#' @param fields A list of Bloomberg fields to download. Defaults to PX_LAST
+#'
+#' @return A data frame containing the fields of provided ticker for a given period of time.
+#' @export
+#'
+#' @examples
+#' getData("AAPL US Equity")
 getData <- function(ticker, start_date = Sys.Date()-365, end_date = today(), fields = c("PX_LAST")){
-  bbg_data <- bdh(ticker, fields, start.date = start_date, end.date = end_date)
+  bdh(ticker, fields, start.date = start_date, end.date = end_date)
+  #bbg_data <- bdh(ticker, fields, start.date = start_date, end.date = end_date)
   #colnames(bbg_data) <- c("Date", "Close")
   #as_tibble(bbg_data)
 }
