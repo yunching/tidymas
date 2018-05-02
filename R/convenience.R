@@ -11,7 +11,7 @@ library(ggfortify)
 #Establish connection with Bloomberg
 # blpConnect()
 
-#' Get data from Bloomberg using the Rblpapi package
+#' Get data from Bloomberg using the Rblpapi package, with sensible defaults
 #'
 #' @param ticker A character string containing a Bloomberg Ticker to download
 #' @param start_date Start date to retrieve data. Defaults to one year ago.
@@ -30,14 +30,33 @@ getData <- function(ticker, start_date = Sys.Date()-365, end_date = today(), fie
   #as_tibble(bbg_data)
 }
 
+#' Get price time series from Bloomberg, using the Rblpapi package
+#'
+#' @inheritParams getData
+#' @return A xts time series containing OHLC data
+#' @export
+#'
+#' @examples
+#' getData_xts("AAPL US Equity")
+#' getData_xts("GBPUSD Curncy")
 getData_xts <- function(ticker, start_date = Sys.Date()-365, end_date = today()){
   bbg_data <- bdh(ticker, c("PX_OPEN", "PX_HIGH","PX_LOW","PX_LAST"), start.date = start_date, end.date = end_date)
   my_ts <- xts(cbind(bbg_data$PX_OPEN, bbg_data$PX_HIGH, bbg_data$PX_LOW, bbg_data$PX_LAST), order.by = bbg_data$date)
   colnames(my_ts) <- c("Open", "High", "Low", "Close")
   my_ts
 }
-#tmp <- getData_xts("GBPUSD Curncy")
 
+#' Draws a simple time series plot
+#'
+#' @param ticker Character string containing Bloomberg ticker
+#' @param title Character string to use in chart title
+#' @param yield_mode Boolean flag to indicate if subtitle should indicate 1-day yield changes instead of 1-day percentage returns
+#' @param start_date Start date for chart
+#'
+#' @export
+#'
+#' @examples
+#' ggTS("AAPL US Equity")
 ggTS <- function(ticker, title = ticker, yield_mode = FALSE, start_date = Sys.Date()-365){
   data <- getData(ticker = ticker, start_date = start_date)
   if (yield_mode == FALSE){

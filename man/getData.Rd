@@ -2,7 +2,7 @@
 % Please edit documentation in R/convenience.R
 \name{getData}
 \alias{getData}
-\title{Get data from Bloomberg using the Rblpapi package}
+\title{Get data from Bloomberg using the Rblpapi package, with sensible defaults}
 \usage{
 getData(Ticker)
 }
@@ -19,7 +19,7 @@ getData(Ticker)
 A data frame containing the fields of provided ticker for a given period of time.
 }
 \description{
-Get data from Bloomberg using the Rblpapi package
+Get data from Bloomberg using the Rblpapi package, with sensible defaults
 }
 \examples{
 getData("AAPL US Equity")
