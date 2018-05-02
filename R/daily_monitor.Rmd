@@ -9,6 +9,7 @@ toc: true
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 source("C:\\Users\\ylim\\Documents\\R projects\\tidymas\\R\\convenience.R")
+blpConnect()
 ```
 
 ## Themes for 18Q2

@@ -9,7 +9,7 @@ library(forecast)
 library(ggfortify)
 
 #Establish connection with Bloomberg
-blpConnect()
+# blpConnect()
 
 #' Get data from Bloomberg using the Rblpapi package
 #'
