@@ -9,7 +9,7 @@ library(forecast)
 library(ggfortify)
 
 #Establish connection with Bloomberg
-# blpConnect()
+blpConnect()
 
 #' Get data from Bloomberg using the Rblpapi package, with sensible defaults
 #'
@@ -147,6 +147,11 @@ hline <- function(y_val){
   geom_hline(yintercept = y_val, color = "black", linetype = "dashed")
 }
 
+#' Returns a blank chart to add grid layouts
+#'
+#' @return A blank plot
+#' @export
+#'
 blank_chart <- function(){
   grid.rect(gp=gpar(col="white"), draw = FALSE)
 }

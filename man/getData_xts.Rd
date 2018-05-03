@@ -21,4 +21,5 @@ Get price time series from Bloomberg, using the Rblpapi package
 }
 \examples{
 getData_xts("AAPL US Equity")
+getData_xts("GBPUSD Curncy")
 }
