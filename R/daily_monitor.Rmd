@@ -12,13 +12,18 @@ source("C:\\Users\\ylim\\Documents\\R projects\\tidymas\\R\\convenience.R")
 blpConnect()
 ```
 
-## Themes for 18Q2
+# Futures
 
-1. Room to run
-   - Test
-    
-2. Inflation come back
-3. Reduced reward for risk
+## Bond Futures
+```{r bond_futures}
+grid.arrange(
+  ggTS("RX1 Comdty"),
+  ggTS("G 1 Comdty"),
+  ggTS("IK1 Comdty"),
+  ggTS("OAT1 Comdty"),
+  nrow = 2
+)
+```
 
 # UK
 
@@ -72,6 +77,15 @@ dem_5y <- ggTS("GTDEM5Y Govt", yield_mode = TRUE)
 dem_10y <- ggTS("GTDEM10Y Govt", yield_mode = TRUE)
 dem_30y <- ggTS("GTDEM30Y Govt", yield_mode = TRUE)
 grid.arrange(dem_2y, dem_5y, dem_10y, dem_30y, nrow = 2)
+```
+
+## Italy Nominal Yields
+```{r ITL_yields}
+grid.arrange(ggTS("GTITL2Y Govt", yield_mode = TRUE),
+             ggTS("GTITL5Y Govt", yield_mode = TRUE),
+             ggTS("GTITL10Y Govt", yield_mode = TRUE),
+             ggTS("GTITL30Y Govt", yield_mode = TRUE),
+             nrow = 2)
 ```
 
 # Swiss
