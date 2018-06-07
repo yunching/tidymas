@@ -4,6 +4,7 @@ date: '`r format(Sys.time(), "%d %B, %Y")`'
 output:
   beamer_presentation: default
 toc: true
+toc_depth: 1
 ---
 
 ```{r setup, include=FALSE}
@@ -77,6 +78,15 @@ dem_5y <- ggTS("GTDEM5Y Govt", yield_mode = TRUE)
 dem_10y <- ggTS("GTDEM10Y Govt", yield_mode = TRUE)
 dem_30y <- ggTS("GTDEM30Y Govt", yield_mode = TRUE)
 grid.arrange(dem_2y, dem_5y, dem_10y, dem_30y, nrow = 2)
+```
+
+## Spanish Nominal Yields
+```{r ESP_yields}
+grid.arrange(ggTS("GTESP2Y Govt", yield_mode = TRUE),
+             ggTS("GTESP5Y Govt", yield_mode = TRUE),
+             ggTS("GTESP10Y Govt", yield_mode = TRUE),
+             ggTS("GTESP30Y Govt", yield_mode = TRUE),
+             nrow = 2)
 ```
 
 ## Italy Nominal Yields
