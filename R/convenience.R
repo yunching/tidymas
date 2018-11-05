@@ -11,19 +11,52 @@ library(ggfortify)
 #Establish connection with Bloomberg
 blpConnect()
 
-getData <- function(ticker, start_date = Sys.Date()-365){
-  bbg_data <- bdh(ticker, c("PX_LAST"), start.date = start_date)
-  bbg_data
+#' Get data from Bloomberg using the Rblpapi package, with sensible defaults
+#'
+#' @param ticker A character string containing a Bloomberg Ticker to download
+#' @param start_date Start date to retrieve data. Defaults to one year ago.
+#' @param end_date End date ti retrieve data. Defaults to today.
+#' @param fields A list of Bloomberg fields to download. Defaults to PX_LAST
+#'
+#' @return A data frame containing the fields of provided ticker for a given period of time.
+#' @export
+#'
+#' @examples
+#' getData("AAPL US Equity")
+getData <- function(ticker, start_date = Sys.Date()-365, end_date = today(), fields = c("PX_LAST")){
+  bdh(ticker, fields, start.date = start_date, end.date = end_date)
+  #bbg_data <- bdh(ticker, fields, start.date = start_date, end.date = end_date)
+  #colnames(bbg_data) <- c("Date", "Close")
+  #as_tibble(bbg_data)
 }
 
-getData_xts <- function(ticker, start_date = Sys.Date()-365){
-  bbg_data <- bdh(ticker, c("PX_OPEN", "PX_HIGH","PX_LOW","PX_LAST"), start.date = start_date)
+#' Get price time series from Bloomberg, using the Rblpapi package
+#'
+#' @inheritParams getData
+#' @return A xts time series containing OHLC data
+#' @export
+#'
+#' @examples
+#' getData_xts("AAPL US Equity")
+#' getData_xts("GBPUSD Curncy")
+getData_xts <- function(ticker, start_date = Sys.Date()-365, end_date = today()){
+  bbg_data <- bdh(ticker, c("PX_OPEN", "PX_HIGH","PX_LOW","PX_LAST"), start.date = start_date, end.date = end_date)
   my_ts <- xts(cbind(bbg_data$PX_OPEN, bbg_data$PX_HIGH, bbg_data$PX_LOW, bbg_data$PX_LAST), order.by = bbg_data$date)
   colnames(my_ts) <- c("Open", "High", "Low", "Close")
   my_ts
 }
-#tmp <- getData_xts("GBPUSD Curncy")
 
+#' Draws a simple time series plot
+#'
+#' @param ticker Character string containing Bloomberg ticker
+#' @param title Character string to use in chart title
+#' @param yield_mode Boolean flag to indicate if subtitle should indicate 1-day yield changes instead of 1-day percentage returns
+#' @param start_date Start date for chart
+#'
+#' @export
+#'
+#' @examples
+#' ggTS("AAPL US Equity")
 ggTS <- function(ticker, title = ticker, yield_mode = FALSE, start_date = Sys.Date()-365){
   data <- getData(ticker = ticker, start_date = start_date)
   if (yield_mode == FALSE){
@@ -57,7 +90,8 @@ getMB <- function(mb_ticker){
   if (getIsError(my_data))
     stop(getErrorMessage(my_data))
 
-  as.xts(my_data)
+  #as.xts(my_data)
+  xts(getValues(my_data), order.by = getDatesAtEndOfPeriod(my_data))
 }
 
 #Get BBG data (for econs series). See getData() to get BBG market data.
@@ -113,6 +147,19 @@ hline <- function(y_val){
   geom_hline(yintercept = y_val, color = "black", linetype = "dashed")
 }
 
+#' Returns a blank chart to add grid layouts
+#'
+#' @return A blank plot
+#' @export
+#'
 blank_chart <- function(){
   grid.rect(gp=gpar(col="white"), draw = FALSE)
+}
+
+sec_summary <- function(my_df){
+  Chg <- my_df %>% mutate(Chg = Close - lag(Close, 1)) %>% select(Chg)
+  Chg %>% summary() %>% print()
+  cat("\n")
+  paste("Standard deviation: ", round(sd(Chg$Chg, na.rm = TRUE), digits = 2)) %>%  cat()
+  Chg %>% na.omit() %>% ggplot(aes(Chg)) + geom_bar(stat = "bin", bins = 30)
 }

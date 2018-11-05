@@ -1,0 +1,45 @@
+---
+title: "EQD Strat charts"
+output: html_document
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(dplyr)
+source(file.path(getwd(), "..", "convenience.R"))
+source(file.path(getwd(), "..", "plot_charts.R"))
+
+emu_cycles <- data.frame(from = as.Date(c("1993-07-01", "2009-04-01", "2013-01-01")), 
+                     to = c(as.Date(c("2008-04-1", "2011-10-01", "2018-12-31")))) 
+```
+
+```{r emu_pe_cycle,fig.height = 3, fig.width = 6}
+plot_cycles_bbg("MXEM Index", "PE_RATIO", emu_cycles, 
+            title = "PE Ratio, MSCI EMU, CEPR Business Cycles (Trough to Peak)",
+            ylab = "PE Ratio") +
+  coord_cartesian(ylim = c(10, 40)) +
+  theme_strat() +
+  scale_color_strat()
+
+```
+
+```{r emu_div_cycle,fig.height = 3, fig.width = 6}
+
+plot_cycles_bbg("MXEM Index", "EQY_DVD_YLD_12M", emu_cycles, 
+            title = "Dividend Yield, MSCI EMU, CEPR Business Cycles (Trough to Peak)",
+            ylab = "Dividend Yield (%)") +
+  theme_strat() +
+  scale_color_strat()
+
+```
+
+```{r emu_div_cycle,fig.height = 3, fig.width = 6}
+
+plot_cycles_bbg("MXEM Index", "PROF_MARGIN", emu_cycles, 
+            title = "Profit Margin, MSCI EMU, CEPR Business Cycles (Trough to Peak)",
+            ylab = "Profit Margin (%)") +
+  theme_strat() +
+  scale_color_strat()
+
+```

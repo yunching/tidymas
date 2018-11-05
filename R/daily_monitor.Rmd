@@ -1,16 +1,30 @@
 ---
 title: "Daily Monitor"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
 output:
   beamer_presentation: default
+toc: true
+toc_depth: 1
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 source("C:\\Users\\ylim\\Documents\\R projects\\tidymas\\R\\convenience.R")
+blpConnect()
 ```
 
-## Themes for 18Q2
-- Low vol world is over (DB), but actually BLK says otherwise
+# Futures
+
+## Bond Futures
+```{r bond_futures}
+grid.arrange(
+  ggTS("RX1 Comdty"),
+  ggTS("G 1 Comdty"),
+  ggTS("IK1 Comdty"),
+  ggTS("OAT1 Comdty"),
+  nrow = 2
+)
+```
 
 # UK
 
@@ -41,12 +55,9 @@ uk_30y_r <- ggTS("UKGGBE30Y Index", yield_mode = TRUE)
 grid.arrange(blank_chart(), uk_5y_r, uk_10y_r, uk_30y_r, nrow = 2)
 ```
 
-## UK Equities
-```{r UK_equities}
-ftse100 <- ggTS("UKX Index", title = "FTSE 100")
-ftse250 <- ggTS("MCX Index", title = "FTSE 250")
-ftse_all <- ggTS("ASX Index", title = "FTSE All Share")
-grid.arrange(ftse100, ftse250, ftse_all, nrow = 2)
+## UK Hike Probability
+```{r uk_hike_prob}
+ggTS("GB0BPR Index", title = "OIS-implied hike probability at next MPC meeting", yield_mode = TRUE)
 ```
 
 # Europe
@@ -69,15 +80,82 @@ dem_30y <- ggTS("GTDEM30Y Govt", yield_mode = TRUE)
 grid.arrange(dem_2y, dem_5y, dem_10y, dem_30y, nrow = 2)
 ```
 
+## Spanish Nominal Yields
+```{r ESP_yields}
+grid.arrange(ggTS("GTESP2Y Govt", yield_mode = TRUE),
+             ggTS("GTESP5Y Govt", yield_mode = TRUE),
+             ggTS("GTESP10Y Govt", yield_mode = TRUE),
+             ggTS("GTESP30Y Govt", yield_mode = TRUE),
+             nrow = 2)
+```
+
+## Italy Nominal Yields
+```{r ITL_yields}
+grid.arrange(ggTS("GTITL2Y Govt", yield_mode = TRUE),
+             ggTS("GTITL5Y Govt", yield_mode = TRUE),
+             ggTS("GTITL10Y Govt", yield_mode = TRUE),
+             ggTS("GTITL30Y Govt", yield_mode = TRUE),
+             nrow = 2)
+```
+
+# Swiss
+
+## CHF
+
+```{r CHF}
+grid.arrange(
+  ggTS("EURCHF Curncy"),
+  ggTS("SNBN SW Equity"),
+  ncol = 2
+)
+```
+
+# US
+
+## USD
+
+```{r USD}
+ggTS("BBDXY Index", title = "Bloomberg Dollar Spot Index")
+```
+
+## US Nominal Yields
+
+```{r us_yields}
+us_2y <- ggTS("GT2 Govt", yield_mode = TRUE)
+us_5y <- ggTS("GT5 Govt", yield_mode = TRUE)
+us_10y <- ggTS("GT10 Govt", yield_mode = TRUE)
+us_30y <- ggTS("GT30 Govt", yield_mode = TRUE)
+grid.arrange(us_2y, us_5y, us_10y, us_30y, nrow = 2)
+```
+
+## US Breakeven Yields
+```{r us_breakevens}
+grid.arrange(
+  ggTS("USGGBE02 Index", yield_mode = TRUE),
+  ggTS("USGGBE05 Index", yield_mode = TRUE),
+  ggTS("USGGBE10 Index", yield_mode = TRUE),
+  ggTS("USGGBE30 Index", yield_mode = TRUE),
+  nrow = 2
+)
+```
+
 # Equities Indices
 
-## US Indices
+## US Equities
 ```{r us_indices}
 spx <- ggTS("SPX Index", title = "S&P500")
 dow_jones <- ggTS("INDU Index", title = "Dow Jones")
 nasdaq <- ggTS("CCMP Index", title = "NASDAQ Composite")
 russell_2000 <- ggTS("RTY Index", title = "Russell 2000")
 grid.arrange(spx, dow_jones, nasdaq, russell_2000, nrow = 2)
+```
+
+## UK Equities
+```{r UK_equities}
+ftse100 <- ggTS("UKX Index", title = "FTSE 100")
+ftse250 <- ggTS("MCX Index", title = "FTSE 250")
+ftse_all <- ggTS("ASX Index", title = "FTSE All Share")
+grid.arrange(ftse100, ftse250, ftse_all, nrow = 2)
 ```
 
 ## Core Europe Equities
@@ -98,7 +176,7 @@ ase <- ggTS("ASE Index", title = "Greece ASE")
 grid.arrange(ibex, mib, psi, ase, nrow = 2)
 ```
 
-## Asia indices
+## Asia Equities
 ```{r asia_indices}
 nikkei <- ggTS("NKY Index", title = "Nikkei")
 hang_seng <- ggTS("HSI Index", title = "Hang Seng")
@@ -247,6 +325,11 @@ boc <- ggTS("3988 HK Equity", title = "Bank of China")
 grid.arrange(hsbc, c_merc, ccb, c_mob, icbc, boc, nrow = 2)
 ```
 
+## Chinese stocks 2
+```{r chinese_stocks2}
+ggTS("1548 HK Equity", title = "Genscript")
+```
+
 ## BAT+
 ```{r bat}
 baba <- ggTS("BABA US Equity", title = "Alibaba")
@@ -262,3 +345,5 @@ capland <- ggTS("CAPL SP Equity", title = "Capitaland")
 genting <- ggTS("GENS SP Equity", title = "Genting")
 grid.arrange(capland, genting)
 ```
+
+# Watch

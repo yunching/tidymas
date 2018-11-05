@@ -1,0 +1,33 @@
+---
+title: "Downloading Data"
+author: "Vignette Author"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Sources of data
+
+We have two main sources of data: 
+
+1. Bloomberg (via Rblpapi package) ([link](http://dirk.eddelbuettel.com/code/rblpapi.html))
+2. Macrobond (via MacrobondAPI package) ([link](https://help.macrobond.com/technical-information/the-macrobond-api-for-r/))
+
+They retrieve data in different formats and this package creates custom function to harmonise the data type they return.
+
+# Data types
+
+Two main data types here, useful for different purposes:
+
+1. Time series, using the xts format
+2. Data frame, using the tibbles format
