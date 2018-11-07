@@ -53,21 +53,21 @@ stoc <- function(ts, per.k=14, per.fastd=3, per.slowd=3, smooth.k=1, debug=FALSE
   }
   else stop("Price series must be either Open-High-Low-Close, High-Low-Close, or Close")
 
-  stoch.lowestlow <- rollapply(stoc.low, per.k, min, fill=NA, align = 'right')
-  stoch.highesthigh <- rollapply(stoc.high, per.k, max, fill=NA, align = 'right')
+  stoc.lowestlow <- rollapply(stoc.low, per.k, min, fill=NA, align = 'right')
+  stoc.highesthigh <- rollapply(stoc.high, per.k, max, fill=NA, align = 'right')
   #pad NAs with cummaxs and cummins to get true lowest low and highest high
-  stoch.lowestlow[1:per.k-1] <- cummin(stoc.low)[1:per.k-1]
-  stoch.highesthigh[1:per.k-1] <- cummax(stoc.high)[1:per.k-1]
+  stoc.lowestlow[1:(per.k - 1)] <- cummin(stoc.low)[1:(per.k - 1)]
+  stoc.highesthigh[1:(per.k - 1)] <- cummax(stoc.high)[1:(per.k - 1)]
 
-  stoch.num  <- (stoc.close - stoch.lowestlow)
-  stoch.den  <- (stoch.highesthigh - stoch.lowestlow)
+  stoc.num  <- (stoc.close - stoc.lowestlow)
+  stoc.den  <- (stoc.highesthigh - stoc.lowestlow)
 
   if (smooth.k > 1){
-    stoch.num <- rollapply(stoch.num, smooth.k, mean, na.rm=TRUE, fill=NA, align='right')
-    stoch.den <- rollapply(stoch.den, smooth.k, mean, na.rm=TRUE, fill=NA, align='right')
+    stoc.num <- rollapply(stoc.num, smooth.k, mean, na.rm=TRUE, fill=NA, align='right')
+    stoc.den <- rollapply(stoc.den, smooth.k, mean, na.rm=TRUE, fill=NA, align='right')
   }
 
-  fastK <- stoch.num / stoch.den * 100
+  fastK <- stoc.num / stoc.den * 100
   #deliberately void earlier fast ks before per.k
   fastK[1:(per.k + smooth.k - 2)] <- NA
   fastD <- rollapply(fastK, per.fastd, mean, na.rm=TRUE, fill=NA, align='right')
@@ -75,25 +75,25 @@ stoc <- function(ts, per.k=14, per.fastd=3, per.slowd=3, smooth.k=1, debug=FALSE
   slowD <- rollapply(fastD, per.slowd, mean, na.rm=TRUE, fill=NA, align='right')
   slowD[1:(per.k + smooth.k + per.fastd + per.slowd - 4)] <- NA
   if (debug==TRUE){
-    stoch <-
+    stoc <-
       cbind(
         stoc.high,
         stoc.low,
         stoc.close,
-        stoch.lowestlow,
-        stoch.highesthigh,
-        stoch.num,
-        stoch.den,
+        stoc.lowestlow,
+        stoc.highesthigh,
+        stoc.num,
+        stoc.den,
         fastK,
         fastD,
         slowD
       )
   }
   else{
-    stoch <- cbind(fastK, fastD, slowD)
+    stoc <- cbind(fastK, fastD, slowD)
   }
 
-  return(zoo(stoch, stoc.date))
+  return(zoo(stoc, stoc.date))
 }
 
 library(TTR) #for checking my calcs versus a ready package
