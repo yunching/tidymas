@@ -10,9 +10,8 @@ ema <- function(ts, period=20, wilder=FALSE){
   ema.calc <- c(ema.calc, ema.alpha * ema.core[(period + 1):ema.len])
   ema <- filter(ema.calc, (1 - ema.alpha), method="recursive")
   ema <- c(rep(NA, period-1), ema)
-  reclass(ema)
 
-  return(ema)
+  return(zoo(ema, ema.date))
 }
 
 rsi <- function(ts, period=14){
@@ -26,10 +25,12 @@ rsi <- function(ts, period=14){
   rs <- rsi.avgup/rsi.avgdn
   rsi <-  c(NA, 100 - 100 * (1 / (1 + rs)))
 
-  return(rsi)
+
+  return(zoo(rsi, rsi.date))
 }
 
 stoc <- function(ts, per.k=14, per.fastd=3, per.slowd=3, smooth.k=1, debug=FALSE){
+  stoc.date <- zoo::as.Date(index(ts))
   if (!is.array(ts)){
     stoc.high <- ts
     stoc.low <- ts
@@ -92,7 +93,7 @@ stoc <- function(ts, per.k=14, per.fastd=3, per.slowd=3, smooth.k=1, debug=FALSE
     stoch <- cbind(fastK, fastD, slowD)
   }
 
-  return(stoch)
+  return(zoo(stoch, stoc.date))
 }
 
 library(TTR) #for checking my calcs versus a ready package
