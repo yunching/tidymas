@@ -9,7 +9,6 @@ Description: More about what it does (maybe more than one line)
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-Suggests: knitr,
-    rmarkdown
+Suggests: knitr,rmarkdown, tidyverse, zoo, xts, TTR, microbenchmark
 VignetteBuilder: knitr
 RoxygenNote: 6.0.1
