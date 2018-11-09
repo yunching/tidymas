@@ -2,7 +2,6 @@
 ^\.Rproj\.user$
 ^CONDUCT\.md$
 ^\.\scripts\convenience\.R$
-^\.\scripts\convenience\.R$
-^\.\scripts\convenience\.R$
 ^\.\scripts\daily_monitor\.Rmd$
 ^\.\scripts\$
+^\.travis\.yml$
