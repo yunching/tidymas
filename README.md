@@ -1,11 +1,5 @@
 # tidymas
+[![Build Status] https://travis-ci.org/yunching/tidymas.svg?branch=master
 
-The goal of tidymas is to ...
+Tidymas is a collection of portfolio management utilities to make a PM's life easier.
 
-## Example
-
-This is a basic example which shows you how to solve a common problem:
-
-``` r
-## basic example code
-```
