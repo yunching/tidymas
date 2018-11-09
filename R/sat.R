@@ -4,6 +4,8 @@
 #' @param capped_wts Vector of weights to cap each market values
 #'
 #' @return A vector of results containing capped market values, capped weights, scaling factors and rescaled scaling factors (see Note)
+#'
+#' @note Rescaled scaling factors ensures that the largest factor is 1 by rescaling scaling factors.
 #' @export
 #'
 #' @examples data(mvs)

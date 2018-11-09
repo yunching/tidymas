@@ -17,6 +17,9 @@ A vector of results containing capped market values, capped weights, scaling fac
 \description{
 Market_capping
 }
+\note{
+Rescaled scaling factors ensures that the largest factor is 1 by rescaling scaling factors.
+}
 \examples{
 data(mvs)
 data(caps)
