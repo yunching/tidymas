@@ -5,3 +5,6 @@
 ^\.\scripts\daily_monitor\.Rmd$
 ^\.\scripts\$
 ^\.travis\.yml$
+^data2$
+^output$
+^scripts$

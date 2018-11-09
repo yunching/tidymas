@@ -9,7 +9,7 @@ Authors@R: c(person("Yun Ching", "Lim", email = "yunching.lim@gmail.com",
 Description: A collection of portfolio management utilities
     Use four spaces when indenting paragraphs within the Description.
 Depends: R (>= 3.4.4)
-License: MIT
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Suggests: knitr,rmarkdown, tidyverse, zoo, xts, TTR, microbenchmark,
