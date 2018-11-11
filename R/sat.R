@@ -14,11 +14,11 @@
 market_capping <- function(mv, capped_wts){
   #check mv_cap_wts are valid
   if (sum(capped_wts < 0 )){
-    stop("There should not be any negative weights in capped_wts")
+    stop("There should not be any negative weights in capped_wts.")
   }
 
   if (sum(capped_wts > 1 )){
-    stop("There should not be any weights > 100% in capped_wts")
+    stop("There should not be any weights > 100% in capped_wts.")
   }
 
   #mv_cap_wts should be same length as mv

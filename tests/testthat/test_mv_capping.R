@@ -45,7 +45,15 @@ test_that("Sep 2018",{
 })
 
 
+test_that("Expect errors",{
+  #Check capping more than 100%
+  expect_error(market_capping(1:10, rep(100, 10)), "There should not be any weights > 100% in capped_wts.")
+  #Check capping < 0%
+  expect_error(market_capping(1:10, rep(-100, 10)), "There should not be any negative weights in capped_wts.")
+  #Check mv and caps of different lengths
+  expect_error(market_capping(1:10, rep(1, 9)), "mv and capped_mv_wts should be of same length.")
 
+})
 
 
 
