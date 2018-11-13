@@ -89,3 +89,22 @@ NULL
 #' @docType data
 #' @details Sample market value caps (as weights)
 NULL
+
+#'mkt_capping_hist_mv
+#'@name mkt_capping_hist_mv
+#'@docType data
+#'@details Historical mvs to use for regression testing
+NULL
+
+#'mkt_capping_hist_wts
+#'@name mkt_capping_hist_wts
+#'@docType data
+#'@details Historical capped mvs to use for regression testing
+NULL
+
+#'#'mkt_capping_hist
+#'@name mkt_capping_hist_cap
+#'@docType data
+#'@details Historical caps to use for regression testing
+NULL
+
