@@ -3,8 +3,9 @@
 #' @param mv Vector of market values
 #' @param capped_wts Vector of weights to cap each market values
 #'
-#' @return A vector of results containing capped market values, capped weights, scaling factors and rescaled scaling factors (see Note)
+#' @return A datafrane of results containing capped market values, capped weights, scaling factors and rescaled scaling factors (see Note)
 #'
+#' @note When a country has zero market value, its scaling factor will be assigned 0, as opposed to 1 per the scaling factor spreadsheet convention, as it would give a more "correct" rescaled scaling factor.
 #' @note Rescaled scaling factors ensures that the largest factor is 1 by rescaling scaling factors.
 #' @export
 #'
@@ -57,18 +58,23 @@ market_capping <- function(mv, capped_wts){
   capped_mv <- allocated_mv
   capped_mv_wts <- capped_mv / sum(capped_mv)
   scaling_factors <- capped_mv / mv
+  #if mv is zero (e.g. when country is not in benchmark), we will get a divide by 0 hence NA. Here we replace with 1s per
+  #spreadsheet's convention.
+  scaling_factors[is.na(scaling_factors)] <- 0
+
   rescaled_sf <- scaling_factors / max(scaling_factors)
 
   #Some additional checks on output
   stopifnot(
     sum(uncapped_wts) == 1,
-    sum(capped_mv) == total_mv,
-    sum(capped_mv_wts) - 1 < 1e-15,
+    abs(sum(capped_mv) - total_mv) < 1e-3,
+    sum(capped_mv_wts) - 1 < 1e-10,
     max(rescaled_sf) == 1
   )
 
-  output <- cbind(mv, capped_wts, uncapped_wts, capped_mv, capped_mv_wts, scaling_factors, rescaled_sf)
-  colnames(output) <- c("mv", "mv_cap_wts", "uncapped_wts", "capped_mv", "capped_mv_wts", "scaling_factors", "rescaled_sf")
+  # output <- cbind(mv, capped_wts, uncapped_wts, capped_mv, capped_mv_wts, scaling_factors, rescaled_sf)
+  # colnames(output) <- c("mv", "mv_cap_wts", "uncapped_wts", "capped_mv", "capped_mv_wts", "scaling_factors", "rescaled_sf")
+  output <- data.frame(mv, capped_wts, uncapped_wts, capped_mv, capped_mv_wts, scaling_factors, rescaled_sf)
   return(output)
 }
 
