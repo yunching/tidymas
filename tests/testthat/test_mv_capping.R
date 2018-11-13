@@ -1,8 +1,21 @@
 context("Market value capping")
 
 library(tidymas)
+library(purrr)
 data(mvs)
 data(caps)
+data(mkt_capping_hist_cap)
+data(mkt_capping_hist_mv)
+data(mkt_capping_hist_wts)
+
+test_that("Expect errors",{
+  #Check capping more than 100%
+  expect_error(market_capping(1:10, rep(100, 10)), "There should not be any weights > 100% in capped_wts.")
+  #Check capping < 0%
+  expect_error(market_capping(1:10, rep(-100, 10)), "There should not be any negative weights in capped_wts.")
+  #Check mv and caps of different lengths
+  expect_error(market_capping(1:10, rep(1, 9)), "mv and capped_mv_wts should be of same length.")
+})
 
 test_that("3 names, no capping",{
   expect_equal(market_capping(c(1:3), rep(1,3))[,"capped_mv_wts"], c(1/6, 1/3, 1/2))
@@ -44,16 +57,16 @@ test_that("Sep 2018",{
   )
 })
 
+#calculate difference between new function's wts versus history
+new_capped_wts <-purrr::map2(mkt_capping_hist_mv, mkt_capping_hist_cap, tidymas::market_capping) %>%
+  purrr::map("capped_mv_wts") %>%
+  data.frame()
+sum_of_abs_diff_in_rounded_wts <- sum(abs(round(new_capped_wts - mkt_capping_hist_wts, 3)))
 
-test_that("Expect errors",{
-  #Check capping more than 100%
-  expect_error(market_capping(1:10, rep(100, 10)), "There should not be any weights > 100% in capped_wts.")
-  #Check capping < 0%
-  expect_error(market_capping(1:10, rep(-100, 10)), "There should not be any negative weights in capped_wts.")
-  #Check mv and caps of different lengths
-  expect_error(market_capping(1:10, rep(1, 9)), "mv and capped_mv_wts should be of same length.")
-
+test_that("Check calculations based on historical mvs line up with historical capped wts",{
+  expect_lte(sum_of_abs_diff_in_rounded_wts, 0.005)
 })
+
 
 
 
