@@ -36,9 +36,10 @@ countries <- c(
   "United Kingdom",
   "United States"
 )
+
+#compare sfs with historical sfs
 calculated_wts <- data.frame(calculated_wts, row.names=countries)
 diff <- round(calculated_wts - hist_wts, 3)
 diff
 
-#compare sfs with historical sfs
 
