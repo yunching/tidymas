@@ -58,6 +58,15 @@ market_capping <- function(mv, capped_wts){
   capped_mv_wts <- capped_mv / sum(capped_mv)
   scaling_factors <- capped_mv / mv
   rescaled_sf <- scaling_factors / max(scaling_factors)
+
+  #Some additional checks on output
+  stopifnot(
+    sum(uncapped_wts) == 1,
+    sum(capped_mv) == total_mv,
+    sum(capped_mv_wts) - 1 < 1e-151,
+    max(rescaled_sf) == 1
+  )
+
   output <- cbind(mv, capped_wts, uncapped_wts, capped_mv, capped_mv_wts, scaling_factors, rescaled_sf)
   colnames(output) <- c("mv", "mv_cap_wts", "uncapped_wts", "capped_mv", "capped_mv_wts", "scaling_factors", "rescaled_sf")
   return(output)
