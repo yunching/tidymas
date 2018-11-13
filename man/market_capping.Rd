@@ -12,12 +12,14 @@ market_capping(mv, capped_wts)
 \item{capped_wts}{Vector of weights to cap each market values}
 }
 \value{
-A vector of results containing capped market values, capped weights, scaling factors and rescaled scaling factors (see Note)
+A datafrane of results containing capped market values, capped weights, scaling factors and rescaled scaling factors (see Note)
 }
 \description{
 Market_capping
 }
 \note{
+When a country has zero market value, its scaling factor will be assigned 0, as opposed to 1 per the scaling factor spreadsheet convention, as it would give a more "correct" rescaled scaling factor.
+
 Rescaled scaling factors ensures that the largest factor is 1 by rescaling scaling factors.
 }
 \examples{
