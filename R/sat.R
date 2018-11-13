@@ -63,7 +63,7 @@ market_capping <- function(mv, capped_wts){
   stopifnot(
     sum(uncapped_wts) == 1,
     sum(capped_mv) == total_mv,
-    sum(capped_mv_wts) - 1 < 1e-151,
+    sum(capped_mv_wts) - 1 < 1e-15,
     max(rescaled_sf) == 1
   )
 
