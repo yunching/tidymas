@@ -1,0 +1,35 @@
+---
+title: "Package contribution primer"
+author: "Lim Yun Ching"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Package contribution primer}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+## Workflow for contributing to this package
+
+1. Pull code from repo
+2. Update tests with the results you expect when your new functionality is built (in tests/testthat folder)
+3. Update R code (in R folder), make sure you also include Roxygen comments
+4. Run devtools::document() to update R documentation from your Roxygen comments
+5. Test package (Build > Test package) to check that your new functionality meets your expectations and historical tests. 
+6. Check package is building properly (Build > Check Package)
+7. Update the version number in DESCRIPTION file (see Version Numbers section below) if necessary.
+8. Commit your code changes and push them to remote repositary.
+
+## Version Numbers
+
+This package uses [semantic versioning](https://semver.org/). In essence, the package's version is of the form MAJOR.MINOR.PATCH and increments using the below logic:
+
+* MAJOR version when you make incompatible API changes,
+* MINOR version when you add functionality in a backwards-compatible manner, and
+* PATCH version when you make backwards-compatible bug fixes.
