@@ -18,13 +18,14 @@ knitr::opts_chunk$set(
 ## Workflow for contributing to this package
 
 1. Pull code from repo
-2. Update tests with the results you expect when your new functionality is built (in tests/testthat folder)
-3. Update R code (in R folder), make sure you also include Roxygen comments
-4. Run devtools::document() to update R documentation from your Roxygen comments
-5. Test package (Build > Test package) to check that your new functionality meets your expectations and historical tests. 
-6. Check package is building properly (Build > Check Package)
-7. Update the version number in DESCRIPTION file (see Version Numbers section below) if necessary.
-8. Commit your code changes and push them to remote repositary.
+2. Create a new branch with the feature you are developing (using git branch) and switch to it
+3. Update tests with the results you expect when your new functionality is built (in tests/testthat folder)
+4. Update R code (in R folder), make sure you also include Roxygen comments
+5. Run devtools::document() to update R documentation from your Roxygen comments
+6. Test package (Build > Test package) to check that your new functionality meets your expectations and historical tests. 
+7. Check package is building properly (Build > Check Package)
+8. Update the version number in DESCRIPTION file (see Version Numbers section below) if necessary.
+9. Submit a pull request which will check package on CI server
 
 ## Version Numbers
 
