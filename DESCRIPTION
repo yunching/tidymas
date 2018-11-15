@@ -12,7 +12,10 @@ Depends: R (>= 3.4.0)
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-Suggests: knitr,rmarkdown, tidyverse, zoo, xts, TTR, microbenchmark,
-    testthat, stringr
+Imports:
+    stringr,
+    Rblpapi,
+    tidyverse
+Suggests: knitr,rmarkdown, zoo, xts, TTR
 VignetteBuilder: knitr
 RoxygenNote: 6.1.1
