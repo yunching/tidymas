@@ -210,6 +210,9 @@ pad_2zeros <- function(x){
 #' @export
 #'
 #' @examples
+#' ## library(Rblpapi)
+#' ## library(lubridate)
+#' ## blpConnect()
 #' ## get_mas_rating("GTGBP10Y Govt", ymd("20180101"))
 #'
 #' @importFrom magrittr "%>%"

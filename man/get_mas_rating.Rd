@@ -18,6 +18,9 @@ Clean ratings and MAS rating
 Get MAS rating
 }
 \examples{
+## library(Rblpapi)
+## library(lubridate)
+## blpConnect()
 ## get_mas_rating("GTGBP10Y Govt", ymd("20180101"))
 
 }
