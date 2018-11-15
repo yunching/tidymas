@@ -206,9 +206,13 @@ pad_2zeros <- function(x){
 #' @param my_sec A list of Bloomberg tickers to calculate ratings
 #' @param date Date to obtain rating
 #'
-#' @return
+#' @return Clean ratings and MAS rating
 #' @export
 #'
+#' @examples
+#' ## get_mas_rating("GTGBP10Y Govt", ymd("20180101"))
+#'
+#' @importFrom magrittr "%>%"
 get_mas_rating <- function(my_sec, date){
 
   # message("Year: ", lubridate::year(date))
@@ -241,20 +245,21 @@ get_mas_rating <- function(my_sec, date){
       overrides = c("Rating_as_of_date_override" = date_override)
     )
 
-  moodys.clean <- tidymas::clean_rating(moodys)
-  snp.clean <- tidymas::clean_rating(snp)
-  fitch.clean <- tidymas::clean_rating(fitch)
+  moodys.clean <- clean_rating(moodys)
+  snp.clean <- clean_rating(snp)
+  fitch.clean <- clean_rating(fitch)
   average_rating <-
     mean(
-      tidymas::rating_to_num(moodys.clean),
-      tidymas::rating_to_num(snp.clean),
-      tidymas::rating_to_num(fitch.clean)
+      rating_to_num(moodys.clean),
+      rating_to_num(snp.clean),
+      rating_to_num(fitch.clean)
     ) %>%
     round(0) %>%
-    tidymas::num_to_rating()
+    num_to_rating()
 
   output <- cbind(date, moodys, snp, fitch, moodys.clean, snp.clean, fitch.clean, average_rating)
   colnames(output) <- c("Date","Moodys", "S&P", "Fitch","Moodys.clean", "S&P.clean", "Fitch.clean", "MAS Avg")
 
   return(output)
 }
+
