@@ -102,17 +102,12 @@ NULL
 #'@details Historical capped mvs to use for regression testing
 NULL
 
-#'#'mkt_capping_hist
+#'mkt_capping_hist
 #'@name mkt_capping_hist_cap
 #'@docType data
 #'@details Historical caps to use for regression testing
 NULL
 
-#' Clean rating
-#'
-#' @param rating Bloomberg rating returned
-#'
-#' @return Standardised Bloomberg rating used internally
 clean_rating <- function(rating){
   if (stringr::str_detect(rating, stringr::regex("^(AAA|Aaa)"))){
     rating <- "AAA"

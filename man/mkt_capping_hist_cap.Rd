@@ -3,9 +3,9 @@
 \docType{data}
 \name{mkt_capping_hist_cap}
 \alias{mkt_capping_hist_cap}
-\title{#'mkt_capping_hist}
+\title{mkt_capping_hist}
 \description{
-#'mkt_capping_hist
+mkt_capping_hist
 }
 \details{
 Historical caps to use for regression testing
