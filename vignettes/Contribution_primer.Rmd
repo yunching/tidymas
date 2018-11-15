@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 ## Workflow for contributing to this package
 
 1. Pull code from repo
-2. Create a new branch with the feature you are developing (using git branch)
+2. Create a new branch with the feature you are developing (using git branch) and switch to it
 3. Update tests with the results you expect when your new functionality is built (in tests/testthat folder)
 4. Update R code (in R folder), make sure you also include Roxygen comments
 5. Run devtools::document() to update R documentation from your Roxygen comments
