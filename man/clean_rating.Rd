@@ -10,7 +10,7 @@ clean_rating(rating)
 \item{rating}{Bloomberg rating returned}
 }
 \value{
-Standardised Bloomberg rating
+Standardised Bloomberg rating used internally
 }
 \description{
 Clean rating
