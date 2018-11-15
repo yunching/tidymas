@@ -108,3 +108,68 @@ NULL
 #'@details Historical caps to use for regression testing
 NULL
 
+#' Clean rating
+#'
+#' @param rating Bloomberg rating returned
+#'
+#' @return Standardised Bloomberg rating used internally
+clean_rating <- function(rating){
+  if (stringr::str_detect(rating, stringr::regex("^(AAA|Aaa)"))){
+    rating <- "AAA"
+  }
+  else if (stringr::str_detect(rating, stringr::regex("^(AA\\+|Aa1)"))){
+    rating <- "AA+"
+  }
+  else if (stringr::str_detect(rating, stringr::regex("^(AA-|Aa3)"))){
+    rating <- "AA-"
+  }
+  else if (stringr::str_detect(rating, stringr::regex("^(AA|Aa2)"))){
+    rating <- "AA"
+  }
+  else if (stringr::str_detect(rating, stringr::regex("^(A\\+|A1)"))){
+    rating <- "A+"
+  }
+  else if (stringr::str_detect(rating, stringr::regex("^(A-|A3)"))){
+    rating <- "A-"
+  }
+  else if (stringr::str_detect(rating, stringr::regex("^(A|A2)"))){
+    rating <- "A"
+  }
+  else if (stringr::str_detect(rating, stringr::regex("^(BBB\\+|Baa1)"))){
+    rating <- "BBB+"
+  }
+  else if (stringr::str_detect(rating, stringr::regex("^(BBB-|Baa3)"))){
+    rating <- "BBB-"
+  }
+  else if (stringr::str_detect(rating, stringr::regex("^(BBB|Baa2)"))){
+    rating <- "BBB"
+  }
+  else {
+    rating <- NA
+  }
+
+  return(rating)
+}
+
+rating_to_num <- function(rating){
+  if (rating == "AAA")
+    return(1)
+  else if (rating == "AA+")
+    return(2)
+  else if (rating == "AA")
+    return(3)
+  else if (rating == "AA-")
+    return(4)
+  else if (rating == "A+")
+    return(5)
+  else if (rating == "A")
+    return(6)
+  else if (rating == "A-")
+    return(7)
+  else if (rating == "BBB+")
+    return(8)
+  else if (rating == "BBB")
+    return(9)
+  else
+    return(NA)
+}
