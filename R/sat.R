@@ -173,3 +173,88 @@ rating_to_num <- function(rating){
   else
     return(NA)
 }
+
+num_to_rating <- function(rating_num){
+  if (rating_num == 1)
+    return("AAA")
+  else if (rating_num == 2)
+    return("AA+")
+  else if (rating_num == 3)
+    return("AA")
+  else if (rating_num == 4)
+    return("AA-")
+  else if (rating_num == 5)
+    return("A+")
+  else if (rating_num == 6)
+    return("A")
+  else if (rating_num == 7)
+    return("A-")
+  else if (rating_num == 8)
+    return("BBB+")
+  else if (rating_num == 9)
+    return("BBB")
+  else
+    return(NA)
+}
+
+pad_2zeros <- function(x){
+  formatC(x, width = 2, format = "d", flag = "0")
+}
+
+#' Get MAS rating
+#'
+#' @param my_sec A list of Bloomberg tickers to calculate ratings
+#' @param date Date to obtain rating
+#'
+#' @return
+#' @export
+#'
+get_mas_rating <- function(my_sec, date){
+
+  # message("Year: ", lubridate::year(date))
+  # message("Month: ", lubridate::month(date))
+  # message("Day: ", lubridate::day(date))
+
+  date_override <-
+    paste0(
+      lubridate::year(date),
+      pad_2zeros(lubridate::month(date)),
+      pad_2zeros(lubridate::day(date))
+    )
+  # message("Date override: ", date_override)
+  moodys <-
+    Rblpapi::bdp(
+      my_sec,
+      "RTG_SP_LT_LC_ISSUER_CREDIT",
+      overrides = c("Rating_as_of_date_override" = date_override)
+    )
+  snp <-
+    Rblpapi::bdp(
+      my_sec,
+      "RTG_MDY_LT_LC_DEBT_RATING",
+      overrides = c("Rating_as_of_date_override" = date_override)
+    )
+  fitch <-
+    Rblpapi::bdp(
+      my_sec,
+      "RTG_FITCH_LT_LC_DEBT",
+      overrides = c("Rating_as_of_date_override" = date_override)
+    )
+
+  moodys.clean <- tidymas::clean_rating(moodys)
+  snp.clean <- tidymas::clean_rating(snp)
+  fitch.clean <- tidymas::clean_rating(fitch)
+  average_rating <-
+    mean(
+      tidymas::rating_to_num(moodys.clean),
+      tidymas::rating_to_num(snp.clean),
+      tidymas::rating_to_num(fitch.clean)
+    ) %>%
+    round(0) %>%
+    tidymas::num_to_rating()
+
+  output <- cbind(date, moodys, snp, fitch, moodys.clean, snp.clean, fitch.clean, average_rating)
+  colnames(output) <- c("Date","Moodys", "S&P", "Fitch","Moodys.clean", "S&P.clean", "Fitch.clean", "MAS Avg")
+
+  return(output)
+}
