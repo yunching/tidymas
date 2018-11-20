@@ -2,4 +2,5 @@
 
 export(get_mas_rating)
 export(market_capping)
+export(z_score)
 importFrom(magrittr,"%>%")
