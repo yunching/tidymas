@@ -1,7 +1,8 @@
 ---
 title: "Daily Monitor"
 date: '`r format(Sys.time(), "%d %B, %Y")`'
-output: html_document
+output: 
+  html_document
 # output:
 #   beamer_presentation: default
 # toc: true
@@ -12,7 +13,7 @@ output: html_document
 library(Rblpapi)
 knitr::opts_chunk$set(echo = FALSE)
 source("C:\\Users\\yclim\\OneDrive\\Documents\\R\\tidymas\\scripts\\convenience.R")
-# blpConnect()
+blpConnect()
 ```
 
 # Futures
