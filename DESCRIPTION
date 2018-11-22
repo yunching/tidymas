@@ -1,7 +1,7 @@
 Package: tidymas
 Type: Package
 Title: A collection of RMD utilities
-Version: 1.2.0
+Version: 1.2.1
 Authors@R: c(person("Yun Ching", "Lim", email = "yunching.lim@gmail.com",
                   role = c("aut", "cre")),
              person("Willy", "Heng", email="willy.heng@gmail.com", role="aut")
