@@ -246,17 +246,16 @@ get_mas_rating <- function(my_sec, date){
   moodys.clean <- clean_rating(moodys)
   snp.clean <- clean_rating(snp)
   fitch.clean <- clean_rating(fitch)
-  average_rating <-
-    mean(
+  median_rating <-
+    median(
       rating_to_num(moodys.clean),
       rating_to_num(snp.clean),
       rating_to_num(fitch.clean)
     ) %>%
-    round(0) %>%
     num_to_rating()
 
-  output <- cbind(date, moodys, snp, fitch, moodys.clean, snp.clean, fitch.clean, average_rating)
-  colnames(output) <- c("Date","Moodys", "S&P", "Fitch","Moodys.clean", "S&P.clean", "Fitch.clean", "MAS Avg")
+  output <- cbind(date, moodys, snp, fitch, moodys.clean, snp.clean, fitch.clean, median_rating)
+  colnames(output) <- c("Date","Moodys", "S&P", "Fitch","Moodys.clean", "S&P.clean", "Fitch.clean", "MAS Median")
 
   return(output)
 }
