@@ -243,9 +243,14 @@ get_mas_rating <- function(my_sec, date){
       overrides = c("Rating_as_of_date_override" = date_override)
     )
 
-  moodys.clean <- clean_rating(moodys)
-  snp.clean <- clean_rating(snp)
-  fitch.clean <- clean_rating(fitch)
+=======
+  # moodys.clean <- clean_rating(moodys)
+  # snp.clean <- clean_rating(snp)
+  # fitch.clean <- clean_rating(fitch)
+  moodys.clean <- purrr::map_chr(moodys, clean_rating) %>% purrr::map_chr(1)
+  snp.clean <- purrr::map_chr(snp, clean_rating) %>% purrr::map_chr(1)
+  fitch.clean <- purrr::map_chr(fitch, clean_rating) %>% purrr::map_chr(1)
+
   median_rating <-
     median(
       rating_to_num(moodys.clean),
