@@ -1,3 +1,6 @@
+library(lubridate)
+library(tidyverse)
+
 #required_libraries <- c("Rblpapi", "pbapply", "stringr", "tidyverse", "ggplot2")
 #install.packages(required_libraries)
 
@@ -23,6 +26,15 @@ merge_from_list <- function(df_list, header_names = NULL) {
     header_names <- names(df_list)
   colnames(df) <- c("date", header_names)
   df
+}
+
+bdh_weekday <- function(security, field = "PX_LAST", start_date = as.Date("1994-01-01"), end_date = NULL, options = NULL) {
+  if (is.null(options))
+    options <- c("periodicitySelection" = "DAILY",
+                 "nonTradingDayFillOption" = "NON_TRADING_WEEKDAYS",
+                 "nonTradingDayFillMethod" = "PREVIOUS_VALUE")
+
+  bdh(security, field, start.date = start_date, end.date = end_date, options = options)
 }
 
 #' Batch download from Bloomberg
@@ -56,7 +68,7 @@ bdh_batch <- function(series, field = "PX_LAST", start_date = as.Date("1994-01-0
   #                    "CALENDAR", "TRUE", "USD")
 
   # If series is data.frame, match name to ticker
-  if (class(series) == 'data.frame') {
+  if (any(class(series) == 'data.frame')) {
     if (is.null(series$ticker)) stop("Input series is a dataframe, column 'ticker' is missing")
 
     bbg_series <- series$ticker
@@ -94,6 +106,464 @@ remove_date <- function(df) {
   df
 }
 
+gen_weekdays <- function(start_date, end_date) {
+  if (is.na(end_date)) end_date <- today()
+  if (is.na(start_date)) start_date <- today()
+
+  dt <- seq.Date(start_date, end_date, 1)
+  dt[!weekdays(dt) %in% c("Saturday", "Sunday")]
+}
+
+get_tickers <- function(asset_class, roll_differencing = TRUE) {
+  if (asset_class == "govt") {
+    output <- read.csv(system.file("data2", "tickers_map", "tickers_govt.csv", package="tidymas"), stringsAsFactors = FALSE)
+  }
+  else if (asset_class == "fut") {
+    output <- read.csv(system.file("data2", "tickers_map", "tickers_futures.csv", package="tidymas"), stringsAsFactors = FALSE) %>%
+      mutate(asset_class = "fut")
+
+    # Roll differencing, see ‘DOCS #2072138 <GO> on Bloomberg
+    if (roll_differencing)
+      output <- output %>% mutate(ticker = str_replace(ticker, "(?i) comdty", " B:00_0_D Comdty"))
+  }
+  else if (asset_class == "equity") {
+    output <- read.csv(system.file("data2", "tickers_map", "tickers_equity.csv", package="tidymas"), stringsAsFactors = FALSE) %>%
+      mutate(asset_class = "equity")
+  }
+  else if (asset_class == "cds") {
+    output <- read.csv(system.file("data2", "tickers_map", "tickers_cds.csv", package="tidymas"), stringsAsFactors = FALSE) %>%
+      mutate(asset_class = "cds")
+  }
+  else if (asset_class == "fx") {
+    output <- read.csv(system.file("data2", "tickers_map", "tickers_funding.csv", package="tidymas"), stringsAsFactors = FALSE)
+  }
+  else {
+    stop("Invalid asset_class, only can handle govt, fut, equity, cds, fx")
+  }
+
+  output
+}
+
+get_and_check_tickers <- function(curr_asset_class, instruments_df, type = "price") {
+  # Type is price, duration
+  # Asset class work for bonds, equity, cds, fut
+
+  if (!curr_asset_class %in% c("govt", "equity", "cds", "fut")) stop("Asset class not supported, only govt, equity, cds, fut allowed")
+  if (!type %in% c("price", "duration")) stop("Type not supported, only price and duration allowed")
+
+  sec_tickers <- get_tickers(curr_asset_class)
+
+  if (curr_asset_class == "govt") curr_asset_class <- c("govt", "ilb")
+
+  # Match tickers to identifier
+  if (curr_asset_class == "cds") {
+    sec_df <- instruments_df %>%
+      filter(asset_class == "cds") %>%
+      left_join(sec_tickers, by = c("asset_class", "identifier")) %>%
+      mutate(name = identifier)
+    if (type == "price") {
+      sec_df <- mutate(sec_df, ticker = ticker_return)
+    }
+    else if (type == "duration") {
+      sec_df <- mutate(sec_df, ticker = ticker_duration)
+    }
+  }
+  else {
+    sec_df <- instruments_df %>%
+      filter(asset_class %in% curr_asset_class) %>%
+      left_join(sec_tickers, by = c("asset_class", "identifier")) %>%
+      mutate(name = identifier)
+  }
+
+  # Check valid identifier for bonds ie bonds have corresponding tickers
+  if (any(is.na(sec_df$ticker))) {
+    invalid_sec <- sec_df %>%
+      filter(is.na(ticker)) %>%
+      mutate(error_msg = paste(asset_class, identifier, sep = "/"))
+    stop(paste("Unable to find ticker for the following bonds:",paste(invalid_sec$error_msg, collapse = ",")))
+  }
+
+  # Warning for ignored instrument classes
+  ignored_sec <- instruments_df %>%
+    filter(!asset_class %in% curr_asset_class) %>%
+    mutate(warning_msg = paste(asset_class,identifier,sep="/"))
+
+  if (nrow(ignored_sec) > 0) {
+    warning(paste("Instruments ignored in",curr_asset_class, paste(unique(ignored_sec$warning_msg), collapse = ",")))
+  }
+
+  reduced_sec_df <- sec_df %>%
+    group_by(name, ticker) %>%
+    summarise()
+
+  reduced_sec_df
+}
+
+build_strategies <- function(input_file, start_date = as.Date("2000-01-01"), end_date = today()) {
+  # Read in strategies
+  strategies <- read.csv(input_file, stringsAsFactors = FALSE) %>%
+    mutate(open_date = ymd(open_date), close_date = ymd(close_date),
+           strategy = paste(strategy, owner, sep = ":::"))
+
+  # Check asset classes
+  valid_asset_class <- c("govt", "ilb", "fx", "equity", "cds", "fut")
+  asset_classes <- strategies$asset_class %>% unique
+  if (mean(asset_classes %in% valid_asset_class) < 1)
+    stop(paste("Invalid asset class found in", input_file, ":", paste(asset_classes[! asset_classes %in% valid_asset_class], collapse = ",")))
+
+  # Check if differing size_types for same instrument in the same strategy
+  unique_sizes_for_instrument <- strategies %>%
+    group_by(strategy, identifier, size_type) %>%
+    summarise() %>%
+    group_by(strategy, identifier) %>%
+    summarise(count = n())
+
+  if (any(unique_sizes_for_instrument$count > 1)) {
+    invalid_strategies <- subset(unique_sizes_for_instrument, count > 1) %>%
+      mutate(error_msg = paste(strategy, instrument, sep = "/"))
+    stop(paste("Multiple size types detected for the same instrument in the same strategy:", paste(invalid_strategies$error_msg, collapse = ", ")))
+  }
+
+  govt_tickers <- get_tickers("govt")
+  fx_tickers <- get_tickers("fx")
+  eq_tickers <- get_tickers("equity")
+  cds_tickers <- get_tickers("cds")
+  fut_tickers <- get_tickers("fut")
+
+  non_fxcds_tickers <- rbind(
+    govt_tickers,
+    eq_tickers,
+    fut_tickers
+  )
+
+  # Check tickers for FX
+  fx_errors <- strategies %>%
+    filter(asset_class == "fx") %>%
+    mutate(left_curr = substr(identifier, 1, 3),
+           right_curr = substr(identifier, 4, 6),
+           error = (!((left_curr %in% fx_tickers$currency) & (right_curr %in% fx_tickers$currency))) | (nchar(identifier) != 6)) %>%
+    filter(error)
+  if (nrow(fx_errors) > 0)
+    stop(paste("Invalid fx identifiers:", paste(fx_errors$identifier, collapse = ", ")))
+
+  # Check tickers for CDS
+  cds_errors <- strategies[10:20,] %>%
+    filter(asset_class == "cds") %>%
+    left_join(cds_tickers, by = c("asset_class", "identifier")) %>%
+    filter(is.na(ticker_return))
+
+  if (nrow(cds_errors) > 0) {
+    stop(paste("Invalid cds identifiers:", paste(cds_errors$identifier, collapse = ",")))
+  }
+
+  # Check tickers exist for other instruments
+  strat_inst <- strategies %>%
+    filter(asset_class %in% c("govt", "ilb", "fut", "equity")) %>%
+    group_by(identifier, asset_class) %>%
+    summarise %>%
+    left_join(non_fxcds_tickers, by = c("asset_class", "identifier"))
+
+  if (any(is.na(strat_inst$ticker))) {
+    not_found <- strat_inst %>% filter(is.na(ticker)) %>%
+      mutate(error_msg = paste(asset_class, identifier, sep = "/"))
+    stop(paste("Identifier not found: ", paste(not_found$error_msg, collapse = ",")))
+  }
+
+  # Summarise strategies (for use in size conversions later)
+  strat_summ <- strategies %>%
+    group_by(strategy, identifier, asset_class, size_type) %>%
+    summarise()
+
+  # Calculate sizes
+  all_actual_size <- NULL
+  all_sim_size <- NULL
+  ## Iterate through each unique strategy
+  for (i in unique(strategies$strategy)) {
+    # Filter out current strategy
+    curr_strat <- strategies %>% filter(strategy == i)
+    inst_list <- curr_strat$identifier %>% unique
+    actual_size <- data.frame(date = gen_weekdays(start_date, end_date))
+
+    # Iterate through all identifiers required for this strategy
+    for (curr_inst in inst_list) {
+      curr_inst_df <- curr_strat %>% filter(identifier == curr_inst)
+
+      #curr_inst_size <- data.frame(date = dt, size_type = curr_inst_df$size_type[1], strategy = curr_strat$strategy[1], identifier = curr_inst, stringsAsFactors = FALSE)
+      actual_size[[curr_inst]] <- 0
+
+      # Set weight as actual first
+      for (j in 1:nrow(curr_inst_df)) {
+        # Strat start and end
+        strat_start <- if (is.na(curr_inst_df$open_date[j])) as.Date(today()-days(1)) else curr_inst_df$open_date[j]
+        strat_end <- if (is.na(curr_inst_df$close_date[j])) as.Date(today()) else curr_inst_df$close_date[j]
+
+        actual_size[[curr_inst]] <- actual_size[[curr_inst]] +
+          if_else(actual_size$date <= strat_end & actual_size$date > strat_start,
+                  curr_inst_df$size[j], 0)
+      }
+    }
+    sim_size <- actual_size %>%
+      mutate(has_position = sign(rowSums(abs(.[-1])))) %>%  # Check if there's any position at the time
+      gather(asset, size, -date, -has_position) %>%  # convert into gathered dataframe
+      mutate(size = ifelse(has_position, size, NA)) %>%   # if does not have any position, replace with NA
+      spread(asset, size) %>%  # Convert back into original layout
+      select(-has_position) %>%
+      fill(-date, .direction = "up")  # Fill upwards to times without position, to calculate returns for simulation and correlations
+
+    all_actual_size[[i]] <- actual_size
+    all_sim_size[[i]] <- sim_size
+  }
+
+  list(summary = strat_summ, actual = all_actual_size, sim = all_sim_size)
+}
+
+get_dur_bonds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
+  reduced_sec_df <- get_and_check_tickers("govt", instrument_df)
+
+  print("Downloading bond duration from bbg...")
+  dur_df <- bdh_batch(reduced_sec_df, "MODIFIED_DURATION", start_date = start_date, end_date = end_date)
+
+  # Some instruments have very short duration history e.g. ILBs, hence we just assume all previous to be the first duration.
+  if (fill)
+    dur_df <- tidyr::fill(dur_df, everything(), .direction = "up")
+
+  dur_df
+}
+
+get_dur_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
+  reduced_sec_df <- get_and_check_tickers("fut", instrument_df)
+
+  # Download data from Bloomberg
+  print("Downloading futures duration from bbg...")
+  dur_df <- bdh_batch(reduced_sec_df, "FUT_EQV_DUR_NOTL", start_date = start_date, end_date = end_date)
+
+  # Download duration where only most recent is available e.g. Euribors
+  all_nas <- dur_df %>% gather(identifier, duration, -date) %>%
+    group_by(identifier) %>%
+    summarise(na = mean(is.na(duration))) %>%
+    filter(na == 1) %>%
+    left_join(reduced_sec_df, by = c("identifier"="name"))
+
+  recent_dur <- bdp(all_nas$ticker, "FUT_EQV_DUR_NOTL")
+  recent_dur$identifier <- all_nas$identifier
+
+  for (i in 1:nrow(recent_dur)) {
+    dur_df[[recent_dur$identifier[i]]] <- recent_dur[i, 1]
+  }
+
+  # Some instruments have very short duration history e.g. ILBs, hence we just assume all previous to be the first duration.
+  if (fill)
+    dur_df <- tidyr::fill(dur_df, everything(), .direction = "up")
+
+  dur_df
+}
+
+get_dur_cds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
+  reduced_sec_df <- get_and_check_tickers("cds", instrument_df, "duration")
+
+  # Download data from Bloomberg
+  cds_dv01 <- bdp(reduced_sec_df$ticker, "SW_EQV_BPV")
+
+  cds_dur <- abs(cds_dv01 * 0.001)
+  cds_dur$identifier <- reduced_sec_df$name
+
+  dur_df <- data.frame(date = gen_weekdays(start_date, end_date))
+
+  # Note that Bloomberg can pull out historical DV01, however, it requires using bdp() with overwrites.
+  # This can significantly reduce performance of the function. For CDX, the DV01 exposure fluctuates within +-10%, hence it would be
+  # reasonable to just use the latest as reference
+  for (i in 1:nrow(cds_dur)) {
+    dur_df[[cds_dur$identifier[i]]] <- cds_dur[i, 1]
+  }
+
+  dur_df
+}
+
+get_dur_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
+  sec_df <- instruments_df %>%
+    group_by(identifier, asset_class) %>%
+    summarise()
+
+  bonds <- filter(sec_df, asset_class %in% c("govt", "ilb"))
+  fut <- filter(sec_df, asset_class == "fut")
+  cds <- filter(sec_df, asset_class == "cds")
+
+  dur <- list()
+  dur_all <- bonds_dur <- fut_dur <- cds_dur <- NULL
+  if (nrow(bonds) > 0)
+    dur$bonds <- get_dur_bonds_bbg(bonds, start_date = start_date, end_date = end_date, fill = fill)
+
+  if (nrow(fut) > 0)
+    dur$fut <- get_dur_fut_bbg(fut, start_date = start_date, end_date = end_date, fill = fill)
+
+  if (nrow(cds) > 0)
+    dur$cds <- get_dur_cds_bbg(cds, start_date = start_date, end_date = end_date, fill = fill)
+
+  dur_all <- reduce(dur, function(x, y) {
+    if (is.null(x))
+      y
+    else if (is.null(y))
+      x
+    else
+      full_join(x, y, by = "date")
+  })
+
+  dur_all
+}
+
+convert_dur_size <- function(strategies_list, duration_df, convert_to_decimal = TRUE) {
+  # Check if summary is available in strategies_list
+  if (! "summary" %in% names(strategies_list)) stop("summary dataframe required in strategies_list")
+
+  # Check if there are any missing duration
+  missing_duration <- filter(strategies_list$summary, size_type == "months" & (! identifier %in% names(duration_df))) %>%
+    .$identifier %>%
+    unique
+  if (length(missing_duration) > 0) stop(paste("duration missing:", paste(missing_duration, collapse = ",")))
+
+  # Check for missing dates
+  if (any(!strategies_list$actual[[1]]$date %in% duration_df$date)) {
+    missing_dates <- subset(strategies_list$actual[[1]], ! date %in% duration_df$date) %>%
+      .$date
+    stop("Duration missing data for dates: ", paste(missing_dates, collapse = ","))
+  }
+
+  # Convert from months weighted to %
+  months_strategies <- strategies_list$summary %>%
+    filter(size_type == "months")
+
+  ## Extract only dates of duration from the strategies
+  req_dur <- duration_df %>% filter(date %in% strategies_list$actual[[1]]$date)
+
+  ## portfolios are all lists inside the strategies_list except summary
+  portfolios <- names(strategies_list)
+  portfolios <- portfolios[portfolios != "summary"]
+
+  for (i in 1:nrow(months_strategies)) {
+    curr_strat <- months_strategies$strategy[i]
+    curr_inst <- months_strategies$identifier[i]
+
+    for (p in portfolios)
+      # Weight in % = Months weighted duration contribution / (dur of identifier * 12) * 100
+      strategies_list[[p]][[curr_strat]][[curr_inst]] <- strategies_list[[p]][[curr_strat]][[curr_inst]] / (req_dur[[curr_inst]] * 12) * 100
+  }
+
+  # Convert to decimal for easier return calculation
+  if (convert_to_decimal) {
+    for (p in portfolios) {
+      strategies_list[[p]] <- lapply(strategies_list[[p]], function(x) mutate_at(x, vars(-date), function(y) y/100))
+    }
+  }
+
+  strategies_list
+}
+
+get_ret_bonds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today()) {
+  # sec_tickers <- get_tickers("govt")
+  #
+  # # Match tickers to identifier
+  # sec_df <- instruments_df %>%
+  #   filter(asset_class %in% c("govt", "ilb")) %>%
+  #   left_join(sec_tickers, by = c("asset_class", "identifier")) %>%
+  #   mutate(name = identifier)
+  #
+  # # Check valid identifier for bonds ie bonds have corresponding tickers
+  # if (any(is.na(sec_df$ticker))) {
+  #   invalid_sec <- sec_df %>%
+  #     filter(is.na(ticker)) %>%
+  #     mutate(error_msg = paste(asset_class, identifier, sep = "/"))
+  #   stop(paste("Unable to find ticker for the following bonds:",paste(invalid_sec$error_msg, collapse = ",")))
+  # }
+  #
+  # # Warning for ignored instrument classes
+  # ignored_sec <- instruments_df %>%
+  #   filter(!asset_class %in% c("govt", "ilb")) %>%
+  #   mutate(warning_msg = paste(asset_class,identifier,sep="/"))
+  #
+  # if (nrow(ignored_sec) > 0) {
+  #   warning("Instruments ignored in get_dur_bonds_bbg: ", paste(unique(ignored_sec$warning_msg), collapse = ","))
+  # }
+  #
+  # reduced_sec_df <- sec_df %>%
+  #   group_by(name, ticker) %>%
+  #   summarise()
+
+  reduced_sec_df <- get_and_check_tickers("govt", instruments_df)
+
+  print("Downloading bond duration from bbg...")
+  dur_df <- bdh_batch(reduced_sec_df, "MODIFIED_DURATION", start_date = start_date, end_date = end_date)
+
+  # Some instruments have very short duration history e.g. ILBs, hence we just assume all previous to be the first duration.
+  if (fill)
+    dur_df <- tidyr::fill(dur_df, everything(), .direction = "up")
+
+  dur_df
+}
+
+get_ret_fx_bbg <- function() {}
+
+get_ret_equity_bbg <- function() {}
+
+get_ret_cds_bbg <- function() {}
+
+get_ret_fut_bbg <- function() {}
+
+get_ret_bbg <- function() {}
+
+
+get_fx_ret_bbg <- function(instruments, start_date = as.Date("1994-01-01"), end_date = today()) {
+  fx_tickers <- get_fx_tickers()
+}
+
+get_price_ret_bbg <- function(instruments, start_date = as.Date("1994-01-01"), end_date = today()) {
+  cds_tickers <- get_cds_tickers()
+  dur_tickers <- get_dur_tickers() %>%
+    filter(asset %in% c("govt", "ilb", "fut"))
+
+  unfound_instruments <- subset(instruments, !(instruments %in% cds_tickers$identifier | instruments %in% dur_tickers$identifier))
+
+  if (length(unfound_instruments) > 0) {
+    warning(paste("Invalid instruments found in calculating price return:", paste(unfound_instruments, collapse = ",")))
+  }
+  if (length(unfound_instruments) == length(instruments)) {
+    stop("No valid tickers found")
+  }
+
+  req_dur_tickers <- dur_tickers %>% filter(identifier %in% instruments) %>%
+    transmute(name = identifier,
+              ticker = ticker,
+              field_price = field_price)
+
+  req_cds <- cds_tickers %>% filter(identifier %in% instruments) %>%
+    transmute(name = identifier,
+               ticker = ticker_return,
+               field_price = field_price)
+
+  req_all = rbind(req_dur_tickers, req_cds)
+
+  temp <- lapply(unique(req_all$field_price), function(x) bdh_batch(req_all %>% filter(field_price == x), x))
+  price_df <- reduce(temp, full_join, by = "date")
+  calc_returns(price_df)
+}
+
+get_ret_bbg <- function(instruments, start_date = as.Date("1994-01-01"), end_date = today()) {
+  cds_tickers <- get_cds_tickers()
+  dur_tickers <- get_dur_tickers() %>%
+    filter(asset %in% c("govt", "ilb", "fut"))
+
+  unfound_instruments <- subset(instruments, !(instruments %in% cds_tickers$identifier | instruments %in% dur_tickers$identifier))
+
+  if (length(unfound_instruments) > 0) {
+    warning(paste("Instruments without duration ignored:", paste(unfound_instruments, collapse = ",")))
+  }
+  if (length(unfound_instruments) == length(instruments)) {
+    stop("No valid tickers found")
+  }
+
+  dur_all <- NULL
+}
+
+
 #' Calculate daily total return in a dataframe by summing across assets
 #'
 #' @param df dataframe of returns, `date` column` is optional
@@ -105,8 +575,8 @@ remove_date <- function(df) {
 #'
 #' @examples
 #' df <- data.frame(spx = c(0.01, -0.02, -0.05), ukx = c(0.014, 0.08, -0.04))
-#' compute_total_ret(df)
-compute_total_ret <- function(df, return_date = FALSE, na.rm = FALSE) {
+#' calc_total_ret(df)
+calc_total_ret <- function(df, return_date = FALSE, na.rm = FALSE) {
   df$ret <- if (!is.null(df$date)) rowSums(select(df, -date), na.rm = na.rm) else rowSums(df, na.rm = na.rm)
 
   if (return_date)
@@ -123,14 +593,14 @@ compute_total_ret <- function(df, return_date = FALSE, na.rm = FALSE) {
 #'
 #' @examples
 #' df <- data.frame(spx = c(2850, 2820, 2890), ukx = c(7004, 7010, 7080))
-#' compute_returns(df)
-compute_returns <- function(df) {
+#' calc_returns(df)
+calc_returns <- function(df) {
   has_date <- !is.null(df$date)
   if (has_date) df <- remove_date(df)
-  # Compute returns
+  # calc returns
   df <- df / mutate_all(df, funs(lag)) -1
 
-  if (has_date) cbind(date = row.names(df), df)
+  if (has_date) cbind(date = as.Date(row.names(df)), df)
   else df
 }
 
@@ -173,7 +643,7 @@ calc_active_risk <- function(unwt_ret_w_date, curr_wt, start_date = NULL, end_da
   # Filter only those strategies with weights
   unwt_ret_fn <- unwt_ret_fn[,names(curr_wt)]
 
-  # Compute active risk
+  # calc active risk
   cov_matrix <- cov(unwt_ret_fn, use = "complete.obs") * annualize_factor # annualized
 
   numerator <- as.numeric(t(curr_wt) %*% cov_matrix)
