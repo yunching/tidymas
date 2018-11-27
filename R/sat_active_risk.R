@@ -514,7 +514,6 @@ get_ret_bonds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01")
 
   message("Downloading bond prices from bbg...")
   price_df <- bdh_weekday(reduced_sec_df, "PX_LAST", start_date = start_date, end_date = end_date)
-
   calc_returns(price_df)
 }
 
@@ -564,7 +563,6 @@ get_ret_fx_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), e
   # Fill NAs for dates without funding (of either pair), may lose return accuracy but allows for calculation in the earlier bits of history
   total_funding[is.na(total_funding)] <- 0
 
-
   # Total return is price return + funding return
   fx_total_ret <- remove_date(fx_price_ret) + total_funding
 
@@ -599,7 +597,6 @@ get_ret_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), 
 
   message("Downloading futures prices from bbg...")
   price_df <- bdh_weekday(reduced_sec_df, "CONTRACT_VALUE", start_date = start_date, end_date = end_date)
-
   calc_returns(price_df)
 }
 
