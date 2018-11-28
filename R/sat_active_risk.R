@@ -144,7 +144,7 @@ get_tickers <- function(asset_class, roll_differencing = TRUE) {
   output
 }
 
-get_and_check_tickers <- function(curr_asset_class, instruments_df, type = "price") {
+get_and_check_tickers <- function(curr_asset_class, instruments_df, type = c("price", "duration")) {
   # Type is price, duration
   # Asset class work for bonds, equity, cds, fut (does not support fx)
   if (!curr_asset_class %in% c("govt", "equity", "cds", "fut")) stop("Asset class not supported, only govt, equity, cds, fut allowed")
@@ -272,11 +272,6 @@ build_strategies <- function(input_file, start_date = as.Date("2000-01-01"), end
     stop(paste("Identifier not found: ", paste(not_found$error_msg, collapse = ",")))
   }
 
-  # Summarise strategies (for use in size conversions later)
-  strat_summ <- strategies %>%
-    group_by(strategy, identifier, asset_class, size_type) %>%
-    summarise()
-
   # Calculate sizes
   all_actual_size <- NULL
   all_sim_size <- NULL
@@ -311,11 +306,18 @@ build_strategies <- function(input_file, start_date = as.Date("2000-01-01"), end
       mutate(size = ifelse(has_position, size, NA)) %>%   # if does not have any position, replace with NA
       spread(asset, size) %>%  # Convert back into original layout
       select(-has_position) %>%
-      fill(-date, .direction = "up")  # Fill upwards to times without position, to calculate returns for simulation and correlations
+      fill(-date, .direction = "up")  %>%
+      fill(-date, .direction = "down") # Fill up, then down to times without position, to calculate returns for simulation and correlations
 
     all_actual_size[[i]] <- actual_size
     all_sim_size[[i]] <- sim_size
   }
+
+  # Summarise strategies (for use in size conversions later)
+  strat_summ <- strategies %>%
+    group_by(strategy, identifier, asset_class, size_type, owner, type) %>%
+    summarise() %>%
+    ungroup()
 
   list(summary = strat_summ, actual = all_actual_size, sim = all_sim_size)
 }
@@ -646,6 +648,29 @@ get_strat_size <- function(strat_df, dt = NULL, approx = TRUE) {
     gather(strat, size) %>%   # Remove any sizes = 0
     filter(size != 0) %>%
     spread(strat, size)
+}
+
+simulate_history <- function(unwt_ret_w_date, curr_wt, start_date, end_date) {
+  # Check all strategies in curr_wt have returns
+  strats <- names(curr_wt)[names(curr_wt) != "date"]
+  unfound_strats <- strats[! strats %in% names(unwt_ret_w_date)]
+  if (length(unfound_strats) > 0)
+    stop(paste("Strategy's return not found:",paste(unfound_strats, collapse = ",")))
+
+  # If weights provided as data.frame, convert to vector for manipulation purposes
+  if (class(curr_wt) == "data.frame") {
+    wt <- remove_date(curr_wt)
+    nam <- colnames(wt)
+    curr_wt <- as.numeric(curr_wt)
+    names(curr_wt) <- nam
+  }
+
+  filtered_unwt_ret <- unwt_ret_w_date %>%
+    filter(date >= start_date & date <= end_date) %>%
+    .[,names(curr_wt)]
+
+  wt_ret <- filtered_unwt_ret * curr_wt
+  wt_ret
 }
 
 #' Calculate daily total return in a dataframe by summing across assets
