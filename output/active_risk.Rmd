@@ -104,7 +104,6 @@ actual_corr <- calc_cor(ret_by_owner,
 exp_return <- simulate_history(unwt_returns$sim, 
                                curr_strat, 
                                curr_date - months(3), curr_date)
-
 exp_ret_by_owner <- exp_return %>%
   custom_grouping(instr_df, "owner")
 
