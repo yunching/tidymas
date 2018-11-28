@@ -362,7 +362,6 @@ get_dur_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), 
   # Download data from Bloomberg
   message("Downloading futures duration from bbg...")
   dur_df <- bdh_weekday(reduced_sec_df, "FUT_EQV_DUR_NOTL", start_date = start_date, end_date = end_date)
-
   # Download duration where only most recent is available e.g. Euribors
   all_nas <- dur_df %>% gather(identifier, duration, -date) %>%
     group_by(identifier) %>%
