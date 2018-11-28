@@ -98,9 +98,19 @@ actual_team_ret <- wt_returns_w_group %>%
   ungroup() %>%
   spread(owner, returns)
 
+ret_by_owner <- wt_returns$actual %>%
+  custom_grouping(instr_df, "owner")
+
 actual_corr <- calc_cor(actual_team_ret,
                         start_date = as.Date("2017-10-31"),
                         end_date = as.Date("2018-10-31"))
+
+exp_return <- simulate_history(unwt_returns$sim, 
+                               curr_strat, 
+                               today() - months(3), today())
+
+exp_corr <- calc_cor()
+                           
 ```
 
 ```{r write_up}
