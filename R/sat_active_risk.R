@@ -626,9 +626,22 @@ calc_strat_unwt_return <- function(wt_returns, strat_headline_size) {
         returns)
 }
 
-get_strat_size <- function(strat_df, dt) {
-  strat_df %>%
-    filter(date == dt) %>% # Filter specific date
+get_strat_size <- function(strat_df, dt = NULL, approx = TRUE) {
+  if (is.null(dt))
+    dt <- max(strat_df$date)
+
+  if (approx) {
+    filtered_strat <- strat_df %>%
+      mutate(diff = dt - date) %>%
+      filter(diff >= 0) %>%
+      arrange(diff) %>%
+      head(1) %>%
+      select(-diff)
+  } else {
+    filtered_strat <- strat_df %>%
+      filter(date == dt)
+  }
+  filtered_strat %>%
     remove_date %>%  # Remove date column
     gather(strat, size) %>%   # Remove any sizes = 0
     filter(size != 0) %>%
@@ -735,7 +748,10 @@ calc_active_risk <- function(unwt_ret_w_date, curr_wt, start_date = today()-year
   active_risk <- marginal_risk * curr_wt
 
   names(marginal_risk) <- names(curr_wt)
-  list(cov_matrix = cov_matrix, port_sd = port_sd, active_risk = active_risk, marginal_risk = marginal_risk)
+  list(parameters = list(start_date = start_date,
+                         end_date = end_date,
+                         weights = curr_wt),
+         cov_matrix = cov_matrix, port_sd = port_sd, active_risk = active_risk, marginal_risk = marginal_risk)
 }
 
 # Function for
