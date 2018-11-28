@@ -147,7 +147,6 @@ get_tickers <- function(asset_class, roll_differencing = TRUE) {
 get_and_check_tickers <- function(curr_asset_class, instruments_df, type = "price") {
   # Type is price, duration
   # Asset class work for bonds, equity, cds, fut (does not support fx)
-
   if (!curr_asset_class %in% c("govt", "equity", "cds", "fut")) stop("Asset class not supported, only govt, equity, cds, fut allowed")
   if (!type %in% c("price", "duration")) stop("Type not supported, only price and duration allowed")
 
@@ -197,6 +196,9 @@ get_and_check_tickers <- function(curr_asset_class, instruments_df, type = "pric
     group_by(name, ticker) %>%
     summarise()
 
+  if (nrow(reduced_sec_df) == 0) {
+    stop(paste("No tickers detected for asset class:", curr_asset_class))
+  }
   reduced_sec_df
 }
 
@@ -319,7 +321,7 @@ build_strategies <- function(input_file, start_date = as.Date("2000-01-01"), end
 }
 
 get_dur_bonds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
-  reduced_sec_df <- get_and_check_tickers("govt", instrument_df)
+  reduced_sec_df <- get_and_check_tickers("govt", instruments_df)
 
   print("Downloading bond duration from bbg...")
   dur_df <- bdh_batch(reduced_sec_df, "MODIFIED_DURATION", start_date = start_date, end_date = end_date)
@@ -332,7 +334,7 @@ get_dur_bonds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01")
 }
 
 get_dur_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
-  reduced_sec_df <- get_and_check_tickers("fut", instrument_df)
+  reduced_sec_df <- get_and_check_tickers("fut", instruments_df)
 
   # Download data from Bloomberg
   print("Downloading futures duration from bbg...")
@@ -360,7 +362,7 @@ get_dur_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), 
 }
 
 get_dur_cds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
-  reduced_sec_df <- get_and_check_tickers("cds", instrument_df, "duration")
+  reduced_sec_df <- get_and_check_tickers("cds", instruments_df, "duration")
 
   # Download data from Bloomberg
   cds_dv01 <- bdp(reduced_sec_df$ticker, "SW_EQV_BPV")
@@ -411,51 +413,42 @@ get_dur_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
   dur_all
 }
 
-convert_dur_size <- function(strategies_list, duration_df, convert_to_decimal = TRUE) {
-  # Check if summary is available in strategies_list
-  if (! "summary" %in% names(strategies_list)) stop("summary dataframe required in strategies_list")
-
+convert_dur_size <- function(strat_df, strat_id_sizetype, duration_df, convert_to_decimal = TRUE) {
   # Check if there are any missing duration
-  missing_duration <- filter(strategies_list$summary, size_type == "months" & (! identifier %in% names(duration_df))) %>%
+  missing_duration <- filter(strat_id_sizetype, size_type == "months" & (! identifier %in% names(duration_df))) %>%
     .$identifier %>%
     unique
   if (length(missing_duration) > 0) stop(paste("duration missing:", paste(missing_duration, collapse = ",")))
 
   # Check for missing dates
-  if (any(!strategies_list$actual[[1]]$date %in% duration_df$date)) {
-    missing_dates <- subset(strategies_list$actual[[1]], ! date %in% duration_df$date) %>%
+  if (any(!strat_df[[1]]$date %in% duration_df$date)) {
+    missing_dates <- subset(strat_df[[1]], ! date %in% duration_df$date) %>%
       .$date
     stop("Duration missing data for dates: ", paste(missing_dates, collapse = ","))
   }
 
   # Convert from months weighted to %
-  months_strategies <- strategies_list$summary %>%
+  months_strategies <- strat_id_sizetype %>%
     filter(size_type == "months")
 
   ## Extract only dates of duration from the strategies
-  req_dur <- duration_df %>% filter(date %in% strategies_list$actual[[1]]$date)
+  req_dur <- duration_df %>% filter(date %in% strat_df[[1]]$date)
 
   ## portfolios are all lists inside the strategies_list except summary
-  portfolios <- names(strategies_list)
-  portfolios <- portfolios[portfolios != "summary"]
 
   for (i in 1:nrow(months_strategies)) {
     curr_strat <- months_strategies$strategy[i]
     curr_inst <- months_strategies$identifier[i]
 
-    for (p in portfolios)
-      # Weight in % = Months weighted duration contribution / (dur of identifier * 12) * 100
-      strategies_list[[p]][[curr_strat]][[curr_inst]] <- strategies_list[[p]][[curr_strat]][[curr_inst]] / (req_dur[[curr_inst]] * 12) * 100
+    strat_df[[curr_strat]][[curr_inst]] <- strat_df[[curr_strat]][[curr_inst]] / (req_dur[[curr_inst]] * 12) * 100
   }
 
   # Convert to decimal for easier return calculation
   if (convert_to_decimal) {
-    for (p in portfolios) {
-      strategies_list[[p]] <- lapply(strategies_list[[p]], function(x) mutate_at(x, vars(-date), function(y) y/100))
-    }
+    strat_df <- lapply(strat_df, function(x) mutate_at(x, vars(-date), function(y) y/100))
   }
 
-  strategies_list
+  strat_df
 }
 
 get_ret_bonds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today()) {
@@ -573,7 +566,7 @@ get_ret_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
     ret$fx <- get_ret_fx_bbg(fx, start_date = start_date, end_date = end_date)
 
   if (nrow(equity) > 0)
-    ret$equity <- get_ret_equity_bbg(fut, start_date = start_date, end_date = end_date)
+    ret$equity <- get_ret_equity_bbg(equity, start_date = start_date, end_date = end_date)
 
   # Combine all into a single dataframe
   ret_all <- reduce(ret, function(x, y) {
@@ -588,23 +581,59 @@ get_ret_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
   ret_all
 }
 
-# get_ret_bbg <- function(instruments, start_date = as.Date("1994-01-01"), end_date = today()) {
-#   cds_tickers <- get_cds_tickers()
-#   dur_tickers <- get_dur_tickers() %>%
-#     filter(asset %in% c("govt", "ilb", "fut"))
-#
-#   unfound_instruments <- subset(instruments, !(instruments %in% cds_tickers$identifier | instruments %in% dur_tickers$identifier))
-#
-#   if (length(unfound_instruments) > 0) {
-#     warning(paste("Instruments without duration ignored:", paste(unfound_instruments, collapse = ",")))
-#   }
-#   if (length(unfound_instruments) == length(instruments)) {
-#     stop("No valid tickers found")
-#   }
-#
-#   dur_all <- NULL
-# }
+calc_strat_wt_return <- function(strat_df, asset_returns) {
+  cbind(date = strat_df[[1]]$date,
+        setNames( ## setNames to original as map changes the : to .
+          as.data.frame( ## Convert product to dataframe
+            map(strat_df, # Iterate through all strategies
+                function(x) {
+                  non_date_col <- names(x)[names(x) != "date"]
+                  map(non_date_col, # Iterate through all non_date_columns
+                      function(y) {
+                        x[, c("date", y)] %>%  # Extract out date and asset size column
+                          setNames(c("date", "size")) %>%
+                          left_join(asset_returns[, c("date", y)] %>% setNames(c("date", "return")), by = "date") %>%  # Join with returns based on date
+                          mutate(wt_return = size * return) %>%  # Calculated weighted return
+                          select(wt_return) %>%   # Select just weighted return
+                          setNames(y)    # Set name of weighted return to asset name
+                      }
+                  ) %>%
+                    reduce(cbind) %>%
+                    rowSums(na.rm = TRUE)    # Combine asset returns of each strategy into a single return stream
+                })),
+          names(strat_df))
+  )
 
+}
+
+calc_strat_headline_size <- function(cleaned_size_strat_df) {
+  cbind(date = cleaned_size_strat_df[[1]]$date,
+        map(cleaned_size_strat_df,
+            ~apply(select(., -date), 1,
+                   function(y) {
+                     max(sum(y[y > 0]), abs(sum(y[y < 0])))
+                   })
+        ) %>% as.data.frame %>% setNames(names(cleaned_size_strat_df))
+  )
+}
+
+calc_strat_unwt_return <- function(wt_returns, strat_headline_size) {
+  strat_headline_size <- strat_headline_size[,names(wt_returns)]
+  returns <- remove_date(wt_returns) / remove_date(strat_headline_size)
+  returns[is.na(returns)] <- 0
+
+  cbind(date = wt_returns$date,
+        returns)
+}
+
+get_strat_size <- function(strat_df, dt) {
+  strat_df %>%
+    filter(date == dt) %>% # Filter specific date
+    remove_date %>%  # Remove date column
+    gather(strat, size) %>%   # Remove any sizes = 0
+    filter(size != 0) %>%
+    spread(strat, size)
+}
 
 #' Calculate daily total return in a dataframe by summing across assets
 #'
@@ -664,21 +693,29 @@ calc_returns <- function(df) {
 #' curr_wt <- data.frame(long_spx = 0.01, )
 #' results <- calc_active_risk(unwt_ret_w_date, curr_wt)
 #' results$active_risk
-calc_active_risk <- function(unwt_ret_w_date, curr_wt, start_date = NULL, end_date = NULL, annualize_factor = 250) {
+calc_active_risk <- function(unwt_ret_w_date, curr_wt, start_date = today()-years(10), end_date = today(), annualize_factor = 250) {
+  # Check all strategies in curr_wt have returns
+  strats <- names(curr_wt)[names(curr_wt) != "date"]
+  unfound_strats <- strats[! strats %in% names(unwt_ret_w_date)]
+  if (length(unfound_strats) > 0)
+    stop(paste("Strategy's return not found:",paste(unfound_strats, collapse = ",")))
+
   # If weights provided as data.frame, convert to vector for manipulation purposes
   if (class(curr_wt) == "data.frame") {
     wt <- remove_date(curr_wt)
-    nam <- colnames(curr_wt)
+    nam <- colnames(wt)
     curr_wt <- as.numeric(curr_wt)
     names(curr_wt) <- nam
   }
 
-  if (!is.null(start_date) && !is.na(start_date)) {
-    if (is.null(end_date) || is.na(end_date)) {
-      end_date <- today()
-      warning("No end_date provided, today is used")
-    }
-    unwt_ret_w_date <- unwt_ret_w_date %>% filter(date > start_date & date <= end_date)
+  unwt_ret_w_date <- unwt_ret_w_date %>% filter(date > start_date & date <= end_date)
+
+  # Check if sufficient data is available
+  if (nrow(unwt_ret_w_date) < 5) {
+    stop("Less than 5 periods of data found, calculations will be invalid, please check the dates in return data vs the dates of analysis")
+  }
+  else if (nrow(unwt_ret_w_date) < 20) {
+    warnings("Less than 20 periods of data found, calculations may not be reliable")
   }
   unwt_ret_fn <- unwt_ret_w_date %>% remove_date()
 
