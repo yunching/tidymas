@@ -46,16 +46,6 @@ strat_headline_size <- map(clean_pf_list,
 
 # Calculate unweighted return of strategies
 unwt_returns <- map2(wt_returns, strat_headline_size, calc_strat_unwt_return)
-
-# Calculate active risk of current strategies
-active_risk <- calc_active_risk(unwt_returns$sim, 
-                                get_strat_size(strat_headline_size$actual, as.Date("2018-11-28")),
-                                start_date = as.Date("2017-11-28"), end_date = as.Date("2018-11-28"))
-
-# Calculate active risk of previous quarters strategies 
-active_risk_lastq <- calc_active_risk(unwt_returns$sim, 
-                                get_strat_size(strat_headline_size$actual, as.Date("2018-08-28")),
-                                start_date = as.Date("2017-08-28"), end_date = as.Date("2018-08-28"))
 ```
 
 ```{r get_scenarios}
@@ -65,28 +55,52 @@ scenarios_input <- read.csv("../data2/scenarios.csv", stringsAsFactors = FALSE) 
 
 # Add permanent series of most recent quarter
 scenarios <- rbind(scenarios_input, 
-      data.frame(period = c("Last3M"), start_date = c(today() - months(3)), end_date = c(as.Date(NA))))
+      data.frame(period = c("Last3M"), start_date = c(today() - months(3)), end_date = c(today()))) 
+
+rownames(scenarios) <- scenarios$period 
 
 # Order by last 3M, then based on start dates (for plotting purposes)
 ordered_periods <- c("Last3M", scenarios$period[order(scenarios$start_date)][!scenarios$period[order(scenarios$start_date)] %in% c("Last3M")])
+
+# Get current strategies
+curr_strat <- get_strat_size(strat_headline_size$actual, as.Date("2018-11-28"))
+
+# Calculate active risk of previous quarters strategies 
+active_risk_lastq <- calc_active_risk(unwt_returns$sim, 
+                                get_strat_size(strat_headline_size$actual, as.Date("2018-08-28")),
+                                start_date = as.Date("2017-08-28"), end_date = as.Date("2018-08-28"))
+
+# Calculate active risk of current strategies
+active_risk <- apply(scenarios, 1, 
+                     function(x) {
+                       calc_active_risk(unwt_returns$sim, 
+                                        curr_strat,
+                                        start_date = x['start_date'], end_date = x['end_date'])
+                     })
+
+# calculate historical return
+historical_return <- apply(scenarios, 1, 
+                           function(x) {
+                             simulate_history(unwt_returns$sim, 
+                                      curr_strat, 
+                                      x['start_date'], x['end_date'])
+                           })
 ```
 
 ```{r calc_team_correlation_analysis}
-# Calculate team returns by summing returns across strategies within each division
-team_ret <- sim_ret %>% 
-  rownames_to_column("date") %>%
-  gather(strategy, return, -date) %>%
-  left_join(strategies %>% select(strategy, owner), 
-            by = "strategy") %>%
-  mutate(strategy = str_extract(strategy, "^.*(?=:::)")) %>%
+wt_returns_w_group <- wt_returns$actual %>%
+  gather(strategy, returns, -date) %>%
+  left_join(select(instr_df, strategy, owner, type), by = "strategy")
+
+actual_team_ret <- wt_returns_w_group %>%
   group_by(date, owner) %>%
-  summarise(return = sum(return, na.rm = T)) %>% 
-  spread(owner, -date)
+  summarise(returns = sum(returns)) %>%
+  ungroup() %>%
+  spread(owner, returns)
 
-# Calculate correlation between teams, see helper.R for calc_cor()
-team_cor <- calc_cor(team_ret, 
-                     start_date = scenarios %>% filter(period == "Last3M") %>% .$start_date) 
-
+actual_corr <- calc_cor(actual_team_ret,
+                        start_date = as.Date("2017-10-31"),
+                        end_date = as.Date("2018-10-31"))
 ```
 
 ```{r write_up}
