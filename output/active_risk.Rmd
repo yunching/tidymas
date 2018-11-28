@@ -16,452 +16,50 @@ library(scales)
 library(knitr)
 
 blpConnect()
-
-# Read in details of instruments, including matching their codes to the Bloomberg tickers
-# govt <- read.csv("inputs/tickers_govt_clean.csv", stringsAsFactors = FALSE)
-# ilb <- read.csv("inputs/tickers_ilb_clean.csv", stringsAsFactors = FALSE)
-# bonds <- bind_rows(govt, ilb) %>%
-#   mutate(country = as.factor(country),
-#          maturity = as.factor(country),
-#          type = as.factor(type),
-#          asset =as.factor(asset))
-# futures <- read.csv("inputs/tickers_futures.csv", stringsAsFactors = FALSE) %>%
-#   mutate(original_ticker = ticker,
-#          ticker = str_replace(original_ticker, "(?i) comdty", " B:00_0_D Comdty")) # Roll differencing, see ‘DOCS #2072138 <GO> on Bloomberg
-# equity <- read.csv("inputs/tickers_equity.csv", stringsAsFactors = FALSE)
-# fx_funding <- read.csv("inputs/tickers_funding.csv", stringsAsFactors = FALSE)
-# 
-# others <- read.csv("inputs/tickers_others.csv", stringsAsFactors = FALSE)
-# 
-# cds <- others %>% filter(asset == "cds") 
 ```
 
-```{r rebuild}
+```{r initialize}
+# Get strategies from file and their sizes (mix of month weighted and %)
 strategies_list <- build_strategies("../data2/strategies.csv")
+
+# Get required instruments and portfolios (actual vs sim)
 instr_df <- strategies_list$summary
 portfolios_list <- strategies_list[names(strategies_list) != "summary"]
 
+# Get duration from Bloomberg
 dur_df <- get_dur_bbg(instr_df)
+
+# Calculate all weights in %
 clean_pf_list <- map(portfolios_list, 
                   ~convert_dur_size(., instr_df, dur_df))
 
+# Get returns of assets from Bloomberg
 asset_returns <- get_ret_bbg(instr_df)
+
+# Calculate weight return of strategies
 wt_returns <- map(clean_pf_list, 
                   ~calc_strat_wt_return(., asset_returns))
 
+# Calculate weight of strategies
 strat_headline_size <- map(clean_pf_list, 
                            ~calc_strat_headline_size(.))
 
+# Calculate unweighted return of strategies
 unwt_returns <- map2(wt_returns, strat_headline_size, calc_strat_unwt_return)
 
+# Calculate active risk of current strategies
 active_risk <- calc_active_risk(unwt_returns$sim, 
                                 get_strat_size(strat_headline_size$actual, as.Date("2018-11-28")),
                                 start_date = as.Date("2017-11-28"), end_date = as.Date("2018-11-28"))
 
-```
-
-
-```{r get_strategies}
-dir()
-# Read in strategies 
-strategy_file <- "../data2/strategies.csv"
-strategies <- read.csv(strategy_file, stringsAsFactors = FALSE) %>%
-  mutate(open_date = ymd(open_date), close_date = ymd(close_date),
-         asset_class = as.factor(asset_class),
-         size_type = as.factor(size_type),
-         strategy = paste(strategy, owner, sep = ":::"))
-
-# Filter out strategies which are still open, indicated by the lack of a close date
-active_strategies <- strategies %>%
-  filter(is.na(close_date)) %>%
-  arrange(desc(owner)) %>%
-  .$strategy %>%
-  unique %>%
-  rev
-
-## Check that all instruments' tickers are known
-
-# Check asset classes
-valid_asset_class <- c("govt", "ilb", "future", "equity", "cds", "fx")
-asset_classes <- unique(strategies$asset_class)
-                      
-if (mean(asset_classes %in% valid_asset_class) < 1)
-  stop(paste("Invalid asset class found in", strategy_file, ":", paste(asset_classes[! asset_classes %in% valid_asset_class], collapse = ",")))
-
-# Check bonds
-strat_bond <- strategies %>% filter(asset_class == "govt" | asset_class == "ilb") %>% .$instrument
-
-if (mean(strat_bond %in% bonds$identifier) < 1) 
-  stop(paste("Bond identifier unknown in", strategy_file, ":", paste(strat_bond[! strat_bond %in% bonds$identifier], collapse = ",")))
-
-# Check futures
-strat_future <- strategies %>% filter(asset_class == "future") %>% .$instrument
-
-if (mean(strat_future %in% futures$identifier) < 1) 
-  stop(paste("Future identifier unknown in", strategy_file, ":", paste(strat_future[! strat_future %in% futures$identifier], collapse = ",")))
-
-# Check equity indices
-strat_equity <- strategies %>% filter(asset_class == "equity") %>% .$instrument
-
-if (mean(strat_equity %in% equity$identifier) < 1) 
-  stop(paste("Equity identifier unknown in", strategy_file, ":", paste(strat_equity[! strat_equity %in% equity$identifier], collapse = ",")))
-
-# Check CDS indices
-strat_cds <- strategies %>% filter(asset_class == "cds") %>% .$instrument
-
-if (length(strat_cds) > 0 && mean(strat_cds %in% cds$identifier) < 1) 
-  stop(paste("Equity identifier unknown in", strategy_file, ":", paste(strat_cds[! strat_cds %in% cds$identifier], collapse = ",")))
-
-# Check FX
-strat_fx <- strategies %>% filter(asset_class == "fx") %>% .$instrument
-
-if (mean(nchar(strat_fx) == 6) < 1)  # FX errors identified by ticker being not equal to 6 characters
-  stop(paste("FX identifier unknown in", strategy_file, ":", paste(strat_fx[nchar(strat_fx) != 6], collapse = ",")))
-
-```
-
-```{r get_duration, message = FALSE, echo = FALSE, warning = FALSE}
-# Get tickers for duration
-
-## Bond instruments
-uniq_inst_bonds <- data.frame(instrument = unique(filter(strategies, size_type == "months" & asset_class != "future")$instrument), 
-                              stringsAsFactors = FALSE) %>%
-  left_join(select(bonds, identifier, ticker), by = c("instrument"="identifier")) %>%
-  transmute(name = instrument, 
-            ticker = ticker)
-
-## Future instruments
-uniq_inst_fut <- data.frame(instrument = unique(filter(strategies, size_type == "months" & asset_class == "future")$instrument), 
-                            stringsAsFactors = FALSE) %>%
-  left_join(select(futures, identifier, ticker), by = c("instrument"="identifier")) %>%
-  transmute(name = instrument, 
-            ticker = ticker)
-
-## CDS instruments
-uniq_inst_cds <- data.frame(instrument = unique(filter(strategies, size_type == "months" & asset_class == "cds")$instrument), 
-                            stringsAsFactors = FALSE) %>%
-  left_join(select(cds, identifier, ticker_duration, ticker_return), by = c("instrument"="identifier")) %>%
-  mutate(name = instrument, 
-            ticker = ticker_duration)
-
-# Download durations for bonds
-bond_dur <- bdh_batch(uniq_inst_bonds, "MODIFIED_DURATION")
-all_dur <- bond_dur
-
-# Download duration for futures
-if (nrow(uniq_inst_fut) > 0) {
-  fut_dur <- bdh_batch(uniq_inst_fut, "FUT_EQV_DUR_NOTL")
-  
-  # Some futures such as Euribor futures does not have historical duration, 
-  #  hence we need to use the most recent duration and apply it to the history
-  recent_dur <- bdp(uniq_inst_fut$ticker, "FUT_EQV_DUR_NOTL")
-  for (i in 2:ncol(fut_dur)) {
-    curr_sec <- names(fut_dur)[i]
-    curr_ticker <- uniq_inst_fut$ticker[uniq_inst_fut$name == curr_sec]
-    if (mean(is.na(fut_dur[,i])) == 1) {  # If all duration from the historical series is NA
-      fut_dur[,i] <- recent_dur[rownames(recent_dur) == curr_ticker,]   # we replace with the most recent duration
-    }
-  }
-  # Combine futures and bond duration
-  all_dur <- left_join(fut_dur, bond_dur, by="date")
-  
-}
-
-# Download spread duration for CDS
-if (nrow(uniq_inst_cds) > 0) {
-  cds_dv01 <- bdp(uniq_inst_cds$ticker, "SW_EQV_BPV") 
-  
-  cds_dur <- abs(cds_dv01 * 10000 / 1e7) %>%
-    rownames_to_column("ticker") %>%
-    left_join(uniq_inst_cds, by = "ticker")
-  
-  # Combine spread duration of CDS with other durations
-  for (i in 1:nrow(cds_dur)) {
-    all_dur[cds_dur$instrument[i]] <- cds_dur$SW_EQV_BPV[i]
-  }
-}
-
-# Some instruments have very short duration history e.g. ILBs, hence we just assume all previous to be the first duration. 
-all_dur <- tidyr::fill(all_dur, everything(), .direction = "up")
-
-# Create blank placeholder dataframe with dates, to use later to harmonize dates
-blank_df <- select(all_dur, date) 
-
-all_dur_no_date <- remove_date(all_dur)
-```
-
-```{r get_returns, message = FALSE, echo = FALSE, warning = FALSE}
-###############################################
-# DOWNLOAD RETURN DATA DATA FOR ALL ASSETS
-###############################################
-
-# GOVT, ILB, EQUITY, FUTURES: select those only required by the strategies
-
-## GOVT AND ILB
-filtered_bonds <- bonds %>% filter(identifier %in% strategies$instrument) %>%
-  transmute(name = identifier,
-         ticker = ticker) 
-
-## EQUITY
-filtered_equity <- equity %>% filter(identifier %in% strategies$instrument) %>%
-  transmute(name = identifier,
-         ticker = ticker)
-
-## FUTURES
-filtered_futures <- futures %>% filter(identifier %in% strategies$instrument) %>%
-  transmute(name = identifier,
-            ticker = ticker)
-
-## CDS
-filtered_cds <- cds %>% filter(identifier %in% strategies$instrument) %>%
-  mutate(name = identifier,
-         ticker =ticker_return)
-
-### Download return index for bonds and equity from BBG
-ret_index <- bdh_batch(rbind(filtered_bonds, filtered_equity))
-
-# Download futures price if there are any futures traded
-if (nrow(filtered_futures) > 0) { 
-  ret_index_2 <- bdh_batch(filtered_futures, "CONTRACT_VALUE")
-  ret_index <- merge(ret_index, ret_index_2, by = "date")
-}
-
-# Download CDS prices if CDS is used
-if (nrow(filtered_cds) > 0) {
-  cds_ret_index <- bdh_batch(filtered_cds)
-  ret_index <- merge(ret_index, cds_ret_index, by = "date")
-}
-ret_index_no_date <- remove_date(ret_index)
-
-### Compute daily returns for govt, equity, futures, cds
-price_ret <- calc_returns(ret_index_no_date)
-
-# Store govt, equity, futures, cds returns into a variable (to also store other asset returns later)
-all_asset_ret <- price_ret
-
-## FX: returns based on price and funding
-fx_strat <- strategies %>% filter(asset_class == "fx")
-fx_inst <- fx_strat %>% select(instrument) %>%
-  mutate(ticker = paste(instrument, "Curncy"),
-         name = instrument) %>%
-  unique()
-
-### Download required data from Bloomberg if there are any strategies
-if (nrow(fx_inst) > 0) {
-  fx_index <- bdh_batch(fx_inst)
-  
-  fx_price_ret <- calc_returns(fx_index)
-  
-  # Get currencies required
-  required_funding <- c(substr(fx_inst$instrument, 1,3), substr(fx_inst$instrument, 4,6)) %>% unique
-  
-  # Get tickers of currency fundings
-  required_fx_depo <- fx_funding %>% filter(tolower(currency) %in% tolower(required_funding)) %>%
-    mutate(name = paste(tolower(currency), "depo", sep ="_"),
-           ticker = ticker)
-  
-  # Download funding rates from Bloomberg
-  fx_funding_rates <- bdh_batch(required_fx_depo)
-  
-  # Funding based on actual/360, hence calculate number of days between dates (to account for weekends)
-  day_count <- as.numeric(fx_funding_rates$date - lag(fx_funding_rates$date))
-
-  # Calculate funding return for each day
-  fx_funding_ret <- fx_funding_rates %>% remove_date %>%
-    .[]/360 * day_count / 100  # rate / (days in year) * day_count / (adjustment for %)
-    
-  fx_funding_ret <- fx_funding_ret %>%
-    mutate_all(funs(lag))   # Lag one day
-  
-  # Earn the left funding and pay the right funding for the currency pair
-  left_funding <- fx_funding_ret[,paste(substr(names(fx_price_ret)[-1], 1, 3), "depo", sep="_")] 
-  right_funding <- fx_funding_ret[,paste(substr(names(fx_price_ret)[-1], 4, 6), "depo", sep="_")] 
-  total_funding <- left_funding - right_funding  # Earn left pair funding, pay right pair
-  
-  # Fill NAs for dates without funding (of either pair), may lose return accuracy but allows for calculation in the earlier bits of history
-  total_funding[is.na(total_funding)] <- 0
-
-  # Total return is price return + funding return
-  fx_total_ret <- remove_date(fx_price_ret) + total_funding
-  
-  # Combine FX returns with the other asset returns
-  all_asset_ret <- cbind(fx_total_ret, price_ret)
-}
-
-```
-
-```{r calc_sizes}
-###############################################
-# COMPUTE SIZE OF STRATEGIES 
-###############################################
-
-# Compute unweighted sizes of the strategies (largely to cater to curve and spread trades)
-# Unweighted sizes are required to compute active risk of the strategies
-
-###########################################################
-# Critical variables in below chunk
-###########################################################
-## curr_unwt_size       = the relative size of each instrument in the current trade assuming trade is unweighted, 
-##                        e.g. Long German 10y vs 2y will approx show a size of 1.0 for 10y and 5.0 for 2y (5 times exposure)
-## strat_unwt_size_list = collation of all curr_unwt_size for all trades
-## actual_wt            = actual traded/planned sizes for each trade in % of R2, timeseries
-## sim_wt               = simulated size (% of R2), ie last size of each trade extrapolated to the entire history, timeseries
-
-## Initialize blank dataframes
-strat_unwt_size_list <- list()
-actual_wt <- sim_wt <- blank_df
-
-## Iterate through each unique strategy
-for (i in unique(strategies$strategy)) {
-  curr_unwt_size <- blank_df
-  
-  # Filter out current strategy
-  curr_strat <- strategies %>% filter(strategy == i) 
-  inst_list <- curr_strat$instrument %>% unique
-  
-  # Iterate through all instruments required for this strategy
-  
-  ## If size is in months
-  if (curr_strat$size_type[1] == "months") {
-    # Extract necessary duration
-    dates <- all_dur$date
-    curr_strat_dur <- select(all_dur, inst_list) 
-    
-    # Compute max duration for every time period
-    max_dur <- apply(curr_strat_dur, 1, max)
-    
-    # Divide by the longest duration
-    curr_unwt_size <- curr_strat_dur %>%
-      mutate_all(funs(max_dur/.))
-    
-    actual_wt[i] <- 0
-    # Loop through each instrument to compute the sizes
-    for (curr_inst in inst_list) {
-      curr_inst_df <- filter(curr_strat, instrument == curr_inst) 
-      # ....
-      curr_unwt_size[[curr_inst]] <- curr_unwt_size[[curr_inst]] * sign(curr_inst_df$size[1])
-      
-      # Add size for every period of open position, only for first instrument to avoid double counting
-      if (curr_inst == inst_list[1]) {
-        for (j in 1:nrow(curr_inst_df)) {
-          strat_start <- if (is.na(curr_inst_df$open_date[j])) as.Date(today()-days(1)) else curr_inst_df$open_date[j]
-          strat_end <- if (is.na(curr_inst_df$close_date[j])) as.Date(today()) else curr_inst_df$close_date[j]
-          
-          # Sizing is based on maximum duration to accomodate curve trades .....
-          actual_wt[i] <- actual_wt[i] + if_else(sim_wt$date <= strat_end & sim_wt$date > strat_start, 
-                                                 abs(curr_inst_df$size[j]) / (max_dur * 12), 0) 
-        }
-      }
-    }
-    
-    # Add back date
-    curr_unwt_size <- cbind(date = dates, curr_unwt_size)
-    
-    # Simulated wt is equal to current open position
-    sim_wt[i] <- tail(actual_wt[[i]],1)
-  } 
-  else { # If size is in percent
-    actual_wt[i] <- 0
-    for (curr_inst in inst_list) {
-      curr_unwt_size[curr_inst] <- 0
-      curr_inst_df <- curr_strat %>% filter(instrument == curr_inst)
-      
-      # Set weight as actual first
-      for (j in 1:nrow(curr_inst_df)) {
-        # Strat start and end
-        strat_start <- if (is.na(curr_inst_df$open_date[j])) as.Date(today()-days(1)) else curr_inst_df$open_date[j]
-        strat_end <- if (is.na(curr_inst_df$close_date[j])) as.Date(today()) else curr_inst_df$close_date[j]
-        
-        actual_wt[i] <- actual_wt[i] + if_else(sim_wt$date <= strat_end & sim_wt$date > strat_start,
-                                               abs(curr_inst_df$size[j])/100, 0)
-        
-        curr_unwt_size[curr_inst] <- curr_unwt_size[curr_inst] + 
-          if_else(sim_wt$date <= strat_end & sim_wt$date > strat_start,
-                  curr_inst_df$size[j]/100, 0)
-      }
-    }
-    
-    # Find max abs size of each row
-    if (ncol(curr_unwt_size) > 2) { # If more than 2 columns (incl date)
-      row_max <- apply(curr_unwt_size[,-1], 1, function(x) {max(abs(x))})
-      divided <- apply(curr_unwt_size[,-1], 2, function(x) {x / row_max})
-    } else {
-      row_max <- curr_unwt_size[,-1]
-      divided <- curr_unwt_size[,-1] / row_max
-    }
-    
-    # Divide each row by its max, if max is 0, resulting in failed division, set weight to zero
-    divided[is.nan(divided)] <- NA
-    divided_df <- as.data.frame(divided)
-    
-    # If any in the row is NA, we fill with last available data. 
-    # this allows us to compute historical unweighted returns based on current exposure
-    for (k in 1:nrow(divided_df)) {
-      if (is.na(divided_df[k,1])) {
-        divided_df[k,] <- tail(divided_df[!is.na(divided_df[,1]),], 1)
-      }
-    }
-    
-    colnames(divided_df) <- names(curr_unwt_size %>% select(-date))
-    
-    # Recombine divided results to curr_unwt_size
-    curr_unwt_size <- cbind(curr_unwt_size %>% select(date), divided_df)
-    
-    # Weight of strategy is equal to the largest weight for each time period
-    actual_wt[i] <- row_max
-    
-    sim_wt[i] <- tail(actual_wt[[i]],1)
-  }
-  
-  #colnames(curr_unwt_size) <- c("date", inst_list)
-  
-  strat_unwt_size_list[[i]] <- curr_unwt_size
-}
-
-# Resize returns to have same dates as the strategy sizes
-ret_resized <- left_join(blank_df,
-                         mutate(all_asset_ret, date = as.Date(row.names(all_asset_ret))), by = "date") 
-
-```
-
-```{r calc_returns}
-###################################
-# Compute returns for each strategy
-###################################
-
-###########################################################
-# Critical variables in below chunk
-###########################################################
-## unwt_ret              = unweighted return of each trade by combining the returns across all instruments for the trade, timeseries
-## actual_strat_ret_list = actual return, computed by taking (unwt ret) * (actual size)
-## sim_strat_ret_list    = simulated return, computed by taking (unwt ret) * (simulated size)
-## strat_unwt_size_list  = unweighted size of instruments, explained in above chunk
-
-actual_strat_ret_list <- list()
-sim_strat_ret_list <- list()
-unwt_ret <- blank_df
-
-# Iterate through all strategies
-for (i in 1:length(strat_unwt_size_list)) {
-  # Extract out current strategy
-  each_strategy <- strat_unwt_size_list[[i]]
-
-  # Select only the necessary asset returns
-  required_ret <- ret_resized %>% select(colnames(each_strategy))
-  
-  # Compute unwted return for each asset 
-  unwt_ret[names(strat_unwt_size_list)[i]] <- (select(required_ret, -date) * select(each_strategy, -date)) %>%
-    rowSums()
-
-}
-
-# Calculate actual and simulated return
-actual_ret <- remove_date(unwt_ret) * remove_date(actual_wt)
-sim_ret <- remove_date(unwt_ret) * remove_date(sim_wt)
+# Calculate active risk of previous quarters strategies 
+active_risk_lastq <- calc_active_risk(unwt_returns$sim, 
+                                get_strat_size(strat_headline_size$actual, as.Date("2018-08-28")),
+                                start_date = as.Date("2017-08-28"), end_date = as.Date("2018-08-28"))
 ```
 
 ```{r get_scenarios}
-scenarios_input <- read.csv("inputs/scenarios.csv", stringsAsFactors = FALSE) %>%
+scenarios_input <- read.csv("../data2/scenarios.csv", stringsAsFactors = FALSE) %>%
   mutate(start_date = ymd(start_date),
          end_date = ymd(end_date))
 
@@ -472,34 +70,6 @@ scenarios <- rbind(scenarios_input,
 # Order by last 3M, then based on start dates (for plotting purposes)
 ordered_periods <- c("Last3M", scenarios$period[order(scenarios$start_date)][!scenarios$period[order(scenarios$start_date)] %in% c("Last3M")])
 ```
-
-```{r calc_active_risk}
-# We want to calculate active risk for this quarter, as well as last quarter
-
-# Assume current weights to be the last available day's weight ie today
-curr_wt <- tail(sim_wt[,active_strategies],1) 
-
-# Find weights of previous strat, assumed to be the position 3 months ago (likely to be round strat time)
-t_lastq <- today() - months(3)  # Find date exactly 3 months ago
-date_lastq <- sim_wt$date[min(which(sim_wt$date > t_lastq))]  # Find date closest to the 3 month ago exact date
-prev_wt <- tail(actual_wt %>% filter(date == date_lastq)) %>%   # Set previous wt to 3m ago, remove strategies with size of 0
-  gather(strat, size, -date) %>% 
-  filter(size != 0) %>%
-  spread(strat, -date) %>%
-  select(-date)
-
-# Calc active risk for current strategies
-curr_strat_df <- apply(scenarios,1, function(x) {calc_active_risk(unwt_ret, curr_wt, x['start_date'], x['end_date'])})
-names(curr_strat_df) <- scenarios$period
-active_risk_all <- sapply(curr_strat_df, function(x) x$active_risk) %>% 
-  as.data.frame %>%
-  rownames_to_column("strategy")
-
-# Calc active risk for last quarter strategies
-prev_strat_df <- calc_active_risk(unwt_ret, prev_wt, date_lastq - months(3), date_lastq)
-prev_strat_active_risk <- sum(abs(prev_strat_df$active_risk)) * 10000
-
-``` 
 
 ```{r calc_team_correlation_analysis}
 # Calculate team returns by summing returns across strategies within each division
