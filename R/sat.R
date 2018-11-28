@@ -165,6 +165,8 @@ rating_to_num <- function(rating){
     return(8)
   else if (rating == "BBB")
     return(9)
+  else if (rating == "BBB-")
+    return(10)
   else
     return(NA)
 }
@@ -188,75 +190,144 @@ num_to_rating <- function(rating_num){
     return("BBB+")
   else if (rating_num == 9)
     return("BBB")
+  else if (rating_num == 10)
+    return("BBB-")
   else
     return(NA)
 }
 
-pad_2zeros <- function(x){
-  formatC(x, width = 2, format = "d", flag = "0")
-}
-
-#' Get MAS rating
+#' Pad numbers with two zeros
 #'
-#' @param my_sec A list of Bloomberg tickers to calculate ratings
-#' @param date Date to obtain rating
+#' @param Number to be padded
 #'
-#' @return Clean ratings and MAS rating
+#' @return Number padded with two zeros
 #' @export
 #'
-#' @examples
-#' ## library(Rblpapi)
-#' ## library(lubridate)
-#' ## blpConnect()
-#' ## get_mas_rating("GTGBP10Y Govt", ymd("20180101"))
-#'
+#' @details Helper function for using dates with Rblpapi
+pad_2zeros <- function(Number){
+  formatC(Number, width = 2, format = "d", flag = "0")
+}
+
+#' Show median credit rating over time
 #' @importFrom magrittr "%>%"
-get_mas_rating <- function(my_sec, date){
+#' @importFrom tidyr crossing
+#' @importFrom stats median
+#' @importFrom rlang .data
+#' @importFrom tibble tibble
+#' @importFrom scales date_format
+#' @import ggplot2
+#' @param start_date Start date to show credit ratings.
+#' @param end_date End date to show credit ratings.
+#' @param freq Frequency of data.
+#' @param date_adjust Date adjustment parameter: included as an easy way to generate monthends. Use start and end dates as the first day of each month, and set date_adjust=1 to subtract from the sequence of dates. This gives us the monthends.
+#'
+#' @return Generates a plot to show evolution of credit rating for benchmark countries
+#' @export
+#'
+#' @examples ##show_bm_ratings_plot()
+show_bm_ratings_plot <- function(start_date=Sys.Date() - 365, end_date=Sys.Date(), freq="1 month", date_adjust=1){
+  dates <- sort(seq(as.Date(start_date), as.Date(end_date), by=freq) - date_adjust)
+  sec_list <- c(
+    "GTAUD10Y Govt",
+    "GTBEF10Y Govt",
+    "GTCAD10Y Govt",
+    "GTFRF10Y Govt",
+    "GTDEM10Y Govt",
+    "GTITL10Y Govt",
+    "GTJPY10Y Govt",
+    "GTNLG10Y Govt",
+    "GTKRW10Y Govt",
+    "GTESP10Y Govt",
+    "GTGBP10Y Govt",
+    "GT10 Govt"
+  )
+  credit_rating_levels <- c("AAA", "AA+", "AA", "AA-", "A+", "A", "A-", "BBB+", "BBB", "BBB-")
+  generics_country_map <- tibble(
+    sec = sec_list,
+    country = c(
+      "Australia",
+      "Belgium",
+      "Canada",
+      "France",
+      "Germany",
+      "Italy",
+      "Japan",
+      "Netherlands",
+      "South Korea",
+      "Spain",
+      "United Kingdom",
+      "US"
+    )
+  )
 
-  # message("Year: ", lubridate::year(date))
-  # message("Month: ", lubridate::month(date))
-  # message("Day: ", lubridate::day(date))
-
-  date_override <-
-    paste0(
-      lubridate::year(date),
-      pad_2zeros(lubridate::month(date)),
-      pad_2zeros(lubridate::day(date))
-    )
-  # message("Date override: ", date_override)
-  moodys <-
-    Rblpapi::bdp(
-      my_sec,
-      "RTG_SP_LT_LC_ISSUER_CREDIT",
-      overrides = c("Rating_as_of_date_override" = date_override)
-    )
-  snp <-
-    Rblpapi::bdp(
-      my_sec,
-      "RTG_MDY_LT_LC_DEBT_RATING",
-      overrides = c("Rating_as_of_date_override" = date_override)
-    )
-  fitch <-
-    Rblpapi::bdp(
-      my_sec,
-      "RTG_FITCH_LT_LC_DEBT",
-      overrides = c("Rating_as_of_date_override" = date_override)
-    )
-
-  moodys.clean <- clean_rating(moodys)
-  snp.clean <- clean_rating(snp)
-  fitch.clean <- clean_rating(fitch)
-  median_rating <-
-    median(
-      rating_to_num(moodys.clean),
-      rating_to_num(snp.clean),
-      rating_to_num(fitch.clean)
+  credit_rating_raw <- tidyr::crossing(date=dates, sec=sec_list) %>%
+    dplyr::mutate(
+        padded_date = paste0(
+        lubridate::year(.data$date),
+        tidymas::pad_2zeros(lubridate::month(.data$date)),
+        tidymas::pad_2zeros(lubridate::day(.data$date))
+      )
     ) %>%
-    num_to_rating()
+    dplyr::group_by(.data$date, .data$sec) %>%
+    #Pull LT credit rating data from Bloomberg
+    dplyr::mutate(
+      moody = Rblpapi::bdp(
+        .data$sec,
+        "RTG_MDY_LT_LC_DEBT_RATING",
+        overrides = c("Rating_as_of_date_override" = .data$padded_date)
+      )[1,1],
+      snp = Rblpapi::bdp(
+        .data$sec,
+        "RTG_SP_LT_LC_ISSUER_CREDIT",
+        overrides = c("Rating_as_of_date_override" = .data$padded_date)
+      )[1,1],
+      fitch = Rblpapi::bdp(
+        .data$sec,
+        "RTG_FITCH_LT_LC_DEBT",
+        overrides = c("Rating_as_of_date_override" = .data$padded_date)
+      )[1,1]
+    )
+  #split BBG data retrival from rest of data tasks as bdp call element-wise is very slow
+  #Takes several hours to run for 10y of monthly data
+  credit_rating <- credit_rating_raw %>%
+    dplyr::mutate(
+      moody.clean = clean_rating(.data$moody),
+      snp.clean = clean_rating(.data$snp),
+      fitch.clean = clean_rating(.data$fitch),
+      moody.num = rating_to_num(.data$moody.clean),
+      snp.num = rating_to_num(.data$snp.clean),
+      fitch.num = rating_to_num(.data$fitch.clean),
+      mas_median_num = stats::median(c(.data$moody.num, .data$snp.num, .data$fitch.num)),
+      mas_rating = num_to_rating(.data$mas_median_num) %>% factor(credit_rating_levels),
+      country = generics_country_map$country[match(.data$sec, generics_country_map$sec)]
+    )
 
-  output <- cbind(date, moodys, snp, fitch, moodys.clean, snp.clean, fitch.clean, median_rating)
-  colnames(output) <- c("Date","Moodys", "S&P", "Fitch","Moodys.clean", "S&P.clean", "Fitch.clean", "MAS Median")
+  wt_caps <- c(
+    "5%" = "dotdash",
+    "0%" = "dashed",
+    "15%" = "dotted"
+  )
 
-  return(output)
+  credit_rating_subtitle <- paste("From", min(credit_rating$date), "to", max(credit_rating$date))
+
+  credit_rating <- credit_rating %>%
+    dplyr::mutate(mas_rating = forcats::fct_rev(.data$mas_rating))
+
+  credit_rating %>%
+    ggplot(aes(x = .data$date, y = .data$mas_rating, col = .data$country, group=.data$country)) +
+    geom_line() + geom_point() +
+    labs(x = "Date",
+         y = "Credit Rating",
+         title = "Median credit rating over time for benchmark countries",
+         col = "Country",
+         subtitle = credit_rating_subtitle) +
+    geom_hline(aes(yintercept=1, linetype="0%")) +
+    geom_hline(aes(yintercept=3, linetype="5%")) +
+    geom_hline(aes(yintercept=6, linetype="15%")) +
+    facet_wrap(.data$country ~ .) +
+    scale_x_date(labels = date_format("%Y")) +
+    scale_linetype_manual(name="Weight caps", values=wt_caps)
+
+  return(credit_rating)
 }
 
