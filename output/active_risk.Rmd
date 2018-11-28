@@ -14,7 +14,6 @@ library(lubridate)
 library(RcppRoll)
 library(scales)
 library(knitr)
-source("../R/sat_active_risk.R")
 
 blpConnect()
 
@@ -39,9 +38,25 @@ blpConnect()
 
 ```{r rebuild}
 strategies_list <- build_strategies("../data2/strategies.csv")
-dur_df <- get_dur_bbg(strategies_list$summary)
-clean_size <- convert_dur_size(strategies_list, duration_df)
-returns <- get_price_ret_bbg(instrument_list[c(1,3,9,34)])
+instr_df <- strategies_list$summary
+portfolios_list <- strategies_list[names(strategies_list) != "summary"]
+
+dur_df <- get_dur_bbg(instr_df)
+clean_pf_list <- map(portfolios_list, 
+                  ~convert_dur_size(., instr_df, dur_df))
+
+asset_returns <- get_ret_bbg(instr_df)
+wt_returns <- map(clean_pf_list, 
+                  ~calc_strat_wt_return(., asset_returns))
+
+strat_headline_size <- map(clean_pf_list, 
+                           ~calc_strat_headline_size(.))
+
+unwt_returns <- map2(wt_returns, strat_headline_size, calc_strat_unwt_return)
+
+active_risk <- calc_active_risk(unwt_returns$sim, 
+                                get_strat_size(strat_headline_size$actual, as.Date("2018-11-28")),
+                                start_date = as.Date("2017-11-28"), end_date = as.Date("2018-11-28"))
 
 ```
 
