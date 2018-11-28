@@ -628,6 +628,17 @@ calc_strat_unwt_return <- function(wt_returns, strat_headline_size) {
         returns)
 }
 
+custom_grouping <- function(returns_df, instr_df, group) {
+  instr_df <- instr_df %>% select_("strategy", group)
+  returns_df %>%
+    gather(strategy, returns, -date) %>%
+    left_join(instr_df, by = "strategy") %>%
+    group_by_("date", group) %>%
+    summarise(returns = sum(returns, na.rm = TRUE)) %>%
+    ungroup() %>%
+    spread(owner, returns)
+}
+
 get_strat_size <- function(strat_df, dt = NULL, approx = TRUE) {
   if (is.null(dt))
     dt <- max(strat_df$date)
