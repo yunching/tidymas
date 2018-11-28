@@ -1,40 +1,51 @@
 library(lubridate)
 library(tidyverse)
 
-#required_libraries <- c("Rblpapi", "pbapply", "stringr", "tidyverse", "ggplot2")
-#install.packages(required_libraries)
-
-#' Merge a list of dataframes with a single data column each into a single dataframe
+#' bdh with pre-built options for getting daily data for all weekdays, non-trading weekdays will have previous value
 #'
-#' @param df_list list of dataframes
-#' @param header_names used when df_list items are unnamed
+#' @param securities A character vector with security symbols in Bloomberg notation.
+#' @param field A character vector with Bloomberg query fields.
+#' @param start_date A Date variable with the query start date.
+#' @param end_date An optional Date variable with the query end date; if omitted the most recent available date is used.
+#' @param options An optional named character vector with additional option values
 #'
-#' @return dataframe with column names as `header_names` or name of list elements of `df_list`
+#' @return A list with as a many entries as there are entries in securities; each list contains a data.frame with one row per observations and as many columns as entries in fields. If the list is of length one, it is collapsed into a single data frame. Note that the order of securities returned is determined by the backend and may be different from the order of securities in the securities field.
 #' @export
 #'
 #' @examples
-#'   bbg_series <- c("SPX Index", "UKX Index"); field <- "PX_LAST"
-#'   data_bbg <- pblapply(1:length(bbg_series),
-#'     function(x) { bdh(bbg_series[x], field, start_date = as.Date("2018-01-01"), end_date = as.Date("2018-10-10")) })
-#'   df <- merge_from_list(data_bbg)
-merge_from_list <- function(df_list, header_names = NULL) {
-  if (is.null(header_names) && is.null(names(df_list))) stop("either header_names must be provided or list must be named")
-  df <- suppressWarnings( # Warning is suppressed as column names will be duplicated
-    reduce(df_list, function(x,y) {merge(x, y, by ="date", all = T)})
-  )
-  if (is.null(header_names))
-    header_names <- names(df_list)
-  colnames(df) <- c("date", header_names)
+#' \donttest{
+#' bdh(c("SPX Index", "STI Index"), "PX_LAST", start.date = Sys.Date() - 31)
+#' }
+bdh_weekday <- function(series, field = "PX_LAST", start_date = as.Date("1994-01-01"), end_date = NULL, options_overrides = NULL) {
+  # Set options
+  defaults <- c("periodicitySelection" = "DAILY",
+                "nonTradingDayFillOption" = "NON_TRADING_WEEKDAYS",
+                "nonTradingDayFillMethod" = "PREVIOUS_VALUE")
+  options <- if (is.null(options_overrides)) defaults else c(options_overrides, defaults[! names(defaults) %in% names(options_overrides)])
+
+
+  # If series is data.frame, match name to ticker
+  if (any(class(series) == 'data.frame')) {
+    if (is.null(series$ticker)) stop("securities is a dataframe, column 'ticker' is missing")
+
+    bbg_series <- data.frame(ticker = series$ticker, stringsAsFactors = FALSE)
+    bbg_series$name <- if (is.null(series$name)) series$ticker else series$name
+  }
+  # If series is just a character vector, search for name of vector, otherwise just use ticker as header
+  else {
+    bbg_series <- data.frame(ticker = series, stringsAsFactors = FALSE)
+    bbg_series$name <- if (is.null(names(series))) series else names(series)
+  }
+
+  data <- bdh(bbg_series$ticker, field, start.date = start_date, end.date = end_date, options = options)
+
+  if (length(field) == 1 & length(securities > 1)) {
+    df <- data %>% reduce(inner_join, by = "date")
+    df %>% setNames(c("date", data.frame(ticker = names(data), stringsAsFactors = FALSE) %>% left_join(bbg_series, by = "ticker") %>% .$name))
+  }
+  else
+    df <- data
   df
-}
-
-bdh_weekday <- function(security, field = "PX_LAST", start_date = as.Date("1994-01-01"), end_date = NULL, options = NULL) {
-  if (is.null(options))
-    options <- c("periodicitySelection" = "DAILY",
-                 "nonTradingDayFillOption" = "NON_TRADING_WEEKDAYS",
-                 "nonTradingDayFillMethod" = "PREVIOUS_VALUE")
-
-  bdh(security, field, start.date = start_date, end.date = end_date, options = options)
 }
 
 #' Batch download from Bloomberg
@@ -53,7 +64,7 @@ bdh_weekday <- function(security, field = "PX_LAST", start_date = as.Date("1994-
 #'
 #'   df <- data.frame(ticker = c("RX1 Comdty", "TY1 Comdty"), name = c("Bunds", "Treasury"))
 #'   futures_price <- bdh_batch(df, "CONTRACT_VALUE", start_date = as.Date("2018-01-01"), end_date = as.Date("2018-06-06"))
-bdh_batch <- function(series, field = "PX_LAST", start_date = as.Date("1994-01-01"), end_date = NULL, options = NULL) {
+bdh_wd_names <- function(series, field = "PX_LAST", start_date = as.Date("1994-01-01"), end_date = NULL, options = NULL) {
   if (is.null(options))
     options <- c("periodicitySelection" = "DAILY",
                  "nonTradingDayFillOption" = "NON_TRADING_WEEKDAYS",
@@ -81,13 +92,17 @@ bdh_batch <- function(series, field = "PX_LAST", start_date = as.Date("1994-01-0
     nm <- if (is.null(names(series))) series else names(series)
   }
 
-  data_bbg <- pblapply(1:length(bbg_series),
-                       function(x) {
-                         bdh(bbg_series[x], field, start.date = start_date, end.date = end_date, options = options)
-                       })
-  df <- merge_from_list(data_bbg, header_names = nm)
-  rownames(df) <- df$date
-  df
+  data_bbg <- bdh_weekday(bbg_series, field, start.date = start_date, end.date = end_date)
+  # data_bbg <- pblapply(1:length(bbg_series),
+  #                      function(x) {
+  #                        bdh(bbg_series[x], field, start.date = start_date, end.date = end_date, options = options)
+  #                      })
+
+  df <- suppressWarnings( # Warning is suppressed as column names will be duplicated
+    reduce(data_bbg, function(x,y) {merge(x, y, by ="date", all = T)})
+  )
+
+  colnames(df) <- c("date", nm)
 }
 
 #' Remove the date column from a dataframe and store it into rownames (used for preprocessing of dataframes for mass calculations e.g. returns)
@@ -145,6 +160,9 @@ get_tickers <- function(asset_class, roll_differencing = TRUE) {
 }
 
 get_and_check_tickers <- function(curr_asset_class, instruments_df, type = c("price", "duration")) {
+  if (length(type) > 1)
+    type <- type[1]
+
   # Type is price, duration
   # Asset class work for bonds, equity, cds, fut (does not support fx)
   if (!curr_asset_class %in% c("govt", "equity", "cds", "fut")) stop("Asset class not supported, only govt, equity, cds, fut allowed")
@@ -189,7 +207,7 @@ get_and_check_tickers <- function(curr_asset_class, instruments_df, type = c("pr
     mutate(warning_msg = paste(asset_class,identifier,sep="/"))
 
   if (nrow(ignored_sec) > 0) {
-    warning(paste("Instruments ignored in",curr_asset_class, paste(unique(ignored_sec$warning_msg), collapse = ",")))
+    message(paste("Instruments ignored in",curr_asset_class, paste(unique(ignored_sec$warning_msg), collapse = ",")))
   }
 
   reduced_sec_df <- sec_df %>%
@@ -325,7 +343,7 @@ build_strategies <- function(input_file, start_date = as.Date("2000-01-01"), end
 get_dur_bonds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
   reduced_sec_df <- get_and_check_tickers("govt", instruments_df)
 
-  print("Downloading bond duration from bbg...")
+  message("Downloading bond duration from bbg...")
   dur_df <- bdh_batch(reduced_sec_df, "MODIFIED_DURATION", start_date = start_date, end_date = end_date)
 
   # Some instruments have very short duration history e.g. ILBs, hence we just assume all previous to be the first duration.
@@ -339,7 +357,7 @@ get_dur_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), 
   reduced_sec_df <- get_and_check_tickers("fut", instruments_df)
 
   # Download data from Bloomberg
-  print("Downloading futures duration from bbg...")
+  message("Downloading futures duration from bbg...")
   dur_df <- bdh_batch(reduced_sec_df, "FUT_EQV_DUR_NOTL", start_date = start_date, end_date = end_date)
 
   # Download duration where only most recent is available e.g. Euribors
@@ -456,7 +474,7 @@ convert_dur_size <- function(strat_df, strat_id_sizetype, duration_df, convert_t
 get_ret_bonds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today()) {
   reduced_sec_df <- get_and_check_tickers("govt", instruments_df)
 
-  print("Downloading bond prices from bbg...")
+  message("Downloading bond prices from bbg...")
   price_df <- bdh_batch(reduced_sec_df, "PX_LAST", start_date = start_date, end_date = end_date)
 
   calc_returns(price_df)
@@ -474,7 +492,7 @@ get_ret_fx_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), e
     summarise() %>%
     mutate(name = identifier)
 
-  print("Downloading fx prices...")
+  message("Downloading fx prices...")
   fx_index <- bdh_batch(req_fx, start_date = start_date, end_date = end_date)
 
   fx_price_ret <- calc_returns(fx_index)
@@ -486,7 +504,7 @@ get_ret_fx_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), e
     filter(currency %in% req_curncy) %>%
     mutate(name = currency)
 
-  print("Downloading depo rates...")
+  message("Downloading depo rates...")
   fx_funding_rates <- bdh_batch(req_fx_depo, start_date = start_date, end_date = end_date)
 
   # Funding based on actual/360, hence calculate number of days between dates (to account for weekends)
@@ -519,7 +537,7 @@ get_ret_fx_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), e
 get_ret_equity_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today()) {
   reduced_sec_df <- get_and_check_tickers("equity", instruments_df)
 
-  print("Downloading equity prices from bbg...")
+  message("Downloading equity prices from bbg...")
   price_df <- bdh_batch(reduced_sec_df, "PX_LAST", start_date = start_date, end_date = end_date)
 
   calc_returns(price_df)
@@ -528,7 +546,7 @@ get_ret_equity_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"
 get_ret_cds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today()) {
   reduced_sec_df <- get_and_check_tickers("cds", instruments_df, type = "price")
 
-  print("Downloading cds prices from bbg...")
+  message("Downloading cds prices from bbg...")
   price_df <- bdh_batch(reduced_sec_df, "PX_LAST", start_date = start_date, end_date = end_date)
 
   calc_returns(price_df)
@@ -537,7 +555,7 @@ get_ret_cds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), 
 get_ret_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today()) {
   reduced_sec_df <- get_and_check_tickers("fut", instruments_df)
 
-  print("Downloading futures prices from bbg...")
+  message("Downloading futures prices from bbg...")
   price_df <- bdh_batch(reduced_sec_df, "CONTRACT_VALUE", start_date = start_date, end_date = end_date)
 
   calc_returns(price_df)
@@ -619,6 +637,15 @@ calc_strat_headline_size <- function(cleaned_size_strat_df) {
   )
 }
 
+pf_summary <- function(portfolio, as_of_date = NULL, approx = TRUE) {
+  if (is.null(as_of_date)) {
+    as_of_date <- portfolio$date %>% tail(1)
+  }
+
+  sz <- calc_strat_headline_size(portfolio)
+  get_strat_size(sz, as_of_date, approx)
+}
+
 calc_strat_unwt_return <- function(wt_returns, strat_headline_size) {
   strat_headline_size <- strat_headline_size[,names(wt_returns)]
   returns <- remove_date(wt_returns) / remove_date(strat_headline_size)
@@ -628,13 +655,26 @@ calc_strat_unwt_return <- function(wt_returns, strat_headline_size) {
         returns)
 }
 
-get_strat_size <- function(strat_df, dt = NULL, approx = TRUE) {
-  if (is.null(dt))
-    dt <- max(strat_df$date)
+custom_grouping <- function(returns_df, instr_df, group) {
+  instr_df <- instr_df %>% select_("strategy", group)
+  returns_df %>%
+    gather(strategy, returns, -date) %>%
+    left_join(instr_df, by = "strategy") %>%
+    group_by_("date", group) %>%
+    summarise(returns = sum(returns, na.rm = TRUE)) %>%
+    ungroup() %>%
+    spread_(group, "returns")
+}
+
+get_strat_size <- function(strat_df, as_of_date = NULL, approx = TRUE) {
+  if (is.null(as_of_date)) {
+    message("as_of_date is NULL, retrieving latest available date")
+    as_of_date <- max(strat_df$date)
+  }
 
   if (approx) {
     filtered_strat <- strat_df %>%
-      mutate(diff = dt - date) %>%
+      mutate(diff = as_of_date - date) %>%
       filter(diff >= 0) %>%
       arrange(diff) %>%
       head(1) %>%
@@ -643,8 +683,9 @@ get_strat_size <- function(strat_df, dt = NULL, approx = TRUE) {
     filtered_strat <- strat_df %>%
       filter(date == dt)
   }
+
   filtered_strat %>%
-    remove_date %>%  # Remove date column
+    remove_date %>%
     gather(strat, size) %>%   # Remove any sizes = 0
     filter(size != 0) %>%
     spread(strat, size)
@@ -666,11 +707,15 @@ simulate_history <- function(unwt_ret_w_date, curr_wt, start_date, end_date) {
   }
 
   filtered_unwt_ret <- unwt_ret_w_date %>%
-    filter(date >= start_date & date <= end_date) %>%
+    filter(date >= start_date & date <= end_date)
+
+  dt <- filtered_unwt_ret %>% select(date)
+
+  filtered_unwt_ret <- filtered_unwt_ret %>%
     .[,names(curr_wt)]
 
   wt_ret <- filtered_unwt_ret * curr_wt
-  wt_ret
+  cbind(dt, wt_ret)
 }
 
 #' Calculate daily total return in a dataframe by summing across assets
@@ -753,7 +798,7 @@ calc_active_risk <- function(unwt_ret_w_date, curr_wt, start_date = today()-year
     stop("Less than 5 periods of data found, calculations will be invalid, please check the dates in return data vs the dates of analysis")
   }
   else if (nrow(unwt_ret_w_date) < 20) {
-    warnings("Less than 20 periods of data found, calculations may not be reliable")
+    warning("Less than 20 periods of data found, calculations may not be reliable")
   }
   unwt_ret_fn <- unwt_ret_w_date %>% remove_date()
 
@@ -769,14 +814,10 @@ calc_active_risk <- function(unwt_ret_w_date, curr_wt, start_date = today()-year
   port_var <- as.numeric(t(curr_wt) %*% cov_matrix %*% curr_wt)
   port_sd <- sqrt(port_var)
 
-  marginal_risk <- numerator / port_sd
-  active_risk <- marginal_risk * curr_wt
+  mr <- numerator / port_sd
+  ar <- mr * curr_wt
 
-  names(marginal_risk) <- names(curr_wt)
-  list(parameters = list(start_date = start_date,
-                         end_date = end_date,
-                         weights = curr_wt),
-         cov_matrix = cov_matrix, port_sd = port_sd, active_risk = active_risk, marginal_risk = marginal_risk)
+  data.frame(strategy = names(curr_wt), active_risk = ar)
 }
 
 # Function for
