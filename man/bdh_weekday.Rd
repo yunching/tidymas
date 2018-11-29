@@ -9,15 +9,15 @@ bdh_weekday(series, field = "PX_LAST",
   options_overrides = NULL)
 }
 \arguments{
+\item{series}{A dataframe containing multiple securities with column names `ticker` and optional `name`}
+
 \item{field}{A character vector with Bloomberg query fields.}
 
 \item{start_date}{A Date variable with the query start date.}
 
 \item{end_date}{An optional Date variable with the query end date; if omitted the most recent available date is used.}
 
-\item{securities}{A character vector with security symbols in Bloomberg notation.}
-
-\item{options}{An optional named character vector with additional option values}
+\item{options_overrides}{A list containing any additional options besides those to get weekdays}
 }
 \value{
 A list with as a many entries as there are entries in securities; each list contains a data.frame with one row per observations and as many columns as entries in fields. If the list is of length one, it is collapsed into a single data frame. Note that the order of securities returned is determined by the backend and may be different from the order of securities in the securities field.
@@ -27,6 +27,6 @@ Wrapper for bdh with pre-built options for getting daily data for all weekdays, 
 }
 \examples{
 \donttest{
-bdh(c("SPX Index", "STI Index"), "PX_LAST", start.date = Sys.Date() - 31)
+bdh_weekday(c("SPX Index", "STI Index"), "PX_LAST", start.date = Sys.Date() - 31)
 }
 }
