@@ -1,10 +1,10 @@
 #' Wrapper for bdh with pre-built options for getting daily data for all weekdays, non-trading weekdays will have previous value
 #'
-#' @param securities A character vector with security symbols in Bloomberg notation.
 #' @param field A character vector with Bloomberg query fields.
 #' @param start_date A Date variable with the query start date.
+#' @param series A dataframe containing multiple securities with column names `ticker` and optional `name`
+#' @param options_overrides A list containing any additional options besides those to get weekdays
 #' @param end_date An optional Date variable with the query end date; if omitted the most recent available date is used.
-#' @param options An optional named character vector with additional option values
 #'
 #' @return A list with as a many entries as there are entries in securities; each list contains a data.frame with one row per observations and as many columns as entries in fields. If the list is of length one, it is collapsed into a single data frame. Note that the order of securities returned is determined by the backend and may be different from the order of securities in the securities field.
 #' @export
@@ -14,7 +14,7 @@
 #'
 #' @examples
 #' \donttest{
-#' bdh(c("SPX Index", "STI Index"), "PX_LAST", start.date = Sys.Date() - 31)
+#' bdh_weekday(c("SPX Index", "STI Index"), "PX_LAST", start.date = Sys.Date() - 31)
 #' }
 bdh_weekday <- function(series, field = "PX_LAST", start_date = as.Date("1994-01-01"), end_date = NULL, options_overrides = NULL) {
   # Set options
@@ -129,7 +129,9 @@ get_tickers <- function(asset_class, roll_differencing = TRUE) {
 #' @export
 #'
 #' @examples
-#' inst <- data.frame(asset_class = c("equity", "ilb", "govt"), identifier = c("spx", "germany_ilb_5y", "us_govt_10y"), stringsAsFactors = FALSE)
+#' inst <- data.frame(asset_class = c("equity", "ilb", "govt"),
+#'                     identifier = c("spx", "germany_ilb_5y", "us_govt_10y"),
+#'                     stringsAsFactors = FALSE)
 #' get_and_check_tickers("govt", inst)
 get_and_check_tickers <- function(curr_asset_class, instruments_df, type = c("price", "duration")) {
   if (length(type) > 1)
@@ -335,7 +337,7 @@ get_dur_bonds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01")
 
   # Some instruments have very short duration history e.g. ILBs, hence we just assume all previous to be the first duration.
   if (fill)
-    dur_df <- tidyr::fill(dur_df, everything(), .direction = "up")
+    dur_df <- fill(dur_df, everything(), .direction = "up")
 
   dur_df
 }
@@ -404,7 +406,9 @@ get_dur_cds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), 
 #'
 #' @examples
 #' \donttest{
-#' inst <- data.frame(asset_class = c("ilb", "govt", "fut", "cds"), identifier = c("germany_ilb_5y", "us_govt_10y", "fut_rx1", "cdx_us_ig"), stringsAsFactors = FALSE)
+#' inst <- data.frame(asset_class = c("ilb", "govt", "fut", "cds"),
+#'    identifier = c("germany_ilb_5y", "us_govt_10y", "fut_rx1", "cdx_us_ig"),
+#'    stringsAsFactors = FALSE)
 #' get_dur_bbg(inst)
 #' }
 get_dur_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
@@ -597,7 +601,9 @@ get_ret_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), 
 #'
 #' @examples
 #' \donttest{
-#' inst <- data.frame(asset_class = c("ilb", "govt", "fut", "cds"), identifier = c("germany_ilb_5y", "us_govt_10y", "fut_rx1", "cdx_us_ig"), stringsAsFactors = FALSE)
+#' inst <- data.frame(asset_class = c("ilb", "govt", "fut", "cds"),
+#'     identifier = c("germany_ilb_5y", "us_govt_10y", "fut_rx1", "cdx_us_ig"),
+#'     stringsAsFactors = FALSE)
 #' get_ret_bbg(inst)
 #' }
 get_ret_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today()) {
@@ -724,7 +730,7 @@ pf_summary <- function(portfolio, as_of_date = NULL, approx = TRUE) {
 #' @export
 #'
 #' @examples
-#' #' #' \donttest{
+#' \donttest{
 #' portfolios <- build_strategies(gen_strat_templates())
 #' dur <- get_dur_bbg(portfolios$summary)
 #' sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, dur)
@@ -862,10 +868,11 @@ calc_returns <- function(df) {
 #' @export
 #'
 #' @examples
-#' unwt_ret_w_date <- data.frame(date = as.Date(c("2018-01-02", "2018-01-02", "2018-01-04", "2018-01-05")),
+#' unwt_ret_w_date <- data.frame(date = as.Date(c("2018-01-02", "2018-01-02",
+#'                                      "2018-01-04", "2018-01-05")),
 #'                               long_spx = c(0.015, 0.021, -0.03, 0.01),
 #'                               long_ukx = c(-0.005, 0.03, -0.01, -0.04))
-#' curr_wt <- data.frame(long_spx = 0.01, )
+#' curr_wt <- data.frame(long_spx = 0.01, long_ukx = 0.02)
 #' results <- calc_active_risk(unwt_ret_w_date, curr_wt)
 #' results$active_risk
 calc_active_risk <- function(unwt_ret_w_date, curr_wt, start_date = today()-years(10), end_date = today(), annualize_factor = 250) {
@@ -992,7 +999,19 @@ plot_cor <- function(cor_df, title = NULL) {
 #' @export
 #'
 #' @examples
-#' input_text <- "period asset_class active_risk\nLast3M Equity 1.256309e-05\nLast3M Fixed_Income 1.389163e-03\nLast3M FX 1.531547e-04\nLast3M Others 2.138171e-05\nGFCStress Equity 2.083595e-04\nGFCStress Fixed_Income 4.309154e-03\nGFCStress FX 9.310046e-04\nGFCStress Others 2.353732e-04\nTaperTantrum Equity 2.892491e-05\nTaperTantrum Fixed_Income 2.097302e-03\nTaperTantrum FX 1.601432e-04\nTaperTantrum Others 6.576230e-05"
+#' input_text <- "period asset_class active_risk\n
+#'       Last3M Equity 1.256309e-05\n
+#'       Last3M Fixed_Income 1.389163e-03\n
+#'       Last3M FX 1.531547e-04\n
+#'       Last3M Others 2.138171e-05\n
+#'       GFCStress Equity 2.083595e-04\n
+#'       GFCStress Fixed_Income 4.309154e-03\n
+#'       GFCStress FX 9.310046e-04\n
+#'       GFCStress Others 2.353732e-04\n
+#'       TaperTantrum Equity 2.892491e-05\n
+#'       TaperTantrum Fixed_Income 2.097302e-03\n
+#'       TaperTantrum FX 1.601432e-04\n
+#'       TaperTantrum Others 6.576230e-05"
 #' input_table <- read.table(text=input_text, header = 1)
 #'
 #' input_table %>%
