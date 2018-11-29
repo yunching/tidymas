@@ -18,7 +18,7 @@ A dataframe containing the timeseries unweighted return of the strategies
 Calculate unweighted returns given weighted returns and size of strategies
 }
 \examples{
-#' #' \donttest{
+\donttest{
 portfolios <- build_strategies(gen_strat_templates())
 dur <- get_dur_bbg(portfolios$summary)
 sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, dur)

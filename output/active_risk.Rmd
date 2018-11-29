@@ -9,7 +9,6 @@ output:
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 library(tidyverse)
 library(Rblpapi)
-library(pbapply)
 library(lubridate)
 library(RcppRoll)
 library(scales)
