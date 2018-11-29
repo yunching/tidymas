@@ -1,0 +1,236 @@
+---
+title: "Active Risk Report ReadMe"
+author: "Willy Heng"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+This project aims to provide a macro view on RMD's alpha strategies, it includes various calculations for RMD's alpha strategies, including PnL, risk, correlation etc. The generated .docx document is used in the Quarterly Strategy Report in the SAT section, and was first presented in the 2018 Q4 strategy report. 
+
+
+# Getting Started
+
+## Prerequisites
+
+### Hardware & Software
+
+*Ideal to run on high spec ISS, if any of the software below are missing, put up PRISM request to be installed*
+
+1. Bloomberg enabled terminal, ensure Bloomberg Excel API is working
+2. R (v3.4.3 or later)
+3. RStudio (v1.1.423 or later)
+
+### Proficiency
+
+1. User: Minimal
+2. Developer:
+    a. RMarkdown: Markdown language for document generation
+    b. `dplyr`: Package for dataframe manipulation
+        i. `%>%`: piping of output
+        ii. `mutate`: data manipulation
+        iii. `arrange`, `filter`, `select`: sorting, filtering and selecting of columns
+        iv. `left_join`: joining of dataframes
+        v. `group_by`, `summarise`: grouping and summarising across groups
+    c. `ggplot2`
+    d. `apply`, `lapply`, `sapply`, `pblapply`: Functions for iterating functions of vector/array
+    
+## Setting up
+
+1. Check required input files in folder `data2/tickers/...`, if unavailable, please redownload files from repo (DMS or otherwise)
+    a. `tickers_ilb_clean.csv`, `tickers_govt_clean.csv`, `tickers_futures.csv`, `tickers_funding.csv`, `tickers_equity.csv`, `tickers_equity.csv`
+    b. `strategies.csv` 
+    c. `scenarios.csv`
+2. Open `RStudio`
+3. Install packages by typing in RStudio Console `install.packages("tidyverse", "Rblpapi", "pbapply", "lubridate", "RcppRoll", "scales", "knitr", "rmarkdown")` 
+
+## Running program to generate output
+
+1. Open `Bloomberg` and log in
+2. Open `active_risk.Rmd`
+3. Click `Knit` > `Knit to Word` or `Run` > `Run All` to run 
+4. Wait for program to run, about 5-10mins
+5. Open `active_risk.docx` to see output
+
+# Files Overview
+
+## Inputs (Needs to be updated)
+
+1. `strategies.csv`: Contains all the executed/intended strategies, the corresponding instruments, sizes and trade dates. Update by approaching members of each division. Instruments identified by `identifiers`
+
+## Inputs (Largely static)
+
+1. `tickers_XXX.csv`: Contains tickers corresponding to the identifiers of various instruments
+2. `tickers_funding.csv`: tickers of depo rates of currencies for calculating FX pnl
+3. `scenarios.csv`: Historical scenarios that may be relevant for analysis
+
+## Main Program
+
+1. `active_risk.Rmd`: R Markdown file that generates the document containing analysis
+2. `helper.R`: contains helper functions used in the main document
+3. `readme.md`: Markdown file to generate readme.pdf, use whenever updates are required to readme
+
+# Usage
+
+## Generating document
+
+1. Open `active_risk.Rmd`
+2. Click `Knit` > `Knit to Word` 
+3. Wait a few minutes for the document to generate
+
+## Adding strategies
+
+1. Get updated strategies / trades from various divisions
+2. Open `inputs/strategies.csv`
+3. Fill in the rows as necessary
+    a. `owner`: `ed`, `cat`,`europe`,`us`
+    b. `strategy`: any strategy name will do, use `_` instead of spaces
+    c. `type`: `Duration`, `Spread`, `Curve`, `Inflation`, `FX`, `Equity`, `Others`
+    d. `open_date` & `close_date`: In the format `yyyymmdd` without spaces or dashes. Do not use Excel built in date formats as it will certainly screw up
+    e. `instrument`: ticker of instrument to be traded, matching the identifiers in the `inputs/tickers_XXX` files
+    f. `asset_class`: `govt`, `ilb`, `future`, `fx`, `equity`, `cds`. Program searches identifier in the corresponding asset files
+    g. `size`: e.g. 0.5 can be used for both 0.5mths OR 0.5% of R2
+    h. `size_type`: `months`, `percent`
+
+## Updating sizes of trades
+
+To updated strategies when there are changes in size, there are two ways to do it:
+
+***Method 1***: Recommended for partial close of trade, or big changes in trade
+
+Close existing entries for the trade, and key in a new trade on the close date
+
+***Method 2***: Recommended for add-on of a position
+
+If trade is increase in size, you can add a new trade with the size increase (without closing the previous trade)
+
+## Adding instruments
+
+This program supports the following asset classes, any other asset classes will need to be developed
+
+1. Futures 
+2. Bonds (Govt and ILBs)
+3. Equity indices
+4. FX
+5. CDS
+
+If there are instruments that have been omitted, you can add them by opening the `inputs/tickers_XXX.csv` file and adding a new row for the asset. Please note for the following assets:
+
+1. **FX:** does not need to be added, as the required tickers are computed on the fly*
+2. **Bonds:** Only total return indices should be used
+
+## Adding scenarios
+
+If any return or risk simulation needs to be done over a specified period in history, it can be added to `inputs/scenarios.csv`, it will be automatically added to the outputs which rely on the scenarios. 
+
+# Methodology
+
+## Size of strategy
+
+The size of strategies are all converted to percentage terms, meaning `% of R2` in order to compute returns.
+
+### Percent
+
+If input trade sizes are in `percent`, the percentage is taken directly to be the weight, no adjustment is performed
+
+### Duration (months)
+
+When input size is in `duration` contribution in `months`, and there is only a single instrument: 
+
+$$percent.weight_t = \frac{|month.weight_t|}{modified.duration_t \times 12}$$
+
+If there are multiple instruments: 
+
+$$max.mod.dur_t = \overset{n}{\underset{i=1}{max}}(modified.duration_{i, t})$$
+
+$$percent.weight_t = \frac{|month.weight|}{max.mod.dur_t \times 12}$$
+
+- $i$: instrument
+- $n$: total number of instruments
+
+## Returns of instruments
+
+Returns are calculated on a daily basis by using Bloomberg data, based on the below calculations
+
+### Bonds and Equity indices
+
+*Bonds use total return indices* to calculate returns
+
+$$return_t = \frac{index_t}{index_{t-1}} - 1$$
+
+### Futures
+
+$$return_t = \frac{contract.value_t}{contract.value_{t-1}} - 1$$
+
+### FX
+
+$$
+\begin{aligned}
+return_t &= price.return_t + funding.return_t \\
+&= (\frac{price_t}{price_{t-1}} - 1) + (left.depo_{t-1} - right.depo_{t-1})
+\end{aligned}
+$$
+
+### CDS
+
+$$return_t = \frac{price_t}{price_{t-1}} - 1$$
+
+## Unweighted return of strategies
+
+Unweighted return of a strategy is its return assuming 100% of the portfolio is dedicated to the trade. 
+
+### Single instrument trade
+
+For single instrument trade e.g. Long 10y treasuries, the weight of the instrument would be `1`. 
+
+### Multiple instrument (size in percent weight)
+
+e.g. Long SPX vs FTSE
+
+$$max.weight_t = \overset{n}{\underset{i=1}{max}}(percent.weight_{i, t})$$
+
+$$unweighted.return_t = \sum_{i=1}^n (\frac{percent.weight_{i,t}}{|max.weight_t|} \times return_{i,t})$$ 
+
+### Multiple instrument (size in duration weight)
+
+However, when a strategy uses multiple instruments e.g. Flatteners or spread trades, the instrument with the longer modified duration is taken to have a size of `1`, while the instrument with the shorter duration is adjusted to match the duration contribution of the longer instrument. e.g. UST 2s10s Flattener should see the 10y USTs at a weight of `1`, while the 2y USTs will have approximate weight of `-5` to calculate the unweighted return.
+
+$$max.mod.dur_t = \overset{n}{\underset{i=1}{max}}(modified.duration_{i, t})$$
+
+$$unweighted.return_t = \sum_{i=1}^n (\frac{max.mod.dur_t}{dur.weight_{i,t}} \times return_{i,t})$$ 
+
+## Weighted return of trades
+
+$$weighted.return_t = unweighted.return_t \times percent.weight_t$$
+
+## Active Risk
+
+$$\textbf{X} = 
+\begin{bmatrix}
+percent.weight_{1, t=last} \\ percent.weight_{2, t= last} \\ percent.weight_{3, t=last} \\ ... \\ percent.weight_{n, t=last}
+\end{bmatrix}
+$$
+$$\sigma_{i,j} = cov(unweighted.return_i, unweighted.return_j)$$
+$$ 
+\Sigma = cov.matrix = 
+\begin{bmatrix}
+\sigma_1^2 & \sigma_{1,2} & ... & \sigma_{1,n} \\
+... & ... & ... & ... \\
+\sigma_{i, 1} & \sigma_{i,2} & ... & \sigma_{i,n} \\
+... & ... & ... & ... \\
+\sigma_{1, n} & \sigma_{2, n} & ... & \sigma_n^2 
+\end{bmatrix}  
+$$
+$$\sigma(X) = \textbf{X}^T \times \Sigma \times \text{X}$$
+
+$$\textbf{MR} = \frac{1}{\sigma(X)}(\textbf{X}^T \times \Sigma)$$
+$$\textbf{AR} = \textbf{MR} \cdot \textbf{X} $$
+
+- $\textbf{X}$: vector of portfolio weights of strategies
+- $\Sigma$: covariance matrix
+- $\sigma(X)$: portfolio standard deviation
+- $\textbf{MR}$: vector of marginal risk of strategies
+- $\textbf{AR}$: vector of active risk of strategies
