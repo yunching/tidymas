@@ -23,5 +23,5 @@ Returns a data frame to be used with plot_credit_ratings()
 Download and calculate median credit rating over time
 }
 \examples{
-##get_bm_ratings(start_date="2018-10-01", end_date = "2018-11-01")
+\donttest{get_bm_ratings(start_date="2018-10-01", end_date = "2018-11-01")}
 }

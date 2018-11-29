@@ -9,9 +9,10 @@
 #' @note Rescaled scaling factors ensures that the largest factor is 1 by rescaling scaling factors.
 #' @export
 #'
-#' @examples data(mvs)
-#' @examples data(caps)
-#' @examples market_capping(mvs, caps)
+#' @examples
+#' data(mvs)
+#' data(caps)
+#' market_capping(mvs, caps)
 market_capping <- function(mv, capped_wts){
   #check mv_cap_wts are valid
   if (sum(capped_wts < 0 )){
@@ -224,7 +225,8 @@ pad_2zeros <- function(Number){
 #' @return Returns a data frame to be used with plot_credit_ratings()
 #' @export
 #'
-#' @examples ##get_bm_ratings(start_date="2018-10-01", end_date = "2018-11-01")
+#' @examples
+#' \donttest{get_bm_ratings(start_date="2018-10-01", end_date = "2018-11-01")}
 get_bm_ratings <- function(start_date=Sys.Date() - 365, end_date=Sys.Date(), freq="1 month", date_adjust=1){
   dates <- sort(seq(as.Date(start_date), as.Date(end_date), by=freq) - date_adjust)
   #No. of bdp calls = no. of periods x no. of securities x 3 ratings
@@ -322,7 +324,7 @@ get_bm_ratings <- function(start_date=Sys.Date() - 365, end_date=Sys.Date(), fre
 #' @export
 #'
 #' @examples
-#' ## get_bm_ratings(start_date="2018-10-01", end_date = "2018-11-01") %>% plot_credit_ratings()
+#' \donttest{get_bm_ratings(start_date="2018-10-01", end_date = "2018-11-01") %>% plot_credit_ratings()}
 plot_credit_ratings <- function(my_data){
   credit_rating_subtitle <- paste("From", min(my_data$date), "to", max(my_data$date))
 

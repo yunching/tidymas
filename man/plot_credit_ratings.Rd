@@ -16,5 +16,5 @@ Returns a plot
 Plot credit ratings evolution over time and facet by country
 }
 \examples{
-## get_bm_ratings(start_date="2018-10-01", end_date = "2018-11-01") \%>\% plot_credit_ratings()
+\donttest{get_bm_ratings(start_date="2018-10-01", end_date = "2018-11-01") \%>\% plot_credit_ratings()}
 }
