@@ -24,7 +24,9 @@ Get time-series duration of asset from Bloomberg. It is a generic function which
 }
 \examples{
 \donttest{
-inst <- data.frame(asset_class = c("ilb", "govt", "fut", "cds"), identifier = c("germany_ilb_5y", "us_govt_10y", "fut_rx1", "cdx_us_ig"), stringsAsFactors = FALSE)
+inst <- data.frame(asset_class = c("ilb", "govt", "fut", "cds"),
+   identifier = c("germany_ilb_5y", "us_govt_10y", "fut_rx1", "cdx_us_ig"),
+   stringsAsFactors = FALSE)
 get_dur_bbg(inst)
 }
 }
