@@ -20,10 +20,7 @@ Imports:
     lubridate,
     magrittr,
     purrr,
-    testthat,
-    lubridate,
-    RcppRoll,
-    scales
+    testthat
 Suggests: knitr,rmarkdown, zoo, xts, TTR
 VignetteBuilder: knitr
 RoxygenNote: 6.1.1
