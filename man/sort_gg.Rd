@@ -23,6 +23,7 @@ dataframe but with category levels sorted
 Helper function to sort categories for display in ggplot, for ensuring that column charts are ordered by magnitude
 }
 \examples{
+library(ggplot2)
 input_text <- "period asset_class active_risk\\n
       Last3M Equity 1.256309e-05\\n
       Last3M Fixed_Income 1.389163e-03\\n
@@ -38,9 +39,9 @@ input_text <- "period asset_class active_risk\\n
       TaperTantrum Others 6.576230e-05"
 input_table <- read.table(text=input_text, header = 1)
 
-input_table \%>\%
-  sort_gg("asset_class", "active_risk") \%>\%
-  ggplot(aes(x = asset_class, y = active_risk * 10000)) +
+
+dat <- sort_gg(input_table, "asset_class", "active_risk")
+ggplot(dat, aes(x = asset_class, y = active_risk * 10000)) +
   geom_col() +
   facet_wrap(~period, ncol = 3)
 }
