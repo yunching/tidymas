@@ -20,8 +20,7 @@ Imports:
     lubridate,
     magrittr,
     purrr,
-    testthat,
-    lubridate
+    testthat
 Suggests: knitr,rmarkdown, zoo, xts, TTR
 VignetteBuilder: knitr
 RoxygenNote: 6.1.1
