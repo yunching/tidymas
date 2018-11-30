@@ -4,17 +4,12 @@
 \alias{get_bm_ratings}
 \title{Download and calculate median credit rating over time}
 \usage{
-get_bm_ratings(start_date = Sys.Date() - 365, end_date = Sys.Date(),
-  freq = "1 month", date_adjust = 1)
+get_bm_ratings(end_date = Sys.Date(), per = 120)
 }
 \arguments{
-\item{start_date}{Start date to show credit ratings.}
+\item{end_date}{Last date to show credit ratings.}
 
-\item{end_date}{End date to show credit ratings.}
-
-\item{freq}{Frequency of data.}
-
-\item{date_adjust}{Date adjustment parameter: included as an easy way to generate monthends. Use start and end dates as the first day of each month, and set date_adjust=1 to subtract from the sequence of dates. This gives us the monthends.}
+\item{per}{No. of historical monthends to retrieve}
 }
 \value{
 Returns a data frame to be used with plot_credit_ratings()
