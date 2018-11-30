@@ -10,8 +10,6 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 library(tidyverse)
 library(Rblpapi)
 library(lubridate)
-library(RcppRoll)
-library(scales)
 library(knitr)
 library(tidymas)
 
@@ -456,10 +454,10 @@ Below are 3 month returns arising from current strategies extrapolated into hist
 ######################################
 window = 20 * 3
 
-unwt_ret_roll <- apply(remove_date(unwt_returns$sim), 2, roll_sum, n = window) %>% as.data.frame
+unwt_ret_roll <- apply(remove_date(unwt_returns$sim), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
 unwt_ret_roll <- cbind(data.frame(date = unwt_returns$sim$date[-(1:(window-1))]), unwt_ret_roll)
 
-sim_ret_roll <- apply(remove_date(wt_returns$sim), 2, roll_sum, n = window) %>% as.data.frame
+sim_ret_roll <- apply(remove_date(wt_returns$sim), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
 sim_ret_roll <- cbind(data.frame(date = wt_returns$sim$date[-(1:(window-1))]), sim_ret_roll)
 
 ######################################
@@ -496,7 +494,7 @@ active_unwt_ret_roll %>%
   ggplot(aes(x = date, y = strategy)) +
   geom_tile(aes(fill = ret_3m)) +
   scale_fill_gradientn(colours = c("#F70000", "#FF4040", "#FA6C6C","white", "lightgreen", "green","darkgreen"),
-                       values = rescale(c(c(1, 0.3, 0.1) * min_ret_unwt, 0, c(0.1, 0.3, 1) * max_ret_unwt), to = c(0,1)),
+                       values = scales::rescale(c(c(1, 0.3, 0.1) * min_ret_unwt, 0, c(0.1, 0.3, 1) * max_ret_unwt), to = c(0,1)),
                        labels = scales::percent(c(-0.2, 0, 0.2), accuracy =1),
                        breaks = c(-0.2, 0, 0.2)) +
   scale_x_discrete(labels = date_labels, breaks = recalc_date$factored_date) +
@@ -543,7 +541,7 @@ sim_ret_roll %>%
   ggplot(aes(x = date, y = strategy)) +
   geom_tile(aes(fill = ret_3m)) +
   scale_fill_gradientn(colours = c("#F70000", "#FF4040", "#FA6C6C","white", "lightgreen", "green","darkgreen"),
-                       values = rescale(c(c(1, 0.3, 0.1) * min_ret_wt, 0, c(0.1, 0.3, 1) * max_ret_wt), to = c(0,1)),
+                       values = scales::rescale(c(c(1, 0.3, 0.1) * min_ret_wt, 0, c(0.1, 0.3, 1) * max_ret_wt), to = c(0,1)),
                        labels = scales::number(c(-10, 0, 10), accuracy =1),
                        breaks = c(-10, 0, 10)) +
   scale_x_discrete(labels = date_labels, breaks = recalc_date$factored_date) +

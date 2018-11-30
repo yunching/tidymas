@@ -27,7 +27,6 @@ Imports:
     ggplot2,
     tibble,
     forcats,
-    lubridate,
     RcppRoll,
     scales
 Suggests: knitr,rmarkdown, zoo, xts, TTR
