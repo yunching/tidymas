@@ -20,7 +20,10 @@ Imports:
     lubridate,
     magrittr,
     purrr,
-    testthat
+    testthat,
+    dplyr,
+    ggplot2,
+    tidyr
 Suggests: knitr,rmarkdown, zoo, xts, TTR
 VignetteBuilder: knitr
 RoxygenNote: 6.1.1

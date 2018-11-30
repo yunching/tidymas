@@ -23,7 +23,7 @@ long form dataframe (see tidyr::gather) containing correlation between returns, 
 Calculate correlation between returns
 }
 \examples{
-unwt_ret <- data.frame(date = as.Date(c("2018-01-02", "2018-01-02", "2018-01-04", "2018-01-05")),
+unwt_ret <- data.frame(date = as.Date(c("2018-01-02", "2018-01-03", "2018-01-04", "2018-01-05")),
                               long_spx = c(0.015, 0.021, -0.03, 0.01),
                               long_ukx = c(-0.005, 0.03, -0.01, -0.04),
                               long_hsi = c(0.023, 0.001, -0.005, 0.008))

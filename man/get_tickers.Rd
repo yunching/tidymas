@@ -4,10 +4,10 @@
 \alias{get_tickers}
 \title{Get tickers for the specific asset class from the package's csv files}
 \usage{
-get_tickers(asset_class, roll_differencing = TRUE)
+get_tickers(asset_cl, roll_differencing = TRUE)
 }
 \arguments{
-\item{asset_class}{A character variable of `govt`, `fut`, `equity`, `cds`, or `fx`}
+\item{asset_cl}{A character variable of `govt`, `fut`, `equity`, `cds`, or `fx`}
 
 \item{roll_differencing}{A boolean indicating if ticker for futures should be modified to account for roll_differencing, defaults as TRUE}
 }
@@ -18,5 +18,7 @@ A dataframe containing the tickers and their corresponding identifiers
 Get tickers for the specific asset class from the package's csv files
 }
 \examples{
+\donttest{
 get_tickers("fx")
+}
 }
