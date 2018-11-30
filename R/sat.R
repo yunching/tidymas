@@ -217,18 +217,21 @@ pad_2zeros <- function(Number){
 #' @importFrom tibble tibble
 #' @importFrom scales date_format
 #' @import ggplot2
-#' @param start_date Start date to show credit ratings.
-#' @param end_date End date to show credit ratings.
-#' @param freq Frequency of data.
-#' @param date_adjust Date adjustment parameter: included as an easy way to generate monthends. Use start and end dates as the first day of each month, and set date_adjust=1 to subtract from the sequence of dates. This gives us the monthends.
+#' @param end_date Last date to show credit ratings.
+#' @param per No. of historical monthends to retrieve
 #'
 #' @return Returns a data frame to be used with plot_credit_ratings()
 #' @export
 #'
 #' @examples
 #' \donttest{get_bm_ratings(start_date="2018-10-01", end_date = "2018-11-01")}
-get_bm_ratings <- function(start_date=Sys.Date() - 365, end_date=Sys.Date(), freq="1 month", date_adjust=1){
-  dates <- sort(seq(as.Date(start_date), as.Date(end_date), by=freq) - date_adjust)
+get_bm_ratings <- function(end_date= Sys.Date(), per=120){
+  dates <-
+    sort(seq(
+      lubridate::floor_date(end_date, "1 month") - months(per-1) - 1,
+      lubridate::floor_date(end_date, "1 month") - 1,
+      by = "1 month"
+    ))
   #No. of bdp calls = no. of periods x no. of securities x 3 ratings
   #1 bdp call ~ 5 seconds
   sec_list <- c(
@@ -263,38 +266,36 @@ get_bm_ratings <- function(start_date=Sys.Date() - 365, end_date=Sys.Date(), fre
       "US"
     )
   )
-  message(paste("Downloading data from", min(dates), "to", max(dates), ".Periods:", length(dates), "\nBDP calls expected: ", length(dates) * length(sec_list) * 3))
+  message(paste("Downloading data from", min(dates), "to", max(dates), "- this might take a while...", length(dates), "period(s)"))
 
-  credit_rating_raw <- tidyr::crossing(date=dates, sec=sec_list) %>%
+  credit_rating_raw <- tibble::as_tibble(dates) %>%
+    dplyr::rename(date = .data$value) %>%
     dplyr::mutate(
         padded_date = paste0(
         lubridate::year(.data$date),
         tidymas::pad_2zeros(lubridate::month(.data$date)),
         tidymas::pad_2zeros(lubridate::day(.data$date))
       )
-    ) %>%
-    dplyr::group_by(.data$date, .data$sec) %>%
-    #Pull LT credit rating data from Bloomberg
-    dplyr::mutate(
-      moody = Rblpapi::bdp(
-        .data$sec,
-        "RTG_MDY_LT_LC_DEBT_RATING",
-        overrides = c("Rating_as_of_date_override" = .data$padded_date)
-      )[1,1],
-      snp = Rblpapi::bdp(
-        .data$sec,
-        "RTG_SP_LT_LC_ISSUER_CREDIT",
-        overrides = c("Rating_as_of_date_override" = .data$padded_date)
-      )[1,1],
-      fitch = Rblpapi::bdp(
-        .data$sec,
-        "RTG_FITCH_LT_LC_DEBT",
-        overrides = c("Rating_as_of_date_override" = .data$padded_date)
-      )[1,1]
     )
-  #split BBG data retrival from rest of data tasks as bdp call element-wise is very slow
-  #Takes several hours to run for 10y of monthly data
+  credit_rating_raw <- purrr::map(credit_rating_raw$padded_date, function(x){
+    Rblpapi::bdp(
+      sec_list,
+      c("RTG_MDY_LT_LC_DEBT_RATING", "RTG_SP_LT_LC_ISSUER_CREDIT", "RTG_FITCH_LT_LC_DEBT"),
+      overrides = c("Rating_as_of_date_override" = x)
+    )
+  }) %>%
+    purrr::map(~mutate(.x, Ticker = sec_list)) %>%
+    purrr::set_names(credit_rating_raw$date) %>%
+    dplyr::bind_rows(.id = "date") %>%
+    dplyr::transmute(date = as.Date(.data$date),
+                  sec = .data$Ticker,
+                  moody = .data$RTG_MDY_LT_LC_DEBT_RATING,
+                  snp = .data$RTG_SP_LT_LC_ISSUER_CREDIT,
+                  fitch = .data$RTG_SP_LT_LC_ISSUER_CREDIT) %>%
+    as_tibble()
+
   credit_rating <- credit_rating_raw %>%
+    dplyr::group_by(.data$date, .data$sec) %>%
     dplyr::mutate(
       moody.clean = clean_rating(.data$moody),
       snp.clean = clean_rating(.data$snp),
