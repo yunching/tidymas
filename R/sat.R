@@ -292,7 +292,7 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
                   moody = .data$RTG_MDY_LT_LC_DEBT_RATING,
                   snp = .data$RTG_SP_LT_LC_ISSUER_CREDIT,
                   fitch = .data$RTG_SP_LT_LC_ISSUER_CREDIT) %>%
-    as_tibble()
+    tibble::as_tibble()
 
   credit_rating <- credit_rating_raw %>%
     dplyr::group_by(.data$date, .data$sec) %>%
