@@ -25,12 +25,11 @@ list containing `cov_matrix`, `port_sd` (portfolio std dev), `active_risk`, `mar
 Calculate active risk given return of strategies and weight of the strategies
 }
 \examples{
-library(lubridate)
-unwt_ret_w_date <- data.frame(date = as.Date(c("2018-01-02", "2018-01-02",
-                                     "2018-01-04", "2018-01-05")),
-                              long_spx = c(0.015, 0.021, -0.03, 0.01),
-                              long_ukx = c(-0.005, 0.03, -0.01, -0.04))
+unwt_ret_w_date <- data.frame(date = as.Date(c("2018-01-02", "2018-01-03",
+                                     "2018-01-04", "2018-01-05",
+                                     "2018-01-06", "2018-01-07")),
+                              long_spx = c(0.015, 0.021, -0.03, 0.01, 0.05, 0.03),
+                              long_ukx = c(-0.005, 0.03, -0.01, -0.04, -0.03, -0.04))
 curr_wt <- data.frame(long_spx = 0.01, long_ukx = 0.02)
-results <- calc_active_risk(unwt_ret_w_date, curr_wt)
-results$active_risk
+calc_active_risk(unwt_ret_w_date, curr_wt)
 }
