@@ -248,7 +248,8 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
     "GTGBP10Y Govt",
     "GT10 Govt"
   )
-  credit_rating_levels <- c("AAA", "AA+", "AA", "AA-", "A+", "A", "A-", "BBB+", "BBB", "BBB-")
+  # credit_rating_levels <- c("AAA", "AA+", "AA", "AA-", "A+", "A", "A-", "BBB+", "BBB", "BBB-")
+  credit_rating_levels <- c("BBB-", "BBB", "BBB+",  "A-",  "A",  "A+",  "AA-",  "AA", "AA+", "AAA")
   generics_country_map <- tibble(
     sec = sec_list,
     country = c(
@@ -308,12 +309,6 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
       country = generics_country_map$country[match(.data$sec, generics_country_map$sec)]
     )
 
-
-
-  credit_rating <- credit_rating %>%
-    dplyr::mutate(mas_rating = forcats::fct_rev(.data$mas_rating))
-
-
   return(credit_rating)
 }
 
@@ -329,24 +324,38 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
 plot_credit_ratings <- function(my_data){
   credit_rating_subtitle <- paste("From", min(my_data$date), "to", max(my_data$date))
 
-  wt_caps <- c(
-    "5%" = "dotdash",
+  wt_caps <- factor(c(
     "0%" = "dashed",
+    "5%" = "dotdash",
     "15%" = "dotted"
-  )
+  ))
+
+  credit_rating_levels <- c("BBB-", "BBB", "BBB+",  "A-",  "A",  "A+",  "AA-",  "AA", "AA+", "AAA")
+
+  recent_ratings <- my_data %>%
+    ungroup() %>%
+    filter(date == max(date)) %>%
+    select(date, country, moody.clean, snp.clean, fitch.clean) %>%
+    rename(moody = moody.clean, snp = snp.clean, fitch = fitch.clean) %>%
+    gather(rater, rating, -date, -country) %>%
+    mutate(rating = rating %>% factor(credit_rating_levels) %>% forcats::fct_rev()) %>%
+    arrange(country)
 
   my_data %>%
     ggplot(aes(x = .data$date, y = .data$mas_rating, col = .data$country, group=.data$country)) +
-    geom_line() + geom_point() +
+    geom_line() + geom_point() +geom_point(data=recent_ratings, aes(x=.data$date, y=.data$rating, shape=.data$rater), alpha=0.5, col="black") +
     labs(x = "Date",
          y = "Credit Rating",
          title = "Median credit rating over time for benchmark countries",
          col = "Country",
          subtitle = credit_rating_subtitle) +
-    geom_hline(aes(yintercept=1, linetype="0%")) +
-    geom_hline(aes(yintercept=3, linetype="5%")) +
-    geom_hline(aes(yintercept=6, linetype="15%")) +
+    geom_hline(aes(yintercept=1, linetype=factor("0%", levels = c("0%", "5%", "15%"))), col="red") +
+    geom_hline(aes(yintercept=3, linetype=factor("5%", levels = c("0%", "5%", "15%"))), col="red") +
+    geom_hline(aes(yintercept=6, linetype=factor("15%", levels = c("0%", "5%", "15%"))), col="red") +
     facet_wrap(.data$country ~ .) +
-    scale_x_date(labels = date_format("%Y")) +
-    scale_linetype_manual(name="Weight caps", values=wt_caps)
+    scale_x_date(labels = date_format("%y")) +
+    scale_y_discrete(limits=forcats::fct_rev(credit_rating_levels)) +
+    scale_linetype_manual(name="Weight caps", breaks=c("0%", "5%", "15%"), values=c(2, 3, 4)) +
+    scale_color_discrete(guide=FALSE) +
+    scale_shape_discrete(name = "Rating Agency", breaks=c("fitch", "moody", "snp"), labels=c("Fitch", "Moody", "S&P"))
 }
