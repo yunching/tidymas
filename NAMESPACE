@@ -22,10 +22,6 @@ export(plot_cor)
 export(simulate_history)
 export(sort_gg)
 export(z_score)
-<<<<<<< HEAD
-import(lubridate)
-import(tidyverse)
-=======
 import(dplyr)
 import(ggplot2)
 importFrom(Rblpapi,bdh)
@@ -34,7 +30,6 @@ importFrom(lubridate,days)
 importFrom(lubridate,today)
 importFrom(lubridate,years)
 importFrom(lubridate,ymd)
->>>>>>> Updated namespaces for all active_risk functions
 importFrom(magrittr,"%>%")
 importFrom(purrr,map)
 importFrom(purrr,map2)
