@@ -22,9 +22,6 @@ NULL
 #' @return A list with as a many entries as there are entries in securities; each list contains a data.frame with one row per observations and as many columns as entries in fields. If the list is of length one, it is collapsed into a single data frame. Note that the order of securities returned is determined by the backend and may be different from the order of securities in the securities field.
 #' @export
 #'
-#' @import lubridate
-#' @import tidyverse
-#'
 #' @examples
 #' \donttest{
 #' bdh_weekday(c("SPX Index", "STI Index"), "PX_LAST", start.date = Sys.Date() - 31)
