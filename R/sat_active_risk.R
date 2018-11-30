@@ -1,3 +1,14 @@
+#' @import dplyr
+#' @import ggplot2
+#' @importFrom purrr map map2 reduce
+#' @importFrom stats setNames
+#' @importFrom lubridate today years days ymd
+#' @importFrom tidyr gather spread fill
+#' @importFrom Rblpapi bdh bdp
+#' @importFrom utils read.csv
+
+NULL
+
 #' Wrapper for bdh with pre-built options for getting daily data for all weekdays, non-trading weekdays will have previous value
 #'
 #' @param field A character vector with Bloomberg query fields.
@@ -83,6 +94,8 @@ gen_weekdays <- function(start_date, end_date) {
 #'
 #' @return A dataframe containing the tickers and their corresponding identifiers
 #' @export
+#'
+#' @importFrom stringr str_replace
 #'
 #' @examples
 #' get_tickers("fx")
@@ -363,7 +376,7 @@ get_dur_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), 
 
   # Some instruments have very short duration history e.g. ILBs, hence we just assume all previous to be the first duration.
   if (fill)
-    dur_df <- tidyr::fill(dur_df, everything(), .direction = "up")
+    dur_df <- fill(dur_df, everything(), .direction = "up")
 
   dur_df
 }
@@ -864,7 +877,10 @@ calc_returns <- function(df) {
 #' @return list containing `cov_matrix`, `port_sd` (portfolio std dev), `active_risk`, `marginal_risk`
 #' @export
 #'
+#' @importFrom stats cov
+#'
 #' @examples
+#' library(lubridate)
 #' unwt_ret_w_date <- data.frame(date = as.Date(c("2018-01-02", "2018-01-02",
 #'                                      "2018-01-04", "2018-01-05")),
 #'                               long_spx = c(0.015, 0.021, -0.03, 0.01),
@@ -926,6 +942,8 @@ calc_active_risk <- function(unwt_ret_w_date, curr_wt, start_date = today()-year
 #'
 #' @return long form dataframe (see tidyr::gather) containing correlation between returns, and `period_name`` if provided
 #' @export
+#'
+#' @importFrom stats cor
 #'
 #' @examples
 #' unwt_ret <- data.frame(date = as.Date(c("2018-01-02", "2018-01-02", "2018-01-04", "2018-01-05")),
