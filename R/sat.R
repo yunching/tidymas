@@ -221,6 +221,10 @@ pad_2zeros <- function(Number){
 #' @param per No. of historical monthends to retrieve
 #'
 #' @return Returns a data frame to be used with plot_credit_ratings()
+#' @details
+#' This function rounds the end_date to the most recent monthend (in the past). Credit rating agencies
+#' might re-rate countries anytime within a month, and in making this function we are standarding
+#' the credit ratings of countries as at each monthend.
 #' @export
 #'
 #' @examples
@@ -237,6 +241,7 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
   }
 
   dates <-
+    #calculate monthends, standardising when ratings are shown monthly
     sort(seq(
       lubridate::floor_date(end_date, "1 month") - months(per-1),
       lubridate::floor_date(end_date, "1 month"),
@@ -257,7 +262,6 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
     "GTGBP10Y Govt",
     "GT10 Govt"
   )
-  # credit_rating_levels <- c("AAA", "AA+", "AA", "AA-", "A+", "A", "A-", "BBB+", "BBB", "BBB-")
   credit_rating_levels <- c("BBB-", "BBB", "BBB+",  "A-",  "A",  "A+",  "AA-",  "AA", "AA+", "AAA")
   generics_country_map <- tibble(
     sec = sec_list,
@@ -278,6 +282,7 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
   )
   message(paste("Downloading data from", min(dates), "to", max(dates), ": this might take a while..."))
 
+  #Prepare dates in format required by Bloomberg calls
   credit_rating_raw <- tibble::as_tibble(dates) %>%
     dplyr::rename(date = .data$value) %>%
     dplyr::mutate(
@@ -287,6 +292,8 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
         tidymas::pad_2zeros(lubridate::day(.data$date))
       )
     )
+
+  #Pull data from Bloomberg
   credit_rating_raw <- purrr::map(credit_rating_raw$padded_date, function(x){
     Rblpapi::bdp(
       sec_list,
@@ -294,6 +301,7 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
       overrides = c("Rating_as_of_date_override" = x)
     )
   }) %>%
+    #Tidy data collected
     purrr::map(~dplyr::mutate(.x, Ticker = sec_list)) %>%
     purrr::set_names(credit_rating_raw$date) %>%
     dplyr::bind_rows(.id = "date") %>%
@@ -304,6 +312,7 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
                   fitch = .data$RTG_FITCH_LT_LC_DEBT) %>%
     tibble::as_tibble()
 
+  #Clean and compute internal credit ratings
   credit_rating <- credit_rating_raw %>%
     dplyr::group_by(.data$date, .data$sec) %>%
     dplyr::mutate(
