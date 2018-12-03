@@ -224,17 +224,26 @@ pad_2zeros <- function(Number){
 #' @export
 #'
 #' @examples
-#' \donttest{get_bm_ratings(start_date="2018-10-01", end_date = "2018-11-01")}
+#' \donttest{
+#' library(Rblpapi)
+#' blpConnect()
+#'
+#' get_bm_ratings(end_date="2018-10-01", per=2)
+#' }
 get_bm_ratings <- function(end_date= Sys.Date(), per=120){
+  #check end_date is a date
+  if (!lubridate::is.Date(end_date)){
+    stop("end_date requires Date datatype.")
+  }
+
   dates <-
     sort(seq(
-      lubridate::floor_date(end_date, "1 month") - months(per-1) - 1,
-      lubridate::floor_date(end_date, "1 month") - 1,
+      lubridate::floor_date(end_date, "1 month") - months(per-1),
+      lubridate::floor_date(end_date, "1 month"),
       by = "1 month"
-    ))
-  #No. of bdp calls = no. of periods x no. of securities x 3 ratings
-  #1 bdp call ~ 5 seconds
-  sec_list <- c(
+    ) - 1)
+
+    sec_list <- c(
     "GTAUD10Y Govt",
     "GTBEF10Y Govt",
     "GTCAD10Y Govt",
@@ -267,7 +276,7 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
       "US"
     )
   )
-  message(paste("Downloading data from", min(dates), "to", max(dates), "- this might take a while...", length(dates), "period(s)"))
+  message(paste("Downloading data from", min(dates), "to", max(dates), ": this might take a while..."))
 
   credit_rating_raw <- tibble::as_tibble(dates) %>%
     dplyr::rename(date = .data$value) %>%
@@ -285,14 +294,14 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
       overrides = c("Rating_as_of_date_override" = x)
     )
   }) %>%
-    purrr::map(~mutate(.x, Ticker = sec_list)) %>%
+    purrr::map(~dplyr::mutate(.x, Ticker = sec_list)) %>%
     purrr::set_names(credit_rating_raw$date) %>%
     dplyr::bind_rows(.id = "date") %>%
     dplyr::transmute(date = as.Date(.data$date),
                   sec = .data$Ticker,
                   moody = .data$RTG_MDY_LT_LC_DEBT_RATING,
                   snp = .data$RTG_SP_LT_LC_ISSUER_CREDIT,
-                  fitch = .data$RTG_SP_LT_LC_ISSUER_CREDIT) %>%
+                  fitch = .data$RTG_FITCH_LT_LC_DEBT) %>%
     tibble::as_tibble()
 
   credit_rating <- credit_rating_raw %>%
@@ -324,22 +333,22 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
 plot_credit_ratings <- function(my_data){
   credit_rating_subtitle <- paste("From", min(my_data$date), "to", max(my_data$date))
 
-  wt_caps <- factor(c(
-    "0%" = "dashed",
-    "5%" = "dotdash",
-    "15%" = "dotted"
-  ))
+  # wt_caps <- factor(c(
+  #   "0%" = "dashed",
+  #   "5%" = "dotdash",
+  #   "15%" = "dotted"
+  # ))
 
   credit_rating_levels <- c("BBB-", "BBB", "BBB+",  "A-",  "A",  "A+",  "AA-",  "AA", "AA+", "AAA")
 
   recent_ratings <- my_data %>%
-    ungroup() %>%
-    filter(date == max(date)) %>%
-    select(date, country, moody.clean, snp.clean, fitch.clean) %>%
-    rename(moody = moody.clean, snp = snp.clean, fitch = fitch.clean) %>%
-    gather(rater, rating, -date, -country) %>%
-    mutate(rating = rating %>% factor(credit_rating_levels) %>% forcats::fct_rev()) %>%
-    arrange(country)
+    dplyr::ungroup() %>%
+    dplyr::filter(date == max(.data$date)) %>%
+    dplyr::select(.data$date, .data$country, .data$moody.clean, .data$snp.clean, .data$fitch.clean) %>%
+    dplyr::rename(moody = .data$moody.clean, snp = .data$snp.clean, fitch = .data$fitch.clean)  %>%
+    tidyr::gather(rater, rating, -date, -country) %>%
+    dplyr::mutate(rating = .data$rating %>% factor(credit_rating_levels) %>% forcats::fct_rev()) %>%
+    dplyr::arrange(.data$country)
 
   my_data %>%
     ggplot(aes(x = .data$date, y = .data$mas_rating, col = .data$country, group=.data$country)) +
@@ -357,5 +366,5 @@ plot_credit_ratings <- function(my_data){
     scale_y_discrete(limits=forcats::fct_rev(credit_rating_levels)) +
     scale_linetype_manual(name="Weight caps", breaks=c("0%", "5%", "15%"), values=c(2, 3, 4)) +
     scale_color_discrete(guide=FALSE) +
-    scale_shape_discrete(name = "Rating Agency", breaks=c("fitch", "moody", "snp"), labels=c("Fitch", "Moody", "S&P"))
+    scale_shape_discrete(name = "Rating agency", breaks=c("fitch", "moody", "snp"), labels=c("Fitch", "Moody", "S&P"))
 }
