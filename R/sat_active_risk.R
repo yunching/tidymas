@@ -119,6 +119,7 @@ get_tickers <- function(asset_cl, roll_differencing = TRUE) {
     if (asset_cl == "govt")
       asset_cl <- c("govt", "ilb")
     output <- output %>% filter(.$asset_class %in% asset_cl)
+    output[output == ""] <- NA
   }
 
   output
@@ -140,58 +141,26 @@ get_tickers <- function(asset_cl, roll_differencing = TRUE) {
 #'                     stringsAsFactors = FALSE)
 #' get_and_check_tickers("govt", inst)
 #' }
-get_and_check_tickers <- function(asset_cl, instruments_df, type = c("price", "duration")) {
-  if (length(type) > 1)
-    type <- type[1]
+get_and_check_tickers <- function(instruments_df) {
+  sec_list <- map(list("govt", "equity", "cds", "fut"), get_tickers) %>%
+    reduce(rbind)
 
-  # Type is price, duration
-  # Asset class work for bonds, equity, cds, fut (does not support fx)
-  if (!asset_cl %in% c("govt", "equity", "cds", "fut")) stop("Asset class not supported, only govt, equity, cds, fut allowed")
-  if (!type %in% c("price", "duration")) stop("Type not supported, only price and duration allowed")
+  output <- instruments_df %>%
+    group_by(asset_class, identifier) %>%
+    summarise() %>%
+    left_join(sec_list, by = c("asset_class", "identifier"))
 
-  sec_tickers <- get_tickers(asset_cl)
-  if (asset_cl == "govt") asset_cl <- c("govt", "ilb")
-
-  # Match tickers to identifier
-  sec_df <- instruments_df %>%
-    filter(.data$asset_class %in% asset_cl) %>%
-    left_join(select(sec_tickers, -.data$asset_class), by = "identifier")  %>%
-    mutate(name = .data$identifier)
-  if (type == "duration")
-    sec_df <- mutate(sec_df, ticker = .data$ticker_duration)
-  else
-    sec_df <- mutate(sec_df, ticker = .data$ticker_price)
-
-  # Check valid identifier for bonds ie bonds have corresponding tickers
-  if (any(is.na(sec_df$ticker))) {
-    invalid_sec <- sec_df %>%
-      filter(is.na(.data$ticker)) %>%
-      mutate(error_msg = paste(.data$asset_class, .data$identifier, sep = "/"))
-    stop(paste("Unable to find ticker for the following bonds:",paste(invalid_sec$error_msg, collapse = ",")))
+  non_fx_unfound <- filter(output, asset_class != "fx" & is.na(ticker_price))
+  if (nrow(non_fx_unfound) > 0) {
+    warning(paste("Tickers not found for assets:", paste(mutate(non_fx_unfound, error_msg = paste(.data$asset_class, .data$identifier, sep = "/"))$error_msg, collapse = ",")))
   }
 
-  # Warning for ignored instrument classes
-  ignored_sec <- instruments_df %>%
-    filter(!.data$asset_class %in% asset_cl) %>%
-    mutate(warning_msg = paste(.data$asset_class,.data$identifier,sep="/"))
-
-  if (nrow(ignored_sec) > 0) {
-    message(paste("Instruments ignored in",asset_cl, paste(unique(ignored_sec$warning_msg), collapse = ",")))
-  }
-
-  reduced_sec_df <- sec_df %>%
-    group_by(.data$name, .data$ticker) %>%
-    summarise()
-
-  if (nrow(reduced_sec_df) == 0) {
-    stop(paste("No tickers detected for asset class:", asset_cl))
-  }
-  reduced_sec_df
+  output
 }
 
 #' Build strategies from an input csv file, see `gen_strategies_template` to generate a template file
 #'
-#' @param input_file A character variable containing the path to the input csv file
+#' @param input A dataframe containing strategy inputs or A character variable containing the path to the input csv file
 #' @param start_date A Date variable with start date of generation, this can be earlier or later than the dates in the template file
 #' @param end_date A Date variable containing the end date for the position sizes, defaults to today
 #'
@@ -203,9 +172,21 @@ get_and_check_tickers <- function(asset_cl, instruments_df, type = c("price", "d
 #' gen_strategies_template("test.csv")
 #' build_strategies("test.csv", as.Date("2008-01-01"))
 #' }
-build_strategies <- function(input_file, start_date = as.Date("2000-01-01"), end_date = today()) {
+build_strategies <- function(input, start_date = as.Date("2000-01-01"), end_date = today()) {
   # Read in strategies
-  strategies <- read.csv(input_file, stringsAsFactors = FALSE) %>%
+  if (class(input) == "character") {
+    if (file.exists(input)) {
+      strategies <- read.csv(input, stringsAsFactors = FALSE)
+    } else {
+      stop(sprintf("File %s cannot be found", input))
+    }
+  } else if ("data.frame" %in% class(input)) {
+    strategies <- input
+  } else{
+    stop("Invalid input, input can only be dataframe or character containing file path")
+  }
+
+  strategies <- strategies %>%
     mutate(open_date = ymd(.data$open_date), close_date = ymd(.data$close_date),
            strategy = paste(.data$strategy, .data$owner, sep = ":::"))
 
@@ -268,8 +249,8 @@ build_strategies <- function(input_file, start_date = as.Date("2000-01-01"), end
     summarise %>%
     left_join(non_fxcds_tickers, by = c("asset_class", "identifier"))
 
-  if (any(is.na(strat_inst$ticker))) {
-    not_found <- strat_inst %>% filter(is.na(.data$ticker)) %>%
+  if (any(is.na(strat_inst$ticker_price))) {
+    not_found <- strat_inst %>% filter(is.na(.data$ticker_price)) %>%
       mutate(error_msg = paste(.data$asset_class, .data$identifier, sep = "/"))
     stop(paste("Identifier not found: ", paste(not_found$error_msg, collapse = ",")))
   }
@@ -293,8 +274,8 @@ build_strategies <- function(input_file, start_date = as.Date("2000-01-01"), end
       # Set weight as actual first
       for (j in 1:nrow(curr_inst_df)) {
         # Strat start and end
-        strat_start <- if (is.na(curr_inst_df$open_date[j])) as.Date(today()-days(1)) else curr_inst_df$open_date[j]
-        strat_end <- if (is.na(curr_inst_df$close_date[j])) as.Date(today()) else curr_inst_df$close_date[j]
+        strat_start <- if (is.na(curr_inst_df$open_date[j])) start_date else curr_inst_df$open_date[j]
+        strat_end <- if (is.na(curr_inst_df$close_date[j])) end_date else curr_inst_df$close_date[j]
 
         actual_size[[curr_inst]] <- actual_size[[curr_inst]] +
           if_else(actual_size$date <= strat_end & actual_size$date > strat_start,
@@ -325,7 +306,9 @@ build_strategies <- function(input_file, start_date = as.Date("2000-01-01"), end
 
 # Get duration of bonds from Bloomberg, end user should avoid using this but use `get_dur_bbg` instead
 get_dur_bonds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
-  reduced_sec_df <- get_and_check_tickers("govt", instruments_df)
+  reduced_sec_df <- get_and_check_tickers(instruments_df) %>%
+    mutate(name = .data$identifier,
+           ticker = .data$ticker_duration)
 
   message("Downloading bond duration from bbg...")
   dur_df <- bdh_weekday(reduced_sec_df, "MODIFIED_DURATION", start_date = start_date, end_date = end_date)
@@ -339,7 +322,9 @@ get_dur_bonds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01")
 
 # Get duration of futures from Bloomberg, end user should avoid using this but use `get_dur_bbg` instead
 get_dur_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
-  reduced_sec_df <- get_and_check_tickers("fut", instruments_df)
+  reduced_sec_df <- get_and_check_tickers(instruments_df) %>%
+    mutate(name = .data$identifier,
+      ticker = .data$ticker_duration)
 
   # Download data from Bloomberg
   message("Downloading futures duration from bbg...")
@@ -368,7 +353,9 @@ get_dur_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), 
 
 # Get duration of cds from Bloomberg, end user should avoid using this but use `get_dur_bbg` instead
 get_dur_cds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
-  reduced_sec_df <- get_and_check_tickers("cds", instruments_df, "duration")
+  reduced_sec_df <- get_and_check_tickers(instruments_df) %>%
+    mutate(name = .data$identifier,
+           ticker = .data$ticker_duration)
 
   # Download data from Bloomberg
   message("Downloading cds duration from bbg...")
@@ -1036,3 +1023,12 @@ sort_gg <- function(df_gathered, group_by_column, sort_by, filter_scenario = "La
   df_gathered[[group_by_column]] <- factor(df_gathered[[group_by_column]], levels = ordered_column)
   df_gathered
 }
+
+
+
+
+#' demo_strategies
+#' @name demo_strategies
+#' @docType data
+#' @details Demo strategies for use with active risk calculations
+NULL
