@@ -9,6 +9,13 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
 This project aims to provide a macro view on RMD's alpha strategies, it includes various calculations for RMD's alpha strategies, including PnL, risk, correlation etc. The generated .docx document is used in the Quarterly Strategy Report in the SAT section, and was first presented in the 2018 Q4 strategy report. 
 
 
@@ -36,16 +43,15 @@ This project aims to provide a macro view on RMD's alpha strategies, it includes
         iv. `left_join`: joining of dataframes
         v. `group_by`, `summarise`: grouping and summarising across groups
     c. `ggplot2`
-    d. `apply`, `lapply`, `sapply`, `pblapply`: Functions for iterating functions of vector/array
+    d. `map`, `map2`, `apply`, `lapply`, `sapply`: Functions for iterating functions of vector/array
     
 ## Setting up
 
-1. Check required input files in folder `data2/tickers/...`, if unavailable, please redownload files from repo (DMS or otherwise)
-    a. `tickers_ilb_clean.csv`, `tickers_govt_clean.csv`, `tickers_futures.csv`, `tickers_funding.csv`, `tickers_equity.csv`, `tickers_equity.csv`
-    b. `strategies.csv` 
-    c. `scenarios.csv`
-2. Open `RStudio`
-3. Install packages by typing in RStudio Console `install.packages("tidyverse", "Rblpapi", "pbapply", "lubridate", "RcppRoll", "scales", "knitr", "rmarkdown")` 
+1. Open RStudio
+2. install and setup `tidymas` by running commands
+   a. `install.packages("devtools")
+   b. `devtools::install_github("yunching/tidymas")`
+   c. Set up `strategies.csv` with the relevant strategies
 
 ## Running program to generate output
 
@@ -61,17 +67,9 @@ This project aims to provide a macro view on RMD's alpha strategies, it includes
 
 1. `strategies.csv`: Contains all the executed/intended strategies, the corresponding instruments, sizes and trade dates. Update by approaching members of each division. Instruments identified by `identifiers`
 
-## Inputs (Largely static)
-
-1. `tickers_XXX.csv`: Contains tickers corresponding to the identifiers of various instruments
-2. `tickers_funding.csv`: tickers of depo rates of currencies for calculating FX pnl
-3. `scenarios.csv`: Historical scenarios that may be relevant for analysis
-
 ## Main Program
 
 1. `active_risk.Rmd`: R Markdown file that generates the document containing analysis
-2. `helper.R`: contains helper functions used in the main document
-3. `readme.md`: Markdown file to generate readme.pdf, use whenever updates are required to readme
 
 # Usage
 
@@ -117,20 +115,21 @@ This program supports the following asset classes, any other asset classes will 
 4. FX
 5. CDS
 
-If there are instruments that have been omitted, you can add them by opening the `inputs/tickers_XXX.csv` file and adding a new row for the asset. Please note for the following assets:
+Developer note:
+If there are instruments that have been omitted, you can add them by opening the `inst/extdata/tickers_XXX.csv` file and adding a new row for the asset. Please note for the following assets:
 
 1. **FX:** does not need to be added, as the required tickers are computed on the fly*
 2. **Bonds:** Only total return indices should be used
 
 ## Adding scenarios
 
-If any return or risk simulation needs to be done over a specified period in history, it can be added to `inputs/scenarios.csv`, it will be automatically added to the outputs which rely on the scenarios. 
+If any return or risk simulation needs to be done over a specified period in history, it can be added to `active_risk.rmd` file, it will be automatically added to the outputs which rely on the scenarios. 
 
 # Methodology
 
-## Size of strategy
+## Size of trade
 
-The size of strategies are all converted to percentage terms, meaning `% of R2` in order to compute returns.
+The size of trades are all converted to percentage terms, meaning `% of R2` in order to compute returns.
 
 ### Percent
 
@@ -138,18 +137,30 @@ If input trade sizes are in `percent`, the percentage is taken directly to be th
 
 ### Duration (months)
 
-When input size is in `duration` contribution in `months`, and there is only a single instrument: 
+When input size is in `duration` contribution in `months`: 
 
-$$percent.weight_t = \frac{|month.weight_t|}{modified.duration_t \times 12}$$
-
-If there are multiple instruments: 
-
-$$max.mod.dur_t = \overset{n}{\underset{i=1}{max}}(modified.duration_{i, t})$$
-
-$$percent.weight_t = \frac{|month.weight|}{max.mod.dur_t \times 12}$$
+$$percent.weight_{i,t} = \frac{month.weight_{i,t}}{modified.duration_{i,t} \times 12}$$
 
 - $i$: instrument
-- $n$: total number of instruments
+
+## Size of strategy
+
+Size of strategy is calculated by taking first summing all the positive sizes of instruments, and summing all the negative sizes. The higher absolute of positve or negative is taken to be the size of the trade. For example, a flattener of 10y vs 2y with months weighted size of 0.5 months, will be converted to approximately size of 0.5mths / (dur 10y * 12) = 0.42%, while 2years will be -2.08%, the size of the strategy is taken to be 2.08% as it is larger of 0.42% and 2.08%.
+
+$$strategy.weight_{s,t} = max(\sum_i f(instr.weight_{i, t}), \sum_i g(instr.weight_{i,t})) \\
+f(x) = \begin{cases} 
+x \text{ for } x > 0 \\
+0 \text{ for } x \le 0   
+\end{cases} \\
+g(x) = \begin{cases} 
+|x| \text{ for } x < 0 \\
+0 \text{ for } x \ge 0   
+\end{cases}$$
+
+- $s$ is the strategy id
+- $i$ is the instrument id
+- $f(x)$ are the positive size instruments
+- $g(x)$ are the negative size instrument
 
 ## Returns of instruments
 
@@ -159,52 +170,36 @@ Returns are calculated on a daily basis by using Bloomberg data, based on the be
 
 *Bonds use total return indices* to calculate returns
 
-$$return_t = \frac{index_t}{index_{t-1}} - 1$$
+$$return_{i,t} = \frac{index_{i,t}}{index_{i,t-1}} - 1$$
 
 ### Futures
 
-$$return_t = \frac{contract.value_t}{contract.value_{t-1}} - 1$$
+$$return_{i,t} = \frac{contract.value_{i,t}}{contract.value_{i,t-1}} - 1$$
 
 ### FX
 
 $$
 \begin{aligned}
-return_t &= price.return_t + funding.return_t \\
-&= (\frac{price_t}{price_{t-1}} - 1) + (left.depo_{t-1} - right.depo_{t-1})
+return_{i,t} &= price.return_{i,t} + funding.return_{i,t} \\
+&= (\frac{price_{i,t}}{price_{i,t-1}} - 1) + (left.depo_{i,t-1} - right.depo_{i,t-1})
 \end{aligned}
 $$
 
 ### CDS
 
-$$return_t = \frac{price_t}{price_{t-1}} - 1$$
+$$return_{i,t} = \frac{price_{i,t}}{price_{i,t-1}} - 1$$
 
-## Unweighted return of strategies
+## Weighted Return of strategies
 
-Unweighted return of a strategy is its return assuming 100% of the portfolio is dedicated to the trade. 
+Weighted return of strategies are simply the weight of the instruments multipled by the daily return
 
-### Single instrument trade
+$$weighted.return_{s,t} = \sum percent.weight_{i,t} \times return_{i,t} $$
 
-For single instrument trade e.g. Long 10y treasuries, the weight of the instrument would be `1`. 
+## Unweighted return of strategy
 
-### Multiple instrument (size in percent weight)
+To get the unweighted return of strategy, which is used to calculate correlation of trades and active risks, we take weighted return divided by the percentage weight. Note that we will have to simulate positions in order to calculate unweighted return of strategies. This is done by projecting the sizes forward and backward 
 
-e.g. Long SPX vs FTSE
-
-$$max.weight_t = \overset{n}{\underset{i=1}{max}}(percent.weight_{i, t})$$
-
-$$unweighted.return_t = \sum_{i=1}^n (\frac{percent.weight_{i,t}}{|max.weight_t|} \times return_{i,t})$$ 
-
-### Multiple instrument (size in duration weight)
-
-However, when a strategy uses multiple instruments e.g. Flatteners or spread trades, the instrument with the longer modified duration is taken to have a size of `1`, while the instrument with the shorter duration is adjusted to match the duration contribution of the longer instrument. e.g. UST 2s10s Flattener should see the 10y USTs at a weight of `1`, while the 2y USTs will have approximate weight of `-5` to calculate the unweighted return.
-
-$$max.mod.dur_t = \overset{n}{\underset{i=1}{max}}(modified.duration_{i, t})$$
-
-$$unweighted.return_t = \sum_{i=1}^n (\frac{max.mod.dur_t}{dur.weight_{i,t}} \times return_{i,t})$$ 
-
-## Weighted return of trades
-
-$$weighted.return_t = unweighted.return_t \times percent.weight_t$$
+$$unweighted.return_{s,t} = weighted.return_{s,t} \div percent.weight_{s,t}$$
 
 ## Active Risk
 

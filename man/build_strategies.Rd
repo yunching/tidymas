@@ -22,7 +22,7 @@ Build strategies from an input csv file or dataframe of strategies, can use `dem
 }
 \examples{
 data(demo_strategies)
-build_strategies(demo_strategies, as.Date("2008-01-01"))
+build_strategies(demo_strategies, as.Date("2016-01-01"))
 \donttest{
 build_strategies("input_file.csv")
 }
