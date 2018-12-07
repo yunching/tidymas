@@ -16,7 +16,7 @@ library(tidymas)
 blpConnect()
 ```
 
-```{r build_portfolios_and_get_returns}
+```{r build_portfolios_and_get_return}
 # Get strategies from file and their sizes (mix of month weighted and %)
 strategies_list <- build_strategies("../data2/strategies.csv")
 
@@ -32,18 +32,18 @@ clean_pf_list <- map(portfolios_list,
                   ~convert_dur_size(., instr_df, dur_df))
 
 # Get returns of assets from Bloomberg
-asset_returns <- get_ret_bbg(instr_df)
+asset_return <- get_ret_bbg(instr_df)
 
 # Calculate weight return of strategies
-wt_returns <- map(clean_pf_list, 
-                  ~calc_strat_wt_return(., asset_returns))
+wt_return <- map(clean_pf_list, 
+                  ~calc_strat_wt_return(., asset_return))
 
 # Calculate weight of strategies
 strat_headline_size <- map(clean_pf_list, 
                            ~calc_strat_headline_size(.))
 
 # Calculate unweighted return of strategies
-unwt_returns <- map2(wt_returns, strat_headline_size, calc_strat_unwt_return)
+unwt_return <- map2(wt_return, strat_headline_size, calc_strat_unwt_return)
 ```
 
 ```{r get_scenarios}
@@ -72,14 +72,14 @@ curr_strat <- get_strat_size(strat_headline_size$actual, curr_date)
 prev_strat <- get_strat_size(strat_headline_size$actual, prev_date)
 
 # Calculate active risk of previous quarters strategies 
-active_risk_prev <- calc_active_risk(unwt_returns$sim, 
+active_risk_prev <- calc_active_risk(unwt_return$sim, 
                                 prev_strat,
                                 start_date = prev_date - months(3), end_date = prev_date)
 
 # Calculate active risk of current strategies
 active_risk_curr <- apply(scenarios, 1, 
                      function(x) {
-                       calc_active_risk(unwt_returns$sim, 
+                       calc_active_risk(unwt_return$sim, 
                                         curr_strat,
                                         start_date = x['start_date'], end_date = x['end_date'])
                      })
@@ -87,21 +87,21 @@ active_risk_curr <- apply(scenarios, 1,
 # calculate historical return based on scenario dates with current strategy
 scenario_return <- apply(scenarios, 1, 
                            function(x) {
-                             simulate_history(unwt_returns$sim, 
+                             simulate_history(unwt_return$sim, 
                                       curr_strat, 
                                       x['start_date'], x['end_date'])
                            })
 ```
 
 ```{r calc_team_correlation_analysis}
-ret_by_owner <- wt_returns$actual %>%
+ret_by_owner <- wt_return$actual %>%
   custom_grouping(instr_df, "owner")
 
 actual_corr <- calc_cor(ret_by_owner,
                         start_date = curr_date - months(3),
                         end_date = curr_date)
 
-exp_return <- simulate_history(unwt_returns$sim, 
+exp_return <- simulate_history(unwt_return$sim, 
                                curr_strat, 
                                curr_date - months(3), curr_date)
 
@@ -277,13 +277,13 @@ unique_strategies <- instr_df %>%
   unique
 
 # Start date for calculation of returns
-end_date_returns <- curr_date
-start_date_returns <- end_date_returns - months(12)
+end_date_return <- curr_date
+start_date_return <- end_date_return - months(12)
 
 
 # Extract return data based on start_date
-actual_ret_filtered <- wt_returns$actual %>% 
-  filter(date >= start_date_returns & date <= end_date_returns) %>%
+actual_ret_filtered <- wt_return$actual %>% 
+  filter(date >= start_date_return & date <= end_date_return) %>%
   gather(strategy, pnl, -date) %>%
   left_join(unique_strategies, by="strategy")
  
@@ -380,7 +380,7 @@ ordered_strategies <- instr_df %>% select(strategy, owner) %>%
   unique
 
 # Extract unweighted return of all strategies still open
-uniq_unwt_ret <- unwt_returns$sim[,c("date", names(curr_strat))] %>%
+uniq_unwt_ret <- unwt_return$sim[,c("date", names(curr_strat))] %>%
   gather(strategy, return, -date) %>% 
   mutate(strategy = str_extract(strategy, "^.*(?=:::)")) %>%
   group_by(strategy, date) %>%
@@ -410,9 +410,9 @@ for (i in rev(unique(strat_cor_all$period))) {
 ### Actual returns (Cumulative Rolling 12 months)
 
 ```{r display_actual_ret, fig.width = 9}
-# Plot actual returns, starting from start_date_returns, defined when calculating sharpe ratio
-actual_ret_filtered <- wt_returns$actual %>%
-  filter(date > start_date_returns) %>%
+# Plot actual returns, starting from start_date_return, defined when calculating sharpe ratio
+actual_ret_filtered <- wt_return$actual %>%
+  filter(date > start_date_return) %>%
   column_to_rownames("date")
 
 actual_ret_filtered[is.na(actual_ret_filtered)] <- 0    # Set all NAs to 0, to facilitate summing
@@ -448,17 +448,17 @@ Below are 3 month returns arising from current strategies extrapolated into hist
 
 *Unweighted return is the strategy's return over its own notional size. For curve trades, the notional of the higher duration leg is taken to be the trade size. This allows us to have an idea how each strategy would have performed over different periods in history*
 
-```{r display_returns_over_time, fig.width = 9}
+```{r display_return_over_time, fig.width = 9}
 ######################################
 #  Compute rolling 3 month returns
 ######################################
 window = 20 * 3
 
-unwt_ret_roll <- apply(remove_date(unwt_returns$sim), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
-unwt_ret_roll <- cbind(data.frame(date = unwt_returns$sim$date[-(1:(window-1))]), unwt_ret_roll)
+unwt_ret_roll <- apply(remove_date(unwt_return$sim), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
+unwt_ret_roll <- cbind(data.frame(date = unwt_return$sim$date[-(1:(window-1))]), unwt_ret_roll)
 
-sim_ret_roll <- apply(remove_date(wt_returns$sim), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
-sim_ret_roll <- cbind(data.frame(date = wt_returns$sim$date[-(1:(window-1))]), sim_ret_roll)
+sim_ret_roll <- apply(remove_date(wt_return$sim), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
+sim_ret_roll <- cbind(data.frame(date = wt_return$sim$date[-(1:(window-1))]), sim_ret_roll)
 
 ######################################
 # Plot heatmap of returns across time
@@ -505,7 +505,7 @@ active_unwt_ret_roll %>%
 
 *Weighted return is assuming current strategy sizes extrapolated into history to calculate the return contribution of each of the strategies based on different periods in history. Consistent light shades of colours across all periods in history could indicate the trade is sized too small for its historical volatility*
 
-```{r display_weighted_returns_timeline, fig.width = 9}
+```{r display_weighted_return_timeline, fig.width = 9}
 
 ######################################
 # Plot heatmap of weighted simulated returns
