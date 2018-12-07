@@ -170,7 +170,7 @@ get_and_check_tickers <- function(instruments_df, type = c("price", "duration"))
 #'
 #' @examples
 #' data(demo_strategies)
-#' build_strategies(demo_strategies, as.Date("2008-01-01"))
+#' build_strategies(demo_strategies, as.Date("2016-01-01"))
 #' \donttest{
 #' build_strategies("input_file.csv")
 #' }
@@ -453,7 +453,7 @@ get_dur_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
 #' @examples
 #' data(demo_strategies)
 #' data(demo_duration)
-#' portfolios <- build_strategies(demo_strategies)
+#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"))
 #' actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, demo_duration)
 convert_dur_size <- function(strat_df, strat_id_sizetype, duration_df, convert_to_decimal = TRUE) {
 
@@ -647,7 +647,7 @@ get_ret_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
 #' @export
 #'
 #' @examples
-#' portfolios <- build_strategies(demo_strategies)
+#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"))
 #' dur <- demo_duration
 #' actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, dur)
 #' ret <- demo_return
@@ -666,7 +666,8 @@ calc_strat_wt_return <- function(strat_df, asset_returns) {
     group_by(.data$date, .data$strategy) %>%
     summarise(wt_return = sum(.data$wt_return, na.rm = TRUE)) %>%
     select(.data$date, .data$strategy, .data$wt_return) %>%
-    arrange(.data$strategy, .data$date)
+    arrange(.data$strategy, .data$date) %>%
+    ungroup
 }
 
 #' Calculates headline sizes of strategies given the size of the component trades by first summing the positive sizes and negative sizes separately. Then taking the higher number as the size
@@ -677,7 +678,7 @@ calc_strat_wt_return <- function(strat_df, asset_returns) {
 #' @export
 #'
 #' @examples
-#' portfolios <- build_strategies(demo_strategies)
+#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"))
 #' actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, demo_duration)
 #' calc_strat_headline_size(actual_pf_size)
 calc_strat_headline_size <- function(strat_df) {
@@ -698,7 +699,7 @@ calc_strat_headline_size <- function(strat_df) {
 #' @export
 #'
 #' @examples
-#' portfolios <- build_strategies(demo_strategies)
+#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"))
 #' sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, demo_duration)
 #' wt_return <- calc_strat_wt_return(sim_pf_size, demo_return)
 #' headline_size <- calc_strat_headline_size(sim_pf_size)
@@ -717,7 +718,8 @@ calc_strat_unwt_return <- function(wt_return, strat_headline_size) {
   wt_return %>% left_join(strat_headline_size, by = c("date", "strategy")) %>%
     mutate(return = .data$wt_return / .data$size) %>%
     select(.data$date, .data$strategy, .data$return) %>%
-    replace_na(list(return = 0))
+    replace_na(list(return = 0)) %>%
+    ungroup
 }
 
 #' Group returns of strategies
@@ -802,7 +804,7 @@ get_strat_size <- function(strat_df, as_of_date = NULL, approx = TRUE) {
 #' @export
 #'
 #' @examples
-#' portfolios <- build_strategies(demo_strategies)
+#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"))
 #' sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, demo_duration)
 #' wt_return <- calc_strat_wt_return(sim_pf_size, demo_return)
 #' headline_size <- calc_strat_headline_size(sim_pf_size)
@@ -856,7 +858,7 @@ calc_returns <- function(df) {
 #' @importFrom stats cov
 #'
 #' @examples
-#' portfolios <- build_strategies(demo_strategies)
+#' portfolios <- build_strategies(demo_strategies, start_date = as.Date("2016-01-01"))
 #' sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, demo_duration)
 #' wt_return <- calc_strat_wt_return(sim_pf_size, demo_return)
 #' headline_size <- calc_strat_headline_size(sim_pf_size)

@@ -22,7 +22,7 @@ A dataframe containing the timeseries weighted return of the period
 Calculate the returns in history given a set of static strategy weights
 }
 \examples{
-portfolios <- build_strategies(demo_strategies)
+portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"))
 sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, demo_duration)
 wt_return <- calc_strat_wt_return(sim_pf_size, demo_return)
 headline_size <- calc_strat_headline_size(sim_pf_size)

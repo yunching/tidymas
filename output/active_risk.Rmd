@@ -16,7 +16,7 @@ library(tidymas)
 blpConnect()
 ```
 
-```{r build_portfolios_and_get_return}
+```{r build_portfolios_and_get_return, message = FALSE}
 # Get strategies from file and their sizes (mix of month weighted and %)
 strategies_list <- build_strategies("../data2/strategies.csv")
 
@@ -108,7 +108,7 @@ exp_return <- simulate_history(unwt_return,
 exp_ret_by_owner <- exp_return %>%
   custom_grouping(instr_df, "owner")
 
-exp_corr <- calc_cor(exp_ret_by_owner,
+exp_corr <- calc_cor(exp_ret_by_owner %>% spread(owner, wt_return),
                         start_date = curr_date - months(3),
                         end_date = curr_date)
 ```
@@ -152,7 +152,7 @@ div_risk <- strat_active_risk %>%
 
 ```
 
-**The RMD ex BW active risk utilization for Q`r current_quarter` is expected to be around `r sprintf("%.1f", current_abs_active_risk)`bps in our baseline scenario**, `r if (current_abs_active_risk > risk_budget) "above" else "below"` the available risk budget for FY18/19 and `r if (current_abs_active_risk > prev_active_risk) "above" else "below"` our estimates for the last quarters (`r prev_quarter`Q: `r sprintf("%.1f",prev_abs_active_risk)`bps). Assuming an information ratio of `r sprintf("%.1f", info_ratio)`, the expected portfolio excess return will be `r sprintf("%.1f", info_ratio * current_abs_active_risk)` (annualized). Under a stress scenario similar to the GFC and the Taper Tantrum, we expect absolute active risk utilization to increase to around `r sprintf("%.1f", gfc_abs_active_risk)` and `r sprintf("%.1f", taper_abs_active_risk)`bps respectively
+**The RMD ex BW active risk utilization for Q`r current_quarter` is expected to be around `r sprintf("%.1f", current_abs_active_risk)`bps in our baseline scenario**, `r if (current_abs_active_risk > risk_budget) "above" else "below"` the available risk budget for FY18/19 and `r if (current_abs_active_risk > prev_abs_active_risk) "above" else "below"` our estimates for the last quarters (`r prev_quarter`Q: `r sprintf("%.1f",prev_abs_active_risk)`bps). Assuming an information ratio of `r sprintf("%.1f", info_ratio)`, the expected portfolio excess return will be `r sprintf("%.1f", info_ratio * current_abs_active_risk)` (annualized). Under a stress scenario similar to the GFC and the Taper Tantrum, we expect absolute active risk utilization to increase to around `r sprintf("%.1f", gfc_abs_active_risk)` and `r sprintf("%.1f", taper_abs_active_risk)`bps respectively
 
 **Key observations are: **
 
@@ -171,7 +171,7 @@ strat_percent_size <- get_strat_size(strat_headline_size$actual, curr_date) %>%
 
 # Extract necessary portfolio information
 pf_overview <- pf_summary(portfolios_list$actual, curr_date) %>%
-  remove_date %>%
+  select(-date) %>%
   gather(strategy, size) %>%
   left_join(unique(select(instr_df, strategy, size_type, owner, type)), by = "strategy") %>%
   left_join(strat_percent_size, by = "strategy") %>% 
@@ -391,7 +391,7 @@ strat_cor_all <- bind_rows(
   apply(scenarios, 1,  # "Loop" through all scenarios
         function(x)
           # Calculate correlation for each  scenario
-          calc_cor(uniq_unwt_ret, start_date = x['start_date'], end_date = x['end_date'], period_name = x['period']))) %>%
+          calc_cor(uniq_unwt_ret %>% spread(strategy, return), start_date = x['start_date'], end_date = x['end_date'], period_name = x['period']))) %>%
   mutate(strat1 = factor(strat1, levels = ordered_strategies),   # Order strategies for plotting
          strat2 = factor(strat2, levels = ordered_strategies))
 
@@ -448,23 +448,23 @@ Below are 3 month returns arising from current strategies extrapolated into hist
 ######################################
 window = 20 * 3
 
-unwt_ret_sp <- spread(unwt_return, strategy, return)
-wt_ret_sp <- spread(wt_return$sim, strategy, wt_return)
+unwt_ret_sp <- spread(unwt_return, strategy, return) %>% ungroup
+wt_ret_sp <- spread(wt_return$sim, strategy, wt_return) %>% ungroup
 
-unwt_ret_roll <- apply(remove_date(unwt_ret_sp), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
+unwt_ret_roll <- apply(select(unwt_ret_sp, -date), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
 unwt_ret_roll <- cbind(data.frame(date = unwt_ret_sp$date[-(1:(window-1))]), unwt_ret_roll)
 
-sim_ret_roll <- apply(remove_date(wt_ret_sp), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
+sim_ret_roll <- apply(select(wt_ret_sp, -date), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
 sim_ret_roll <- cbind(data.frame(date = wt_ret_sp$date[-(1:(window-1))]), sim_ret_roll)
 
 ######################################
 # Plot heatmap of returns across time
 ######################################
 
-active_unwt_ret_roll <- unwt_ret_roll[,c("date", names(curr_strat))]
+active_unwt_ret_roll <- unwt_ret_roll[,c("date", unique(curr_strat$strategy))]
 
-max_ret_unwt <- max(remove_date(active_unwt_ret_roll), na.rm = T)
-min_ret_unwt <- min(remove_date(active_unwt_ret_roll), na.rm = T)
+max_ret_unwt <- max(select(active_unwt_ret_roll, -date), na.rm = T)
+min_ret_unwt <- min(select(active_unwt_ret_roll, -date), na.rm = T)
 
 # Adjusting x-axis to display dates properly
 recalc_date <- active_unwt_ret_roll %>% 
@@ -524,8 +524,8 @@ date_labels <- recalc_date %>%
   filter(new_date != "") %>%
   .$new_date
 
-max_ret_wt <- max(remove_date(sim_ret_roll), na.rm = T) * 10000
-min_ret_wt <- min(remove_date(sim_ret_roll), na.rm = T) * 10000
+max_ret_wt <- max(select(sim_ret_roll, -date), na.rm = T) * 10000
+min_ret_wt <- min(select(sim_ret_roll, -date), na.rm = T) * 10000
 
 sim_ret_roll %>% 
   select(date, unique(curr_strat$strategy)) %>%

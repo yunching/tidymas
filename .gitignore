@@ -8,5 +8,4 @@ inst/doc
 *_files
 *.csv
 *.Rpres
-
-!data2/tickers_map/*.csv
+output/*.docx
