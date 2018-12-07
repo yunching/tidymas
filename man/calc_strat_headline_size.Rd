@@ -15,3 +15,8 @@ A dataframe containing the size of the strategies daily
 \description{
 Calculates headline sizes of strategies given the size of the component trades by first summing the positive sizes and negative sizes separately. Then taking the higher number as the size
 }
+\examples{
+portfolios <- build_strategies(demo_strategies)
+actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, demo_duration)
+calc_strat_headline_size(actual_pf_size)
+}

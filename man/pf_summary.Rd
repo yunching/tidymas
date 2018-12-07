@@ -2,12 +2,12 @@
 % Please edit documentation in R/sat_active_risk.R
 \name{pf_summary}
 \alias{pf_summary}
-\title{Gets a sizes of each strategy in a portfolio at a specific date}
+\title{Gets a sizes of each strategy in a portfolio at a specific date. Use to retrieve sizes in month weight terms}
 \usage{
 pf_summary(portfolio, as_of_date = NULL, approx = TRUE)
 }
 \arguments{
-\item{portfolio}{A list of strategies which are dataframes containing timeseries sizes of their component instruments}
+\item{portfolio}{A dataframe of strategies which are timeseries sizes of their component instruments, contains columns `date`, `strategy`}
 
 \item{as_of_date}{A Date variable}
 
@@ -17,5 +17,5 @@ pf_summary(portfolio, as_of_date = NULL, approx = TRUE)
 A dataframe containing the sizes of the strategies
 }
 \description{
-Gets a sizes of each strategy in a portfolio at a specific date
+Gets a sizes of each strategy in a portfolio at a specific date. Use to retrieve sizes in month weight terms
 }

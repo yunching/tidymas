@@ -18,10 +18,8 @@ A dataframe with the matched instruments from instruments_df and their correspon
 Get tickers of available securities in the specific asset class, and check which securities in the instruments dataframe are valid for the asset class
 }
 \examples{
-\donttest{
-inst <- data.frame(asset_cl = c("equity", "ilb", "govt"),
+inst <- data.frame(asset_class = c("equity", "ilb", "govt"),
                     identifier = c("spx", "germany_ilb_5y", "us_govt_10y"),
                     stringsAsFactors = FALSE)
-get_and_check_tickers("govt", inst)
-}
+get_and_check_tickers(inst)
 }

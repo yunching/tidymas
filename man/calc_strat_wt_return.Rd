@@ -18,8 +18,14 @@ A dataframe containing the time-series daily return of all instruments
 Calculate weighted return of strategies
 }
 \examples{
+portfolios <- build_strategies(demo_strategies)
+dur <- demo_duration
+actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, dur)
+ret <- demo_return
+calc_strat_wt_return(actual_pf_size, ret)
 \donttest{
-portfolios <- build_strategies(gen_strat_templates())
+# With Bloomberg
+portfolios <- build_strategies(demo_strategies)
 dur <- get_dur_bbg(portfolios$summary)
 actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, dur)
 ret <- get_ret_bbg(portfolios$summary)

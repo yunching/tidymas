@@ -2,7 +2,7 @@
 % Please edit documentation in R/sat_active_risk.R
 \name{build_strategies}
 \alias{build_strategies}
-\title{Build strategies from an input csv file or dataframe of strategies, see `gen_strategies_template` to generate a template file}
+\title{Build strategies from an input csv file or dataframe of strategies, can use `demo_strategies` to generate a template file}
 \usage{
 build_strategies(input, start_date = as.Date("2000-01-01"),
   end_date = today())
@@ -18,11 +18,12 @@ build_strategies(input, start_date = as.Date("2000-01-01"),
 A list containing the actual sizes (mix of months-weighted and percentage based on input file) and simulated sizes ie actual sizes but filled upwards, then downwards to use for simulation of returns
 }
 \description{
-Build strategies from an input csv file or dataframe of strategies, see `gen_strategies_template` to generate a template file
+Build strategies from an input csv file or dataframe of strategies, can use `demo_strategies` to generate a template file
 }
 \examples{
+data(demo_strategies)
+build_strategies(demo_strategies, as.Date("2008-01-01"))
 \donttest{
-gen_strategies_template("test.csv")
-build_strategies("test.csv", as.Date("2008-01-01"))
+build_strategies("input_file.csv")
 }
 }
