@@ -5,9 +5,10 @@ utils::globalVariables(".")
 #' @importFrom purrr map map2 reduce
 #' @importFrom stats setNames median
 #' @importFrom lubridate today years days ymd
-#' @importFrom tidyr gather spread fill
+#' @importFrom tidyr gather spread fill replace_na
 #' @importFrom Rblpapi bdh bdp
 #' @importFrom utils read.csv head tail
+#' @importFrom tibble as.tibble
 
 NULL
 
@@ -127,7 +128,6 @@ get_tickers <- function(asset_cl, roll_differencing = TRUE) {
 
 #' Get tickers of available securities in the specific asset class, and check which securities in the instruments dataframe are valid for the asset class
 #'
-#' @param asset_cl A character variable of target asset class, `govt` (includes ilb), `equity`, `cds`, `fut`. FX is not included as the FX tickers are not stored, but generated on the fly
 #' @param instruments_df A dataframe containing the instruments to search the tickers for. Dataframe must have the `asset_class` and `identifier` columns
 #' @param type A character which can be `price` or `duration`, which indicates whether to return tickers for price or duration. Defaults to `price`
 #'
@@ -141,7 +141,11 @@ get_tickers <- function(asset_cl, roll_differencing = TRUE) {
 #'                     stringsAsFactors = FALSE)
 #' get_and_check_tickers("govt", inst)
 #' }
-get_and_check_tickers <- function(instruments_df) {
+get_and_check_tickers <- function(instruments_df, type = c("price", "duration")) {
+  if (length(type) == 2) {
+    type <- type[1]
+  }
+
   sec_list <- map(list("govt", "equity", "cds", "fut"), get_tickers) %>%
     reduce(rbind)
 
@@ -155,10 +159,10 @@ get_and_check_tickers <- function(instruments_df) {
     warning(paste("Tickers not found for assets:", paste(mutate(non_fx_unfound, error_msg = paste(.data$asset_class, .data$identifier, sep = "/"))$error_msg, collapse = ",")))
   }
 
-  output
+  output %>% rename(name = "identifier", ticker = ifelse(type == "duration", "ticker_duration", "ticker_price"))
 }
 
-#' Build strategies from an input csv file, see `gen_strategies_template` to generate a template file
+#' Build strategies from an input csv file or dataframe of strategies, see `gen_strategies_template` to generate a template file
 #'
 #' @param input A dataframe containing strategy inputs or A character variable containing the path to the input csv file
 #' @param start_date A Date variable with start date of generation, this can be earlier or later than the dates in the template file
@@ -255,11 +259,8 @@ build_strategies <- function(input, start_date = as.Date("2000-01-01"), end_date
     stop(paste("Identifier not found: ", paste(not_found$error_msg, collapse = ",")))
   }
 
-  # Calculate sizes
-  all_actual_size <- NULL
-  all_sim_size <- NULL
   ## Iterate through each unique strategy
-  for (i in unique(strategies$strategy)) {
+  list_of_strat <- map(unique(strategies$strategy), function(i) {
     # Filter out current strategy
     curr_strat <- strategies %>% filter(.data$strategy == i)
     inst_list <- curr_strat$identifier %>% unique
@@ -282,6 +283,8 @@ build_strategies <- function(input, start_date = as.Date("2000-01-01"), end_date
                   curr_inst_df$size[j], 0)
       }
     }
+
+    # Calculate simulated size
     sim_size <- actual_size %>%
       mutate(has_position = sign(rowSums(abs(.[-1])))) %>%  # Check if there's any position at the time
       gather("asset", "size", -.data$date, -.data$has_position) %>%  # convert into gathered dataframe
@@ -291,9 +294,27 @@ build_strategies <- function(input, start_date = as.Date("2000-01-01"), end_date
       fill(-.data$date, .direction = "up")  %>%
       fill(-.data$date, .direction = "down") # Fill up, then down to times without position, to calculate returns for simulation and correlations
 
-    all_actual_size[[i]] <- actual_size
-    all_sim_size[[i]] <- sim_size
-  }
+    # Mutate into tidy form
+    actual_size <- actual_size %>%
+      mutate(strategy = i) %>%
+      gather(instrument, size, -date, -strategy)
+
+    sim_size <- sim_size %>%
+      mutate(strategy = i) %>%
+      gather(instrument, size, -date, -strategy)
+
+
+    list(actual = actual_size,
+         sim = sim_size)
+  })
+
+  all_actual_size <- map(list_of_strat, ~.$actual) %>%
+    reduce(rbind) %>%
+    as.tibble
+
+  all_sim_size <- map(list_of_strat, ~.$sim) %>%
+    reduce(rbind) %>%
+    as.tibble
 
   # Summarise strategies (for use in size conversions later)
   strat_summ <- strategies %>%
@@ -306,9 +327,7 @@ build_strategies <- function(input, start_date = as.Date("2000-01-01"), end_date
 
 # Get duration of bonds from Bloomberg, end user should avoid using this but use `get_dur_bbg` instead
 get_dur_bonds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
-  reduced_sec_df <- get_and_check_tickers(instruments_df) %>%
-    mutate(name = .data$identifier,
-           ticker = .data$ticker_duration)
+  reduced_sec_df <- get_and_check_tickers(instruments_df, type = "duration")
 
   message("Downloading bond duration from bbg...")
   dur_df <- bdh_weekday(reduced_sec_df, "MODIFIED_DURATION", start_date = start_date, end_date = end_date)
@@ -322,9 +341,7 @@ get_dur_bonds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01")
 
 # Get duration of futures from Bloomberg, end user should avoid using this but use `get_dur_bbg` instead
 get_dur_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
-  reduced_sec_df <- get_and_check_tickers(instruments_df) %>%
-    mutate(name = .data$identifier,
-      ticker = .data$ticker_duration)
+  reduced_sec_df <- get_and_check_tickers(instruments_df, type = "duration")
 
   # Download data from Bloomberg
   message("Downloading futures duration from bbg...")
@@ -353,9 +370,7 @@ get_dur_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), 
 
 # Get duration of cds from Bloomberg, end user should avoid using this but use `get_dur_bbg` instead
 get_dur_cds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
-  reduced_sec_df <- get_and_check_tickers(instruments_df) %>%
-    mutate(name = .data$identifier,
-           ticker = .data$ticker_duration)
+  reduced_sec_df <- get_and_check_tickers(instruments_df, type = "duration")
 
   # Download data from Bloomberg
   message("Downloading cds duration from bbg...")
@@ -422,17 +437,19 @@ get_dur_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
       full_join(x, y, by = "date")
   })
 
-  dur_all
+  dur_all %>%
+    gather(instrument, duration, -date) %>%
+    as.tibble
 }
 
 #' Converts size in months to size in percent of portfolio terms
 #'
-#' @param strat_list A list containing dataframes for each strategy with their corresponding timeseries sizes in percent or month-weighted sizes. Column name must be the instrument's identifier
-#' @param strat_id_sizetype A dataframe containing the columns of `strategy`, `identifier` and `size_type` that correspondings to those in strat_list. `size_type` must be `months` or `percent`
+#' @param strat_df A gathered dataframe containing `date`, `strategy`, `instrument`, and `size` in percent or month-weighted sizes.
+#' @param strat_id_sizetype A dataframe containing the columns of `strategy`, `identifier` and `size_type` that correspondings to those in strat_df. `size_type` must be `months` or `percent`
 #' @param duration_df A dataframe containing timeseries duration of assets, can be generated from `get_dur_bbg`
 #' @param convert_to_decimal A boolean indicating if all final percent numbers be converted to decimal form ie. divide by 100
 #'
-#' @return A list containing dataframes with same structure as `strat_list`, but sizes converted to percent form
+#' @return A dataframes with same structure as `strat_df`, but sizes converted to percent form
 #' @export
 #'
 #' @examples
@@ -441,47 +458,39 @@ get_dur_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
 #' dur <- get_dur_bbg(portfolios$summary)
 #' actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, dur)
 #' }
-convert_dur_size <- function(strat_list, strat_id_sizetype, duration_df, convert_to_decimal = TRUE) {
+convert_dur_size <- function(strat_df, strat_id_sizetype, duration_df, convert_to_decimal = TRUE) {
+
   # Check if there are any missing duration
   missing_duration <- strat_id_sizetype %>%
-    filter(.data$size_type == "months" & (! .data$identifier %in% names(duration_df))) %>%
+    filter(.data$size_type == "months" & (! .data$identifier %in% unique(duration_df$instrument))) %>%
     .$identifier %>%
     unique
   if (length(missing_duration) > 0) stop(paste("duration missing:", paste(missing_duration, collapse = ",")))
 
   # Check for missing dates
-  if (any(!strat_list[[1]]$date %in% duration_df$date)) {
-    missing_dates <- subset(strat_list[[1]], ! date %in% duration_df$date) %>%
+  if (any(!strat_df$date %in% duration_df$date)) {
+    missing_dates <- subset(strat_df, ! date %in% duration_df$date) %>%
       .$date
     stop("Duration missing data for dates: ", paste(missing_dates, collapse = ","))
   }
 
-  # Convert from months weighted to %
-  months_strategies <- strat_id_sizetype %>%
-    filter(.data$size_type == "months")
+  output <- strat_df %>%
+    left_join(duration_df, by = c("date", "instrument")) %>%
+    left_join(
+      select(strat_id_sizetype, strategy, instrument = identifier, size_type),
+      by = c("strategy", "instrument")) %>%
+    mutate(size = ifelse(size_type == "percent", size, size / (duration * 12) * 100)) %>%
+    select(-duration, -size_type)
 
-  ## Extract only dates of duration from the strategies
-  req_dur <- duration_df %>% filter(.data$date %in% strat_list[[1]]$date)
+  if (convert_to_decimal)
+    output$size <- output$size / 100
 
-  ## portfolios are all lists inside the strategies_list except summary
-  for (i in 1:nrow(months_strategies)) {
-    curr_strat <- months_strategies$strategy[i]
-    curr_inst <- months_strategies$identifier[i]
-
-    strat_list[[curr_strat]][[curr_inst]] <- strat_list[[curr_strat]][[curr_inst]] / (req_dur[[curr_inst]] * 12) * 100
-  }
-
-  # Convert to decimal for easier return calculation
-  if (convert_to_decimal) {
-    strat_list <- lapply(strat_list, function(x) mutate_at(x, vars(-date), function(y) y/100))
-  }
-
-  strat_list
+  output
 }
 
 # Get daily return of bonds from Bloomberg, end user should avoid using this but use `get_ret_bbg` instead
 get_ret_bonds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today()) {
-  reduced_sec_df <- get_and_check_tickers("govt", instruments_df)
+  reduced_sec_df <- get_and_check_tickers(instruments_df)
 
   message("Downloading bond prices from bbg...")
   price_df <- bdh_weekday(reduced_sec_df, "PX_LAST", start_date = start_date, end_date = end_date)
@@ -545,7 +554,7 @@ get_ret_fx_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), e
 
 # Get daily return of equity indices from Bloomberg, end user should avoid using this but use `get_ret_bbg` instead
 get_ret_equity_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today()) {
-  reduced_sec_df <- get_and_check_tickers("equity", instruments_df)
+  reduced_sec_df <- get_and_check_tickers(instruments_df)
 
   message("Downloading equity prices from bbg...")
   price_df <- bdh_weekday(reduced_sec_df, "PX_LAST", start_date = start_date, end_date = end_date)
@@ -555,7 +564,8 @@ get_ret_equity_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"
 
 # Get daily return of cds from Bloomberg, end user should avoid using this but use `get_ret_bbg` instead
 get_ret_cds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today()) {
-  reduced_sec_df <- get_and_check_tickers("cds", instruments_df, type = "price")
+  reduced_sec_df <- get_and_check_tickers(instruments_df, type = "price") %>%
+    mutate()
 
   message("Downloading cds prices from bbg...")
   price_df <- bdh_weekday(reduced_sec_df, "PX_LAST", start_date = start_date, end_date = end_date)
@@ -565,7 +575,7 @@ get_ret_cds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), 
 
 # Get daily return of futures from Bloomberg, end user should avoid using this but use `get_ret_bbg` instead
 get_ret_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today()) {
-  reduced_sec_df <- get_and_check_tickers("fut", instruments_df)
+  reduced_sec_df <- get_and_check_tickers(instruments_df)
 
   message("Downloading futures prices from bbg...")
   price_df <- bdh_weekday(reduced_sec_df, "CONTRACT_VALUE", start_date = start_date, end_date = end_date)
@@ -578,7 +588,7 @@ get_ret_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), 
 #' @param start_date A Date variable
 #' @param end_date A Date variable
 #'
-#' @return A dataframe containing timeseries daily returns of all the assets with column name as `identifier`
+#' @return A gathered dataframe containing timeseries daily returns with columns `date`, `instrument` and `return`
 #' @export
 #'
 #' @examples
@@ -626,12 +636,14 @@ get_ret_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
       full_join(x, y, by = "date")
   })
 
-  ret_all
+  ret_all %>%
+    gather(instrument, return, -date) %>%
+    as.tibble
 }
 
 #' Calculate weighted return of strategies
 #'
-#' @param strat_list A list containing dataframes for each strategy with their corresponding timeseries sizes in percent or month-weighted sizes. Column name must be the instrument's identifier
+#' @param strat_df A dataframes for each strategy with their corresponding timeseries sizes in percent or month-weighted sizes. Columns should be `date`, `strategy`, `instrument`, `size`
 #' @param asset_returns A dataframe with time-series returns of all instruments with column name as the `identifier`
 #'
 #' @return A dataframe containing the time-series daily return of all instruments
@@ -645,46 +657,28 @@ get_ret_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
 #' ret <- get_ret_bbg(portfolios$summary)
 #' calc_strat_wt_return(actual_pf_size, ret)
 #' }
-calc_strat_wt_return <- function(strat_list, asset_returns) {
-  cbind(date = strat_list[[1]]$date,
-        setNames( ## setNames to original as map changes the : to .
-          as.data.frame( ## Convert product to dataframe
-            map(strat_list, # Iterate through all strategies
-                function(x) {
-                  non_date_col <- names(x)[names(x) != "date"]
-                  map(non_date_col, # Iterate through all non_date_columns
-                      function(y) {
-                        x[, c("date", y)] %>%  # Extract out date and asset size column
-                          setNames(c("date", "size")) %>%
-                          left_join(asset_returns[, c("date", y)] %>% setNames(c("date", "return")), by = "date") %>%  # Join with returns based on date
-                          mutate(wt_return = .data$size * .data$return) %>%  # Calculated weighted return
-                          select(.data$wt_return) %>%   # Select just weighted return
-                          setNames(y)    # Set name of weighted return to asset name
-                      }
-                  ) %>%
-                    reduce(cbind) %>%
-                    rowSums(na.rm = TRUE)    # Combine asset returns of each strategy into a single return stream
-                })),
-          names(strat_list))
-  )
-
+calc_strat_wt_return <- function(strat_df, asset_returns) {
+  strat_df %>% left_join(asset_returns, by = c("date", "instrument")) %>%
+    mutate(wt_return = .data$size * .data$return) %>%
+    group_by(.data$date, .data$strategy) %>%
+    summarise(wt_return = sum(.data$wt_return, na.rm = TRUE)) %>%
+    select(.data$date, .data$strategy, .data$wt_return) %>%
+    arrange(.data$strategy, .data$date)
 }
 
 #' Calculates headline sizes of strategies given the size of the component trades by first summing the positive sizes and negative sizes separately. Then taking the higher number as the size
 #'
-#' @param strat_list A list of strategies which are dataframes containing timeseries sizes of their component instruments
+#' @param strat_df A dataframe of strategies which are dataframes containing timeseries sizes of their component instruments. Columns should be `date`, `strategy`, `instrument`, `size`
 #'
 #' @return A dataframe containing the size of the strategies daily
 #' @export
-calc_strat_headline_size <- function(strat_list) {
-  cbind(date = strat_list[[1]]$date,
-        map(strat_list,
-            ~apply(select(., -date), 1,
-                   function(y) {
-                     max(sum(y[y > 0]), abs(sum(y[y < 0])))
-                   })
-        ) %>% as.data.frame %>% setNames(names(strat_list))
-  )
+calc_strat_headline_size <- function(strat_df) {
+  strat_df %>% spread(instrument, size) %>%
+    mutate(pos_sum = rowSums((.[c(-1,-2)] > 0) * .[c(-1,-2)], na.rm = T),
+           neg_sum = rowSums((.[c(-1,-2)] < 0) * .[c(-1,-2)], na.rm = T),
+           size = pmax(.data$pos_sum, abs(.data$neg_sum))) %>%
+    select(.data$date, .data$strategy, .data$size) %>%
+    arrange(.data$strategy, .data$date)
 }
 
 #' Gets a sizes of each strategy in a portfolio at a specific date
@@ -706,8 +700,8 @@ pf_summary <- function(portfolio, as_of_date = NULL, approx = TRUE) {
 
 #' Calculate unweighted returns given weighted returns and size of strategies
 #'
-#' @param wt_returns A dataframe containing the timeseries weighted return of the strategies, recommended to be simulated returns, so that unweighted return for all of history can be obtained
-#' @param strat_headline_size A dataframe containing the timeseries headline sizes of the trades. Should be all in percent. Recommended to be simulated sizes, needs to correspond to `wt_returns`
+#' @param wt_return A dataframe containing the timeseries weighted return of the strategies, recommended to be simulated returns, so that unweighted return for all of history can be obtained
+#' @param strat_headline_size A dataframe containing the timeseries headline sizes of the trades. Should be all in percent. Recommended to be simulated sizes, needs to correspond to `wt_return`
 #'
 #' @return A dataframe containing the timeseries unweighted return of the strategies
 #' @export
@@ -718,17 +712,15 @@ pf_summary <- function(portfolio, as_of_date = NULL, approx = TRUE) {
 #' dur <- get_dur_bbg(portfolios$summary)
 #' sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, dur)
 #' ret <- get_ret_bbg(portfolios$summary)
-#' wt_returns <- calc_strat_wt_return(sim_pf_size, ret)
+#' wt_return <- calc_strat_wt_return(sim_pf_size, ret)
 #' headline_size <- calc_strat_headline_size(sim_pf_size)
-#' calc_strat_unwt_return(wt_returns, headline_size)
+#' calc_strat_unwt_return(wt_return, headline_size)
 #' }
-calc_strat_unwt_return <- function(wt_returns, strat_headline_size) {
-  strat_headline_size <- strat_headline_size[,names(wt_returns)]
-  returns <- remove_date(wt_returns) / remove_date(strat_headline_size)
-  returns[is.na(returns)] <- 0
-
-  cbind(date = wt_returns$date,
-        returns)
+calc_strat_unwt_return <- function(wt_return, strat_headline_size) {
+  wt_return %>% left_join(strat_headline_size, by = c("date", "strategy")) %>%
+    mutate(return = .data$wt_return / .data$size) %>%
+    select(.data$date, .data$strategy, .data$return) %>%
+    replace_na(list(return = 0))
 }
 
 #' Group returns of strategies
@@ -1031,4 +1023,16 @@ sort_gg <- function(df_gathered, group_by_column, sort_by, filter_scenario = "La
 #' @name demo_strategies
 #' @docType data
 #' @details Demo strategies for use with active risk calculations
+NULL
+
+#' demo_duration
+#' @name demo_duration
+#' @docType data
+#' @details Demo duration for use with conversion of size from months weighted to percent
+NULL
+
+#' demo_return
+#' @name demo_return
+#' @docType data
+#' @details Demo return for instruments to use for return calculations
 NULL
