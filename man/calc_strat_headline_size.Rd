@@ -4,10 +4,10 @@
 \alias{calc_strat_headline_size}
 \title{Calculates headline sizes of strategies given the size of the component trades by first summing the positive sizes and negative sizes separately. Then taking the higher number as the size}
 \usage{
-calc_strat_headline_size(strat_list)
+calc_strat_headline_size(strat_df)
 }
 \arguments{
-\item{strat_list}{A list of strategies which are dataframes containing timeseries sizes of their component instruments}
+\item{strat_df}{A dataframe of strategies which are dataframes containing timeseries sizes of their component instruments. Columns should be `date`, `strategy`, `instrument`, `size`}
 }
 \value{
 A dataframe containing the size of the strategies daily

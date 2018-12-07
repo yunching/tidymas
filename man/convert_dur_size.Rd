@@ -4,20 +4,20 @@
 \alias{convert_dur_size}
 \title{Converts size in months to size in percent of portfolio terms}
 \usage{
-convert_dur_size(strat_list, strat_id_sizetype, duration_df,
+convert_dur_size(strat_df, strat_id_sizetype, duration_df,
   convert_to_decimal = TRUE)
 }
 \arguments{
-\item{strat_list}{A list containing dataframes for each strategy with their corresponding timeseries sizes in percent or month-weighted sizes. Column name must be the instrument's identifier}
+\item{strat_df}{A gathered dataframe containing `date`, `strategy`, `instrument`, and `size` in percent or month-weighted sizes.}
 
-\item{strat_id_sizetype}{A dataframe containing the columns of `strategy`, `identifier` and `size_type` that correspondings to those in strat_list. `size_type` must be `months` or `percent`}
+\item{strat_id_sizetype}{A dataframe containing the columns of `strategy`, `identifier` and `size_type` that correspondings to those in strat_df. `size_type` must be `months` or `percent`}
 
 \item{duration_df}{A dataframe containing timeseries duration of assets, can be generated from `get_dur_bbg`}
 
 \item{convert_to_decimal}{A boolean indicating if all final percent numbers be converted to decimal form ie. divide by 100}
 }
 \value{
-A list containing dataframes with same structure as `strat_list`, but sizes converted to percent form
+A dataframes with same structure as `strat_df`, but sizes converted to percent form
 }
 \description{
 Converts size in months to size in percent of portfolio terms

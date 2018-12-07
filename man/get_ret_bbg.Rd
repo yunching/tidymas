@@ -15,7 +15,7 @@ get_ret_bbg(instruments_df, start_date = as.Date("1994-01-01"),
 \item{end_date}{A Date variable}
 }
 \value{
-A dataframe containing timeseries daily returns of all the assets with column name as `identifier`
+A gathered dataframe containing timeseries daily returns with columns `date`, `instrument` and `return`
 }
 \description{
 Get time-series daily returns of asset from Bloomberg. It is a generic function which means new return functions can be easily added for new assets

@@ -4,12 +4,9 @@
 \alias{get_and_check_tickers}
 \title{Get tickers of available securities in the specific asset class, and check which securities in the instruments dataframe are valid for the asset class}
 \usage{
-get_and_check_tickers(asset_cl, instruments_df, type = c("price",
-  "duration"))
+get_and_check_tickers(instruments_df, type = c("price", "duration"))
 }
 \arguments{
-\item{asset_cl}{A character variable of target asset class, `govt` (includes ilb), `equity`, `cds`, `fut`. FX is not included as the FX tickers are not stored, but generated on the fly}
-
 \item{instruments_df}{A dataframe containing the instruments to search the tickers for. Dataframe must have the `asset_class` and `identifier` columns}
 
 \item{type}{A character which can be `price` or `duration`, which indicates whether to return tickers for price or duration. Defaults to `price`}
