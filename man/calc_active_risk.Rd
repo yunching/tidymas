@@ -4,13 +4,13 @@
 \alias{calc_active_risk}
 \title{Calculate active risk given return of strategies and weight of the strategies}
 \usage{
-calc_active_risk(unwt_ret_w_date, curr_wt, start_date = today() -
-  years(10), end_date = today(), annualize_factor = 250)
+calc_active_risk(unwt_ret, curr_wt, start_date = today() - years(10),
+  end_date = today(), annualize_factor = 250)
 }
 \arguments{
-\item{unwt_ret_w_date}{dataframe of returns of strategies}
+\item{unwt_ret}{dataframe of returns of strategies with columns `date`, `strategy`, `return`}
 
-\item{curr_wt}{dataframe (one row) or vector of weights, df must have colnames and vector must have names corresponding to colname of returns}
+\item{curr_wt}{dataframe of weights with columns `strategy`, `size`}
 
 \item{start_date}{start_date for calc of active risk}
 
@@ -25,11 +25,11 @@ list containing `cov_matrix`, `port_sd` (portfolio std dev), `active_risk`, `mar
 Calculate active risk given return of strategies and weight of the strategies
 }
 \examples{
-unwt_ret_w_date <- data.frame(date = as.Date(c("2018-01-02", "2018-01-03",
-                                     "2018-01-04", "2018-01-05",
-                                     "2018-01-06", "2018-01-07")),
-                              long_spx = c(0.015, 0.021, -0.03, 0.01, 0.05, 0.03),
-                              long_ukx = c(-0.005, 0.03, -0.01, -0.04, -0.03, -0.04))
-curr_wt <- data.frame(long_spx = 0.01, long_ukx = 0.02)
-calc_active_risk(unwt_ret_w_date, curr_wt)
+portfolios <- build_strategies(demo_strategies)
+sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, demo_duration)
+wt_return <- calc_strat_wt_return(sim_pf_size, demo_return)
+headline_size <- calc_strat_headline_size(sim_pf_size)
+unwt_return <- calc_strat_unwt_return(wt_return, headline_size)
+curr_wt <- get_strat_size(headline_size, as.Date("2018-01-05"))
+calc_active_risk(unwt_return, curr_wt, as.Date("2017-06-01"), as.Date("2018-06-01"))
 }

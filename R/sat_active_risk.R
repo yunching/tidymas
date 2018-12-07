@@ -75,7 +75,8 @@ bdh_weekday <- function(series, field = "PX_LAST", start_date = as.Date("1994-01
 remove_date <- function(df) {
   if ("date" %in% names(df)) {
     df <- as.data.frame(df)
-    rownames(df) <- as.Date(df$date)
+    if (length(df$date) == length(unique(df$date)))
+      rownames(df) <- as.Date(df$date)
     df <- df %>% select(-date)
   }
   df
@@ -101,9 +102,7 @@ gen_weekdays <- function(start_date, end_date) {
 #' @importFrom stringr str_replace
 #'
 #' @examples
-#' \donttest{
 #' get_tickers("fx")
-#' }
 get_tickers <- function(asset_cl, roll_differencing = TRUE) {
   if (!asset_cl %in% c("govt", "fut", "equity", "cds", "fx"))
     stop("Invalid asset_class, only can handle govt, fut, equity, cds, fx")
@@ -135,12 +134,10 @@ get_tickers <- function(asset_cl, roll_differencing = TRUE) {
 #' @export
 #'
 #' @examples
-#' \donttest{
-#' inst <- data.frame(asset_cl = c("equity", "ilb", "govt"),
+#' inst <- data.frame(asset_class = c("equity", "ilb", "govt"),
 #'                     identifier = c("spx", "germany_ilb_5y", "us_govt_10y"),
 #'                     stringsAsFactors = FALSE)
-#' get_and_check_tickers("govt", inst)
-#' }
+#' get_and_check_tickers(inst)
 get_and_check_tickers <- function(instruments_df, type = c("price", "duration")) {
   if (length(type) == 2) {
     type <- type[1]
@@ -150,11 +147,11 @@ get_and_check_tickers <- function(instruments_df, type = c("price", "duration"))
     reduce(rbind)
 
   output <- instruments_df %>%
-    group_by(asset_class, identifier) %>%
+    group_by(.data$asset_class, .data$identifier) %>%
     summarise() %>%
     left_join(sec_list, by = c("asset_class", "identifier"))
 
-  non_fx_unfound <- filter(output, asset_class != "fx" & is.na(ticker_price))
+  non_fx_unfound <- filter(output, .data$asset_class != "fx" & is.na(.data$ticker_price))
   if (nrow(non_fx_unfound) > 0) {
     warning(paste("Tickers not found for assets:", paste(mutate(non_fx_unfound, error_msg = paste(.data$asset_class, .data$identifier, sep = "/"))$error_msg, collapse = ",")))
   }
@@ -162,7 +159,7 @@ get_and_check_tickers <- function(instruments_df, type = c("price", "duration"))
   output %>% rename(name = "identifier", ticker = ifelse(type == "duration", "ticker_duration", "ticker_price"))
 }
 
-#' Build strategies from an input csv file or dataframe of strategies, see `gen_strategies_template` to generate a template file
+#' Build strategies from an input csv file or dataframe of strategies, can use `demo_strategies` to generate a template file
 #'
 #' @param input A dataframe containing strategy inputs or A character variable containing the path to the input csv file
 #' @param start_date A Date variable with start date of generation, this can be earlier or later than the dates in the template file
@@ -172,9 +169,10 @@ get_and_check_tickers <- function(instruments_df, type = c("price", "duration"))
 #' @export
 #'
 #' @examples
+#' data(demo_strategies)
+#' build_strategies(demo_strategies, as.Date("2008-01-01"))
 #' \donttest{
-#' gen_strategies_template("test.csv")
-#' build_strategies("test.csv", as.Date("2008-01-01"))
+#' build_strategies("input_file.csv")
 #' }
 build_strategies <- function(input, start_date = as.Date("2000-01-01"), end_date = today()) {
   # Read in strategies
@@ -198,7 +196,7 @@ build_strategies <- function(input, start_date = as.Date("2000-01-01"), end_date
   valid_asset_class <- c("govt", "ilb", "fx", "equity", "cds", "fut")
   asset_classes <- strategies$asset_class %>% unique
   if (mean(asset_classes %in% valid_asset_class) < 1)
-    stop(paste("Invalid asset class found in", input_file, ":", paste(asset_classes[! asset_classes %in% valid_asset_class], collapse = ",")))
+    stop(paste("Invalid asset class found in input:", paste(asset_classes[! asset_classes %in% valid_asset_class], collapse = ",")))
 
   # Check if differing size_types for same instrument in the same strategy
   unique_sizes_for_instrument <- strategies %>%
@@ -275,7 +273,7 @@ build_strategies <- function(input, start_date = as.Date("2000-01-01"), end_date
       # Set weight as actual first
       for (j in 1:nrow(curr_inst_df)) {
         # Strat start and end
-        strat_start <- if (is.na(curr_inst_df$open_date[j])) start_date else curr_inst_df$open_date[j]
+        strat_start <- if (is.na(curr_inst_df$open_date[j])) end_date - 1 else curr_inst_df$open_date[j]
         strat_end <- if (is.na(curr_inst_df$close_date[j])) end_date else curr_inst_df$close_date[j]
 
         actual_size[[curr_inst]] <- actual_size[[curr_inst]] +
@@ -297,11 +295,11 @@ build_strategies <- function(input, start_date = as.Date("2000-01-01"), end_date
     # Mutate into tidy form
     actual_size <- actual_size %>%
       mutate(strategy = i) %>%
-      gather(instrument, size, -date, -strategy)
+      gather("instrument", "size", -.data$date, -.data$strategy)
 
     sim_size <- sim_size %>%
       mutate(strategy = i) %>%
-      gather(instrument, size, -date, -strategy)
+      gather("instrument", "size", -.data$date, -.data$strategy)
 
 
     list(actual = actual_size,
@@ -438,7 +436,7 @@ get_dur_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
   })
 
   dur_all %>%
-    gather(instrument, duration, -date) %>%
+    gather("instrument", "duration", -date) %>%
     as.tibble
 }
 
@@ -453,11 +451,10 @@ get_dur_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
 #' @export
 #'
 #' @examples
-#' \donttest{
-#' portfolios <- build_strategies(generate_strat_template())
-#' dur <- get_dur_bbg(portfolios$summary)
-#' actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, dur)
-#' }
+#' data(demo_strategies)
+#' data(demo_duration)
+#' portfolios <- build_strategies(demo_strategies)
+#' actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, demo_duration)
 convert_dur_size <- function(strat_df, strat_id_sizetype, duration_df, convert_to_decimal = TRUE) {
 
   # Check if there are any missing duration
@@ -477,10 +474,10 @@ convert_dur_size <- function(strat_df, strat_id_sizetype, duration_df, convert_t
   output <- strat_df %>%
     left_join(duration_df, by = c("date", "instrument")) %>%
     left_join(
-      select(strat_id_sizetype, strategy, instrument = identifier, size_type),
+      select(strat_id_sizetype, .data$strategy, instrument = .data$identifier, .data$size_type),
       by = c("strategy", "instrument")) %>%
-    mutate(size = ifelse(size_type == "percent", size, size / (duration * 12) * 100)) %>%
-    select(-duration, -size_type)
+    mutate(size = ifelse(.data$size_type == "percent", .data$size, .data$size / (.data$duration * 12) * 100)) %>%
+    select(-.data$duration, -.data$size_type)
 
   if (convert_to_decimal)
     output$size <- output$size / 100
@@ -637,7 +634,7 @@ get_ret_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
   })
 
   ret_all %>%
-    gather(instrument, return, -date) %>%
+    gather("instrument", "return", -.data$date) %>%
     as.tibble
 }
 
@@ -650,8 +647,14 @@ get_ret_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
 #' @export
 #'
 #' @examples
+#' portfolios <- build_strategies(demo_strategies)
+#' dur <- demo_duration
+#' actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, dur)
+#' ret <- demo_return
+#' calc_strat_wt_return(actual_pf_size, ret)
 #' \donttest{
-#' portfolios <- build_strategies(gen_strat_templates())
+#' # With Bloomberg
+#' portfolios <- build_strategies(demo_strategies)
 #' dur <- get_dur_bbg(portfolios$summary)
 #' actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, dur)
 #' ret <- get_ret_bbg(portfolios$summary)
@@ -672,30 +675,18 @@ calc_strat_wt_return <- function(strat_df, asset_returns) {
 #'
 #' @return A dataframe containing the size of the strategies daily
 #' @export
+#'
+#' @examples
+#' portfolios <- build_strategies(demo_strategies)
+#' actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, demo_duration)
+#' calc_strat_headline_size(actual_pf_size)
 calc_strat_headline_size <- function(strat_df) {
-  strat_df %>% spread(instrument, size) %>%
+  strat_df %>% spread(.data$instrument, .data$size) %>%
     mutate(pos_sum = rowSums((.[c(-1,-2)] > 0) * .[c(-1,-2)], na.rm = T),
            neg_sum = rowSums((.[c(-1,-2)] < 0) * .[c(-1,-2)], na.rm = T),
            size = pmax(.data$pos_sum, abs(.data$neg_sum))) %>%
     select(.data$date, .data$strategy, .data$size) %>%
     arrange(.data$strategy, .data$date)
-}
-
-#' Gets a sizes of each strategy in a portfolio at a specific date
-#'
-#' @param portfolio A list of strategies which are dataframes containing timeseries sizes of their component instruments
-#' @param as_of_date A Date variable
-#' @param approx A boolean indicating if `as_of_date` is unavailable, the next available earlier date should be used
-#'
-#' @return A dataframe containing the sizes of the strategies
-#' @export
-pf_summary <- function(portfolio, as_of_date = NULL, approx = TRUE) {
-  if (is.null(as_of_date)) {
-    as_of_date <- portfolio$date %>% tail(1)
-  }
-
-  sz <- calc_strat_headline_size(portfolio)
-  get_strat_size(sz, as_of_date, approx)
 }
 
 #' Calculate unweighted returns given weighted returns and size of strategies
@@ -707,8 +698,14 @@ pf_summary <- function(portfolio, as_of_date = NULL, approx = TRUE) {
 #' @export
 #'
 #' @examples
+#' portfolios <- build_strategies(demo_strategies)
+#' sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, demo_duration)
+#' wt_return <- calc_strat_wt_return(sim_pf_size, demo_return)
+#' headline_size <- calc_strat_headline_size(sim_pf_size)
+#' calc_strat_unwt_return(wt_return, headline_size)
 #' \donttest{
-#' portfolios <- build_strategies(gen_strat_templates())
+#' # With Bloomberg
+#' portfolios <- build_strategies(demo_strategies)
 #' dur <- get_dur_bbg(portfolios$summary)
 #' sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, dur)
 #' ret <- get_ret_bbg(portfolios$summary)
@@ -725,21 +722,44 @@ calc_strat_unwt_return <- function(wt_return, strat_headline_size) {
 
 #' Group returns of strategies
 #'
-#' @param returns_df A dataframe containing timeseries of returns of strategies, column headers should be `strategy`
+#' @param returns_df A dataframe containing timeseries of returns of strategies with columns `date`, `strategy`, `return`
 #' @param instr_df A dataframe containing `strategy` corresponding to any groupings
 #' @param group A character variable containing the name of the column in `instr_df` to group by
 #'
 #' @return A dataframe containing timeseries of returns of the groups
 #' @export
 custom_grouping <- function(returns_df, instr_df, group) {
-  instr_df <- instr_df %>% select_("strategy", group)
-  returns_df %>%
-    gather("strategy", "returns", -.data$date) %>%
-    left_join(instr_df, by = "strategy") %>%
-    group_by_("date", group) %>%
-    summarise(returns = sum(.data$returns, na.rm = TRUE)) %>%
-    ungroup() %>%
-    spread(group, "returns")
+  grouped_instr_df <- instr_df %>% select_("strategy", group)
+  tmp <- returns_df %>%
+    left_join(grouped_instr_df, by = "strategy") %>%
+    group_by_("date", group)
+
+  if ("return" %in% names(tmp)) {
+    tmp %>%
+      summarise(return = sum(.data$return, na.rm = TRUE)) %>%
+    ungroup()
+  } else {
+    tmp %>%
+      summarise(wt_return = sum(.data$wt_return, na.rm = TRUE)) %>%
+      ungroup()
+    }
+}
+
+#' Gets a sizes of each strategy in a portfolio at a specific date. Use to retrieve sizes in month weight terms
+#'
+#' @param portfolio A dataframe of strategies which are timeseries sizes of their component instruments, contains columns `date`, `strategy`
+#' @param as_of_date A Date variable
+#' @param approx A boolean indicating if `as_of_date` is unavailable, the next available earlier date should be used
+#'
+#' @return A dataframe containing the sizes of the strategies
+#' @export
+pf_summary <- function(portfolio, as_of_date = NULL, approx = TRUE) {
+  if (is.null(as_of_date)) {
+    as_of_date <- portfolio$date %>% tail(1)
+  }
+
+  sz <- calc_strat_headline_size(portfolio)
+  get_strat_size(sz, as_of_date, approx)
 }
 
 #' Get strategies sizes at a specific date from headline sizes of strategies
@@ -760,8 +780,7 @@ get_strat_size <- function(strat_df, as_of_date = NULL, approx = TRUE) {
     filtered_strat <- strat_df %>%
       mutate(diff = as_of_date - .data$date) %>%
       filter(.data$diff >= 0) %>%
-      arrange(.data$diff) %>%
-      head(1) %>%
+      filter(.data$diff == min(.data$diff)) %>%
       select(-.data$diff)
   } else {
     filtered_strat <- strat_df %>%
@@ -769,46 +788,38 @@ get_strat_size <- function(strat_df, as_of_date = NULL, approx = TRUE) {
   }
 
   filtered_strat %>%
-    remove_date %>%
-    gather("strat", "size") %>%   # Remove any sizes = 0
-    filter(.data$size != 0) %>%
-    spread(.data$strat, .data$size)
+    filter(.data$size != 0)
 }
 
 #' Calculate the returns in history given a set of static strategy weights
 #'
-#' @param unwt_ret_w_date A dataframe containing the timeseries unweighted return of strategies
-#' @param curr_wt A dataframe containing one row of weights of strategies with strategy names as column names
+#' @param unwt_ret A dataframe containing the timeseries unweighted return of strategies, with columns `date`, `strategy`, `return`
+#' @param curr_wt A dataframe weights of strategies with columns `strategy`, `size`
 #' @param start_date A Date variable indicating the start period of simulation
 #' @param end_date A Date variable indicating the end period of simulation
 #'
 #' @return A dataframe containing the timeseries weighted return of the period
 #' @export
-simulate_history <- function(unwt_ret_w_date, curr_wt, start_date, end_date) {
+#'
+#' @examples
+#' portfolios <- build_strategies(demo_strategies)
+#' sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, demo_duration)
+#' wt_return <- calc_strat_wt_return(sim_pf_size, demo_return)
+#' headline_size <- calc_strat_headline_size(sim_pf_size)
+#' unwt_return <- calc_strat_unwt_return(wt_return, headline_size)
+#' curr_wt <- get_strat_size(headline_size, as.Date("2018-01-05"))
+#' simulate_history(unwt_return, curr_wt, as.Date("2016-01-01"), as.Date("2018-01-01"))
+simulate_history <- function(unwt_ret, curr_wt, start_date, end_date) {
+
   # Check all strategies in curr_wt have returns
-  strats <- names(curr_wt)[names(curr_wt) != "date"]
-  unfound_strats <- strats[! strats %in% names(unwt_ret_w_date)]
+  strats <- unique(curr_wt$strategy)
+  unfound_strats <- strats[! strats %in% unique(unwt_ret$strategy)]
   if (length(unfound_strats) > 0)
     stop(paste("Strategy's return not found:",paste(unfound_strats, collapse = ",")))
 
-  # If weights provided as data.frame, convert to vector for manipulation purposes
-  if (class(curr_wt) == "data.frame") {
-    wt <- remove_date(curr_wt)
-    nam <- colnames(wt)
-    curr_wt <- as.numeric(curr_wt)
-    names(curr_wt) <- nam
-  }
-
-  filtered_unwt_ret <- unwt_ret_w_date %>%
-    filter(.data$date >= start_date & .data$date <= end_date)
-
-  dat <- filtered_unwt_ret %>% select(.data$date)
-
-  filtered_unwt_ret <- filtered_unwt_ret %>%
-    .[,names(curr_wt)]
-
-  wt_ret <- filtered_unwt_ret * curr_wt
-  cbind(dat, wt_ret)
+  unwt_ret %>% left_join(remove_date(curr_wt), by = "strategy") %>%
+    mutate(wt_return = .data$return * .data$size) %>%
+  select(.data$date, .data$strategy, .data$wt_return)
 }
 
 #' Calculate individual daily returns of a dataframe containing multiple assets
@@ -833,8 +844,8 @@ calc_returns <- function(df) {
 
 #' Calculate active risk given return of strategies and weight of the strategies
 #'
-#' @param unwt_ret_w_date dataframe of returns of strategies
-#' @param curr_wt dataframe (one row) or vector of weights, df must have colnames and vector must have names corresponding to colname of returns
+#' @param unwt_ret dataframe of returns of strategies with columns `date`, `strategy`, `return`
+#' @param curr_wt dataframe of weights with columns `strategy`, `size`
 #' @param start_date start_date for calc of active risk
 #' @param end_date end_date
 #' @param annualize_factor factor to multiply by to convert to annual. 250 for daily data (default) and 12 for monthly data
@@ -845,55 +856,56 @@ calc_returns <- function(df) {
 #' @importFrom stats cov
 #'
 #' @examples
-#' unwt_ret_w_date <- data.frame(date = as.Date(c("2018-01-02", "2018-01-03",
-#'                                      "2018-01-04", "2018-01-05",
-#'                                      "2018-01-06", "2018-01-07")),
-#'                               long_spx = c(0.015, 0.021, -0.03, 0.01, 0.05, 0.03),
-#'                               long_ukx = c(-0.005, 0.03, -0.01, -0.04, -0.03, -0.04))
-#' curr_wt <- data.frame(long_spx = 0.01, long_ukx = 0.02)
-#' calc_active_risk(unwt_ret_w_date, curr_wt)
-calc_active_risk <- function(unwt_ret_w_date, curr_wt, start_date = today()-years(10), end_date = today(), annualize_factor = 250) {
+#' portfolios <- build_strategies(demo_strategies)
+#' sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, demo_duration)
+#' wt_return <- calc_strat_wt_return(sim_pf_size, demo_return)
+#' headline_size <- calc_strat_headline_size(sim_pf_size)
+#' unwt_return <- calc_strat_unwt_return(wt_return, headline_size)
+#' curr_wt <- get_strat_size(headline_size, as.Date("2018-01-05"))
+#' calc_active_risk(unwt_return, curr_wt, as.Date("2017-06-01"), as.Date("2018-06-01"))
+calc_active_risk <- function(unwt_ret, curr_wt, start_date = today()-years(10), end_date = today(), annualize_factor = 250) {
+  unwt_ret_w_date <- unwt_ret %>% spread(.data$strategy, .data$return)
   # Check all strategies in curr_wt have returns
-  strats <- names(curr_wt)[names(curr_wt) != "date"]
-  unfound_strats <- strats[! strats %in% names(unwt_ret_w_date)]
+  strats <- unique(curr_wt$strategy)
+  unfound_strats <- strats[! strats %in% unique(unwt_ret$strategy)]
   if (length(unfound_strats) > 0)
     stop(paste("Strategy's return not found:",paste(unfound_strats, collapse = ",")))
 
-  # If weights provided as data.frame, convert to vector for manipulation purposes
-  if (class(curr_wt) == "data.frame") {
-    wt <- remove_date(curr_wt)
-    nam <- colnames(wt)
-    curr_wt <- as.numeric(curr_wt)
-    names(curr_wt) <- nam
-  }
+  duplicates <- curr_wt %>% group_by(.data$date, .data$strategy) %>% summarise(n = n()) %>% filter(.data$n > 1)
+
+  if (nrow(duplicates) > 0)
+    stop(paste("Multiple entry for same strategy found:", paste(duplicates$strategy, collapse = ",")))
+
+  wt <- curr_wt %>% select(.data$strategy, .data$size) %>%
+    spread(.data$strategy, .data$size) %>%
+    unlist
 
   unwt_ret_w_date <- unwt_ret_w_date %>% filter(.data$date > start_date & .data$date <= end_date)
 
   # Check if sufficient data is available
   if (nrow(unwt_ret_w_date) < 5) {
     stop("Less than 5 periods of data found, calculations will be invalid, please check the dates in return data vs the dates of analysis")
-  }
-  else if (nrow(unwt_ret_w_date) < 20) {
+  } else if (nrow(unwt_ret_w_date) < 20) {
     warning("Less than 20 periods of data found, calculations may not be reliable")
   }
   unwt_ret_fn <- unwt_ret_w_date %>% remove_date()
 
   # Filter only those strategies with weights
-  unwt_ret_fn <- unwt_ret_fn[,names(curr_wt)]
+  unwt_ret_fn <- unwt_ret_fn[,names(wt)]
 
   # calc active risk
   cov_matrix <- cov(unwt_ret_fn, use = "complete.obs") * annualize_factor # annualized
 
-  numerator <- as.numeric(t(curr_wt) %*% cov_matrix)
+  numerator <- as.numeric(t(wt) %*% cov_matrix)
   names(numerator) <- names(unwt_ret_fn)
 
-  port_var <- as.numeric(t(curr_wt) %*% cov_matrix %*% curr_wt)
+  port_var <- as.numeric(t(wt) %*% cov_matrix %*% wt)
   port_sd <- sqrt(port_var)
 
   mr <- numerator / port_sd
-  ar <- mr * curr_wt
+  ar <- mr * wt
 
-  data.frame(strategy = names(curr_wt), active_risk = ar)
+  data.frame(strategy = names(ar), active_risk = ar)
 }
 
 # Function for
@@ -1015,8 +1027,6 @@ sort_gg <- function(df_gathered, group_by_column, sort_by, filter_scenario = "La
   df_gathered[[group_by_column]] <- factor(df_gathered[[group_by_column]], levels = ordered_column)
   df_gathered
 }
-
-
 
 
 #' demo_strategies

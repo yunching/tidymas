@@ -43,7 +43,7 @@ strat_headline_size <- map(clean_pf_list,
                            ~calc_strat_headline_size(.))
 
 # Calculate unweighted return of strategies
-unwt_return <- map2(wt_return, strat_headline_size, calc_strat_unwt_return)
+unwt_return <- calc_strat_unwt_return(wt_return$sim, strat_headline_size$sim)
 ```
 
 ```{r get_scenarios}
@@ -72,14 +72,14 @@ curr_strat <- get_strat_size(strat_headline_size$actual, curr_date)
 prev_strat <- get_strat_size(strat_headline_size$actual, prev_date)
 
 # Calculate active risk of previous quarters strategies 
-active_risk_prev <- calc_active_risk(unwt_return$sim, 
+active_risk_prev <- calc_active_risk(unwt_return, 
                                 prev_strat,
                                 start_date = prev_date - months(3), end_date = prev_date)
 
 # Calculate active risk of current strategies
 active_risk_curr <- apply(scenarios, 1, 
                      function(x) {
-                       calc_active_risk(unwt_return$sim, 
+                       calc_active_risk(unwt_return, 
                                         curr_strat,
                                         start_date = x['start_date'], end_date = x['end_date'])
                      })
@@ -87,7 +87,7 @@ active_risk_curr <- apply(scenarios, 1,
 # calculate historical return based on scenario dates with current strategy
 scenario_return <- apply(scenarios, 1, 
                            function(x) {
-                             simulate_history(unwt_return$sim, 
+                             simulate_history(unwt_return, 
                                       curr_strat, 
                                       x['start_date'], x['end_date'])
                            })
@@ -97,11 +97,11 @@ scenario_return <- apply(scenarios, 1,
 ret_by_owner <- wt_return$actual %>%
   custom_grouping(instr_df, "owner")
 
-actual_corr <- calc_cor(ret_by_owner,
+actual_corr <- calc_cor(ret_by_owner %>% spread(owner, wt_return),
                         start_date = curr_date - months(3),
                         end_date = curr_date)
 
-exp_return <- simulate_history(unwt_return$sim, 
+exp_return <- simulate_history(unwt_return, 
                                curr_strat, 
                                curr_date - months(3), curr_date)
 
@@ -167,8 +167,7 @@ div_risk <- strat_active_risk %>%
 ```{r display_strategies}
 # Get strategies sizes in %
 strat_percent_size <- get_strat_size(strat_headline_size$actual, curr_date) %>%
-  gather(strategy, percent_size) %>%
-  mutate(size_percent = percent_size)
+  rename(size_percent = size)
 
 # Extract necessary portfolio information
 pf_overview <- pf_summary(portfolios_list$actual, curr_date) %>%
@@ -284,8 +283,8 @@ start_date_return <- end_date_return - months(12)
 # Extract return data based on start_date
 actual_ret_filtered <- wt_return$actual %>% 
   filter(date >= start_date_return & date <= end_date_return) %>%
-  gather(strategy, pnl, -date) %>%
-  left_join(unique_strategies, by="strategy")
+  left_join(unique_strategies, by="strategy") %>%
+  rename(pnl = .data$wt_return)
  
 # Calculate sharpe grouped by owner, in annualized bps of R2
 sharpe_by_owner <- actual_ret_filtered %>% 
@@ -380,13 +379,12 @@ ordered_strategies <- instr_df %>% select(strategy, owner) %>%
   unique
 
 # Extract unweighted return of all strategies still open
-uniq_unwt_ret <- unwt_return$sim[,c("date", names(curr_strat))] %>%
-  gather(strategy, return, -date) %>% 
+uniq_unwt_ret <- unwt_return %>%
+  filter(strategy %in% curr_strat$strategy) %>%
   mutate(strategy = str_extract(strategy, "^.*(?=:::)")) %>%
-  group_by(strategy, date) %>%
+  group_by(date, strategy) %>%
   summarise(return = mean(return, na.rm = TRUE)) %>%
-  ungroup %>% 
-  spread(strategy, return) 
+  ungroup 
 
 # Calculate correlation between all open trades across all scenarios
 strat_cor_all <- bind_rows(
@@ -412,26 +410,22 @@ for (i in rev(unique(strat_cor_all$period))) {
 ```{r display_actual_ret, fig.width = 9}
 # Plot actual returns, starting from start_date_return, defined when calculating sharpe ratio
 actual_ret_filtered <- wt_return$actual %>%
-  filter(date > start_date_return) %>%
-  column_to_rownames("date")
+  filter(date > start_date_return) 
 
 actual_ret_filtered[is.na(actual_ret_filtered)] <- 0    # Set all NAs to 0, to facilitate summing
 
 # Find cumulative sum of returns
-actual_ret_cum <- actual_ret_filtered %>%               
-  mutate_all(funs(cumsum)) %>% 
-  mutate(date = as.Date(rownames(actual_ret_filtered)))
-
-# Format cumulative return for plotting  
-actual_ret_cum_gathered <- actual_ret_cum %>%
-  gather(strategy, cum_pnl, -date) %>%
+actual_ret_cum <- actual_ret_filtered %>%     
+  group_by(strategy) %>%
+  mutate(cum_pnl = cumsum(wt_return)) %>%
+  ungroup %>%
   mutate(owner = str_extract(strategy, "(?<=:::).*$"),
          strategy = str_extract(strategy, "^.*(?=:::)"),
          cum_pnl = cum_pnl * 10000) 
 
 # Plot cumulative return, one chart for each owner
-results <- lapply(unique(actual_ret_cum_gathered$owner), function(i) {
-  g <- actual_ret_cum_gathered %>% 
+results <- lapply(unique(actual_ret_cum$owner), function(i) {
+  g <- actual_ret_cum %>% 
     filter(owner == i) %>%                                  # Filter returns from current owner
     ggplot(aes(x = date, y = cum_pnl)) +       
     geom_area(aes(fill = strategy)) +                       # Plot area chart
@@ -454,11 +448,14 @@ Below are 3 month returns arising from current strategies extrapolated into hist
 ######################################
 window = 20 * 3
 
-unwt_ret_roll <- apply(remove_date(unwt_return$sim), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
-unwt_ret_roll <- cbind(data.frame(date = unwt_return$sim$date[-(1:(window-1))]), unwt_ret_roll)
+unwt_ret_sp <- spread(unwt_return, strategy, return)
+wt_ret_sp <- spread(wt_return$sim, strategy, wt_return)
 
-sim_ret_roll <- apply(remove_date(wt_return$sim), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
-sim_ret_roll <- cbind(data.frame(date = wt_return$sim$date[-(1:(window-1))]), sim_ret_roll)
+unwt_ret_roll <- apply(remove_date(unwt_ret_sp), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
+unwt_ret_roll <- cbind(data.frame(date = unwt_ret_sp$date[-(1:(window-1))]), unwt_ret_roll)
+
+sim_ret_roll <- apply(remove_date(wt_ret_sp), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
+sim_ret_roll <- cbind(data.frame(date = wt_ret_sp$date[-(1:(window-1))]), sim_ret_roll)
 
 ######################################
 # Plot heatmap of returns across time
@@ -531,7 +528,7 @@ max_ret_wt <- max(remove_date(sim_ret_roll), na.rm = T) * 10000
 min_ret_wt <- min(remove_date(sim_ret_roll), na.rm = T) * 10000
 
 sim_ret_roll %>% 
-  select(date, names(curr_strat)) %>%
+  select(date, unique(curr_strat$strategy)) %>%
   mutate(date = as.factor(date)) %>%
   gather(strategy, ret_3m, -date) %>%
   mutate(owner = str_extract(strategy, "(?<=:::).*$")) %>%
