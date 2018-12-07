@@ -23,9 +23,8 @@ A dataframes with same structure as `strat_df`, but sizes converted to percent f
 Converts size in months to size in percent of portfolio terms
 }
 \examples{
-\donttest{
-portfolios <- build_strategies(generate_strat_template())
-dur <- get_dur_bbg(portfolios$summary)
-actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, dur)
-}
+data(demo_strategies)
+data(demo_duration)
+portfolios <- build_strategies(demo_strategies)
+actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, demo_duration)
 }

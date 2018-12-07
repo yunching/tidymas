@@ -4,12 +4,12 @@
 \alias{simulate_history}
 \title{Calculate the returns in history given a set of static strategy weights}
 \usage{
-simulate_history(unwt_ret_w_date, curr_wt, start_date, end_date)
+simulate_history(unwt_ret, curr_wt, start_date, end_date)
 }
 \arguments{
-\item{unwt_ret_w_date}{A dataframe containing the timeseries unweighted return of strategies}
+\item{unwt_ret}{A dataframe containing the timeseries unweighted return of strategies, with columns `date`, `strategy`, `return`}
 
-\item{curr_wt}{A dataframe containing one row of weights of strategies with strategy names as column names}
+\item{curr_wt}{A dataframe weights of strategies with columns `strategy`, `size`}
 
 \item{start_date}{A Date variable indicating the start period of simulation}
 
@@ -20,4 +20,13 @@ A dataframe containing the timeseries weighted return of the period
 }
 \description{
 Calculate the returns in history given a set of static strategy weights
+}
+\examples{
+portfolios <- build_strategies(demo_strategies)
+sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, demo_duration)
+wt_return <- calc_strat_wt_return(sim_pf_size, demo_return)
+headline_size <- calc_strat_headline_size(sim_pf_size)
+unwt_return <- calc_strat_unwt_return(wt_return, headline_size)
+curr_wt <- get_strat_size(headline_size, as.Date("2018-01-05"))
+simulate_history(unwt_return, curr_wt, as.Date("2016-01-01"), as.Date("2018-01-01"))
 }

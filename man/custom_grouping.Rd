@@ -7,7 +7,7 @@
 custom_grouping(returns_df, instr_df, group)
 }
 \arguments{
-\item{returns_df}{A dataframe containing timeseries of returns of strategies, column headers should be `strategy`}
+\item{returns_df}{A dataframe containing timeseries of returns of strategies with columns `date`, `strategy`, `return`}
 
 \item{instr_df}{A dataframe containing `strategy` corresponding to any groupings}
 

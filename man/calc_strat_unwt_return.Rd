@@ -18,8 +18,14 @@ A dataframe containing the timeseries unweighted return of the strategies
 Calculate unweighted returns given weighted returns and size of strategies
 }
 \examples{
+portfolios <- build_strategies(demo_strategies)
+sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, demo_duration)
+wt_return <- calc_strat_wt_return(sim_pf_size, demo_return)
+headline_size <- calc_strat_headline_size(sim_pf_size)
+calc_strat_unwt_return(wt_return, headline_size)
 \donttest{
-portfolios <- build_strategies(gen_strat_templates())
+# With Bloomberg
+portfolios <- build_strategies(demo_strategies)
 dur <- get_dur_bbg(portfolios$summary)
 sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, dur)
 ret <- get_ret_bbg(portfolios$summary)

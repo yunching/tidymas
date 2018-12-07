@@ -18,7 +18,5 @@ A dataframe containing the tickers and their corresponding identifiers
 Get tickers for the specific asset class from the package's csv files
 }
 \examples{
-\donttest{
 get_tickers("fx")
-}
 }
