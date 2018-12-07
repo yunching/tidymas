@@ -4,10 +4,10 @@
 \alias{calc_strat_wt_return}
 \title{Calculate weighted return of strategies}
 \usage{
-calc_strat_wt_return(strat_list, asset_returns)
+calc_strat_wt_return(strat_df, asset_returns)
 }
 \arguments{
-\item{strat_list}{A list containing dataframes for each strategy with their corresponding timeseries sizes in percent or month-weighted sizes. Column name must be the instrument's identifier}
+\item{strat_df}{A dataframes for each strategy with their corresponding timeseries sizes in percent or month-weighted sizes. Columns should be `date`, `strategy`, `instrument`, `size`}
 
 \item{asset_returns}{A dataframe with time-series returns of all instruments with column name as the `identifier`}
 }
