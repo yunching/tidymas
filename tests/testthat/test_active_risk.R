@@ -210,11 +210,13 @@ test_that("calc_active_risk runs properly, but gives warning as inputs less than
 test_that("calc_active_risk gives error when periods less than 5",
           expect_error(calc_active_risk(unwt_return, curr_wt, as.Date("2018-12-02"), as.Date("2018-12-06"))))
 
-test_that("calc_active_risk gives expected numbers",
+test_that("calc_active_risk gives expected numbers", {
+          expect_warning(output <- calc_active_risk(unwt_return, curr_wt, as.Date("2018-11-17"), as.Date("2018-12-06")))
           expect_true(all(
-            calc_active_risk(unwt_return, curr_wt, as.Date("2018-11-17"), as.Date("2018-12-06")) %>%
+             output %>%
               left_join(correct_results, by = "strategy") %>%
               mutate(diff = abs(.data$correct_ar - .data$active_risk)) %>%
               .$diff < 1e-9)
             )
+}
 )

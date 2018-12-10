@@ -18,7 +18,7 @@ A dataframe containing the time-series daily return of all instruments
 Calculate weighted return of strategies
 }
 \examples{
-portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"))
+portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"), as.Date("2018-12-07"))
 dur <- demo_duration
 actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, dur)
 ret <- demo_return

@@ -25,6 +25,6 @@ Converts size in months to size in percent of portfolio terms
 \examples{
 data(demo_strategies)
 data(demo_duration)
-portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"))
+portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"), as.Date("2018-12-07"))
 actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, demo_duration)
 }

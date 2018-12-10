@@ -170,14 +170,14 @@ get_and_check_tickers <- function(instruments_df, type = c("price", "duration"))
 #'
 #' @examples
 #' data(demo_strategies)
-#' build_strategies(demo_strategies, as.Date("2016-01-01"))
+#' build_strategies(demo_strategies, as.Date("2016-01-01"), as.Date("2018-12-07"))
 #' \donttest{
 #' build_strategies("input_file.csv")
 #' }
 build_strategies <- function(input, start_date = as.Date("2000-01-01"), end_date = today()) {
   # Read in strategies
   if (class(input) == "character") {
-    if (file.exists(input)) {
+    if (is.character(input) && file.exists(input)) {
       strategies <- read.csv(input, stringsAsFactors = FALSE)
     } else {
       stop(sprintf("File %s cannot be found", input))
@@ -453,7 +453,7 @@ get_dur_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
 #' @examples
 #' data(demo_strategies)
 #' data(demo_duration)
-#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"))
+#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"), as.Date("2018-12-07"))
 #' actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, demo_duration)
 convert_dur_size <- function(strat_df, strat_id_sizetype, duration_df, convert_to_decimal = TRUE) {
 
@@ -647,7 +647,7 @@ get_ret_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_
 #' @export
 #'
 #' @examples
-#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"))
+#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"), as.Date("2018-12-07"))
 #' dur <- demo_duration
 #' actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, dur)
 #' ret <- demo_return
@@ -678,7 +678,7 @@ calc_strat_wt_return <- function(strat_df, asset_returns) {
 #' @export
 #'
 #' @examples
-#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"))
+#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"), as.Date("2018-12-07"))
 #' actual_pf_size <- convert_dur_size(portfolios$actual, portfolios$summary, demo_duration)
 #' calc_strat_headline_size(actual_pf_size)
 calc_strat_headline_size <- function(strat_df) {
@@ -699,7 +699,7 @@ calc_strat_headline_size <- function(strat_df) {
 #' @export
 #'
 #' @examples
-#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"))
+#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"), as.Date("2018-12-07"))
 #' sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, demo_duration)
 #' wt_return <- calc_strat_wt_return(sim_pf_size, demo_return)
 #' headline_size <- calc_strat_headline_size(sim_pf_size)
@@ -804,7 +804,7 @@ get_strat_size <- function(strat_df, as_of_date = NULL, approx = TRUE) {
 #' @export
 #'
 #' @examples
-#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"))
+#' portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"), as.Date("2018-12-07"))
 #' sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, demo_duration)
 #' wt_return <- calc_strat_wt_return(sim_pf_size, demo_return)
 #' headline_size <- calc_strat_headline_size(sim_pf_size)
@@ -858,7 +858,9 @@ calc_returns <- function(df) {
 #' @importFrom stats cov
 #'
 #' @examples
-#' portfolios <- build_strategies(demo_strategies, start_date = as.Date("2016-01-01"))
+#' portfolios <- build_strategies(demo_strategies,
+#'   start_date = as.Date("2016-01-01"),
+#'   end_date = as.Date("2018-12-07"))
 #' sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, demo_duration)
 #' wt_return <- calc_strat_wt_return(sim_pf_size, demo_return)
 #' headline_size <- calc_strat_headline_size(sim_pf_size)
