@@ -18,7 +18,7 @@ A dataframe containing the timeseries unweighted return of the strategies
 Calculate unweighted returns given weighted returns and size of strategies
 }
 \examples{
-portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"))
+portfolios <- build_strategies(demo_strategies, as.Date("2016-01-01"), as.Date("2018-12-07"))
 sim_pf_size <- convert_dur_size(portfolios$sim, portfolios$summary, demo_duration)
 wt_return <- calc_strat_wt_return(sim_pf_size, demo_return)
 headline_size <- calc_strat_headline_size(sim_pf_size)
