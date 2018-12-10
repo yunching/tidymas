@@ -1,0 +1,80 @@
+---
+title: "Team Dashboard"
+author: "Europe Div"
+date: "December 10, 2018"
+output: flexdashboard::flex_dashboard
+---
+
+```{r setup}
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+#Connect to Bloomberg
+library(Rblpapi)
+library(tidymas)
+blpConnect()
+
+#Consolidate BBG calls here as they are very slow, then manipulate the data downstream
+sec_list <- c("RX1 Comdty", "G 1 Comdty", "IK1 Comdty", "ES1 Index",
+              "GTDEM2Y Govt", "GTDEM5Y Govt", "GTDEM10Y Govt",
+              "GTGBP2Y Govt", "GTGBP5Y Govt", "GTGBP10Y Govt")
+bbg_fields <- c("PX_LAST", "YLD_YTM_MID", "DUR_ADJ_OAS_MID", "RISK_MID")
+bdp_results <- bdp(sec_list, bbg_fields) %>% 
+  rownames_to_column() %>% 
+  rename(BBG_Ticker = rowname)
+```
+
+Trading {data-icon="fa-hand-holding-usd"}
+=====================================
+
+Column
+----------------
+
+### Team Positions (Live)
+
+
+```{r}
+
+```
+
+Column
+----------------
+
+### Watch List
+
+<!-- TODO: Add Z-score -->
+
+```{r}
+bdp_results %>% 
+  mutate_at(vars(-BBG_Ticker), funs(round(., 2))) %>% 
+  rename("BBG Ticker" = BBG_Ticker,
+         "Last Price" = PX_LAST,
+         "Last Yield" = YLD_YTM_MID,
+         "Option Adjusted Duration" = DUR_ADJ_OAS_MID,
+         "Risk" = RISK_MID) %>%
+  kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover")) %>% 
+  group_rows("Futures", 1, 4) %>% 
+  group_rows("European Key Rates", 5, 7) %>% 
+  group_rows("UK Key Rates", 8, 10)
+
+```
+   
+Economics {data-icon="fa-cogs"}
+=====================================     
+
+Column
+----------------
+
+### Europe
+    
+```{r}
+```
+
+Column
+----------------
+
+### UK
+
+```{r}
+```
