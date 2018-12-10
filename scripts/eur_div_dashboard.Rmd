@@ -17,7 +17,8 @@ blpConnect()
 #Consolidate BBG calls here as they are very slow, then manipulate the data downstream
 sec_list <- c("RX1 Comdty", "G 1 Comdty", "IK1 Comdty", "ES1 Index",
               "GTDEM2Y Govt", "GTDEM5Y Govt", "GTDEM10Y Govt",
-              "GTGBP2Y Govt", "GTGBP5Y Govt", "GTGBP10Y Govt")
+              "GTGBP2Y Govt", "GTGBP5Y Govt", "GTGBP10Y Govt",
+              "EURUSD Curncy", "GBPUSD Curncy", "EURGBP Curncy")
 bbg_fields <- c("PX_LAST", "YLD_YTM_MID", "DUR_ADJ_OAS_MID", "RISK_MID")
 bdp_results <- bdp(sec_list, bbg_fields) %>% 
   rownames_to_column() %>% 
@@ -35,7 +36,7 @@ Trading {data-icon="fa-hand-holding-usd"}
 Column
 ----------------
 
-### Team Positions (Live)
+### Team Positions (Open)
 
 
 ```{r}
@@ -60,8 +61,9 @@ bdp_results %>%
   kable() %>% 
   kable_styling(bootstrap_options = c("striped", "hover")) %>% 
   group_rows("Futures", 1, 4) %>% 
-  group_rows("European Key Rates", 5, 7) %>% 
-  group_rows("UK Key Rates", 8, 10)
+  group_rows("Europe Key Rates", 5, 7) %>% 
+  group_rows("UK Key Rates", 8, 10) %>% 
+  group_rows("FX rates", 11, 13)
 
 ```
    
