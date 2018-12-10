@@ -9,3 +9,5 @@ inst/doc
 *.csv
 *.Rpres
 output/*.docx
+
+!inst/extdata/*.csv
