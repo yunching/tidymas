@@ -22,6 +22,11 @@ bbg_fields <- c("PX_LAST", "YLD_YTM_MID", "DUR_ADJ_OAS_MID", "RISK_MID")
 bdp_results <- bdp(sec_list, bbg_fields) %>% 
   rownames_to_column() %>% 
   rename(BBG_Ticker = rowname)
+
+# Useful references
+# Flexdashboard - https://rmarkdown.rstudio.com/flexdashboard/using.html#overview 
+# HTML tables - https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_html.html#from_other_packages
+# R Markdown - https://bookdown.org/yihui/rmarkdown/
 ```
 
 Trading {data-icon="fa-hand-holding-usd"}
