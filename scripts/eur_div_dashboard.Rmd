@@ -24,6 +24,9 @@ bdp_results <- bdp(sec_list, bbg_fields) %>%
   rownames_to_column() %>% 
   rename(BBG_Ticker = rowname)
 
+bdh_results <- bdh(sec_list, bbg_fields, start.date=Sys.Date()-365*3) %>% 
+  
+
 # Useful references
 # Flexdashboard - https://rmarkdown.rstudio.com/flexdashboard/using.html#overview 
 # HTML tables - https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_html.html#from_other_packages
