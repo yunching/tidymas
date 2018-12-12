@@ -7,6 +7,7 @@ output: flexdashboard::flex_dashboard
 
 ```{r setup}
 library(tidyverse)
+library(dygraphs)
 library(knitr)
 library(kableExtra)
 #Connect to Bloomberg
@@ -24,8 +25,10 @@ bdp_results <- bdp(sec_list, bbg_fields) %>%
   rownames_to_column() %>% 
   rename(BBG_Ticker = rowname)
 
-bdh_results <- bdh(sec_list, bbg_fields, start.date=Sys.Date()-365*3) %>% 
-  
+bdh_fields <- c("PX_LAST", "YLD_YTM_MID")
+bdh_results <- bdh(sec_list, bdh_fields, start.date=Sys.Date()-365*3) %>% 
+  purrr::map_dfr(~.x, .id="Ticker") %>% 
+  as_tibble()
 
 # Useful references
 # Flexdashboard - https://rmarkdown.rstudio.com/flexdashboard/using.html#overview 
@@ -42,6 +45,10 @@ Column
 ### Team Positions (Open)
 
 ```{r}
+bdh_results %>% 
+  filter(Ticker=="RX1 Comdty") %>% 
+  select(date, PX_LAST) %>% 
+  as.xts()
 
 ```
 
