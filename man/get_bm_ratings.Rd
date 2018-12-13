@@ -17,6 +17,16 @@ Returns a data frame to be used with plot_credit_ratings()
 \description{
 Download and calculate median credit rating over time
 }
+\details{
+This function rounds the end_date to the most recent monthend (in the past). Credit rating agencies
+might re-rate countries anytime within a month, and in making this function we are standarding
+the credit ratings of countries as at each monthend.
+}
 \examples{
-\donttest{get_bm_ratings(start_date="2018-10-01", end_date = "2018-11-01")}
+\donttest{
+library(Rblpapi)
+blpConnect()
+
+get_bm_ratings(end_date="2018-10-01", per=2)
+}
 }
