@@ -110,7 +110,10 @@ NULL
 NULL
 
 clean_rating <- function(rating){
-  if (stringr::str_detect(rating, stringr::regex("^(AAA|Aaa)"))){
+  if (is.na(rating)) {
+    rating <- NA
+  }
+  else if (stringr::str_detect(rating, stringr::regex("^(AAA|Aaa)"))){
     rating <- "AAA"
   }
   else if (stringr::str_detect(rating, stringr::regex("^(AA\\+|Aa1)"))){
@@ -148,7 +151,9 @@ clean_rating <- function(rating){
 }
 
 rating_to_num <- function(rating){
-  if (rating == "AAA")
+  if (is.na(rating))
+    return(NA)
+  else if (rating == "AAA")
     return(1)
   else if (rating == "AA+")
     return(2)
@@ -173,7 +178,9 @@ rating_to_num <- function(rating){
 }
 
 num_to_rating <- function(rating_num){
-  if (rating_num == 1)
+  if (is.na(rating_num))
+    return(NA)
+  else if (rating_num == 1)
     return("AAA")
   else if (rating_num == 2)
     return("AA+")
@@ -234,7 +241,7 @@ pad_2zeros <- function(Number){
 #'
 #' get_bm_ratings(end_date="2018-10-01", per=2)
 #' }
-get_bm_ratings <- function(end_date= Sys.Date(), per=120){
+get_bm_ratings <- function(end_date= Sys.Date(), per=6){
   #check end_date is a date
   if (!lubridate::is.Date(end_date)){
     stop("end_date requires Date datatype.")
@@ -260,7 +267,20 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
     "GTKRW10Y Govt",
     "GTESP10Y Govt",
     "GTGBP10Y Govt",
-    "GT10 Govt"
+    "GT10 Govt",
+    "GTDKK10Y Govt",
+    "GTATS10Y Govt",
+    "GTPTE10Y Govt",
+    "GTIEP10Y Govt",
+    "GTMXN10Y Govt",
+    "GTSEK10Y Govt",
+    "GTNOK10Y Govt",
+    "GTTHB10Y Govt",
+    "GTPLN10Y Govt",
+    "GTFIM10Y Govt",
+    "GTNZD10Y Govt",
+    "GTCHF10Y Govt",
+    "GTHKD10Y Govt"
   )
   credit_rating_levels <- c("BBB-", "BBB", "BBB+",  "A-",  "A",  "A+",  "AA-",  "AA", "AA+", "AAA")
   generics_country_map <- tibble(
@@ -274,10 +294,23 @@ get_bm_ratings <- function(end_date= Sys.Date(), per=120){
       "Italy",
       "Japan",
       "Netherlands",
-      "South Korea",
+      "S.Korea",
       "Spain",
       "United Kingdom",
-      "US"
+      "United States",
+      "Denmark",
+      "Austria",
+      "Portugal",
+      "Ireland",
+      "Mexico",
+      "Sweden",
+      "Norway",
+      "Thailand",
+      "Poland",
+      "Finland",
+      "New Zealand",
+      "Switzerland",
+      "Hong Kong"
     )
   )
   message(paste("Downloading data from", min(dates), "to", max(dates), ": this might take a while..."))
@@ -355,7 +388,7 @@ plot_credit_ratings <- function(my_data){
     dplyr::filter(date == max(.data$date)) %>%
     dplyr::select(.data$date, .data$country, .data$moody.clean, .data$snp.clean, .data$fitch.clean) %>%
     dplyr::rename(moody = .data$moody.clean, snp = .data$snp.clean, fitch = .data$fitch.clean)  %>%
-    tidyr::gather(rater, rating, -date, -country) %>%
+    tidyr::gather("rater", "rating", -.data$date, -.data$country) %>%
     dplyr::mutate(rating = .data$rating %>% factor(credit_rating_levels) %>% forcats::fct_rev()) %>%
     dplyr::arrange(.data$country)
 
