@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-This project aims to provide a macro view on RMD's alpha strategies, it includes various calculations for RMD's alpha strategies, including PnL, risk, correlation etc. The generated .docx document is used in the Quarterly Strategy Report in the SAT section, and was first presented in the 2018 Q4 strategy report. 
+This project aims to provide a macro view on alpha strategies, it includes various calculations for alpha strategies, including PnL, risk, correlation etc.
 
 
 # Getting Started
