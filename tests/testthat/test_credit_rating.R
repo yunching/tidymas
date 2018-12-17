@@ -3,6 +3,10 @@ context("Credit rating translations")
 library(tidymas)
 library(stringr)
 
+test_that("NA", {
+  expect_equal(clean_rating(NA), NA)
+})
+
 test_that("AAA",{
   expect_equal(clean_rating("AAA"), "AAA")
   expect_equal(clean_rating("AAAu"), "AAA")
