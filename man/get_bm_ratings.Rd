@@ -4,7 +4,7 @@
 \alias{get_bm_ratings}
 \title{Download and calculate median credit rating over time}
 \usage{
-get_bm_ratings(end_date = Sys.Date(), per = 120)
+get_bm_ratings(end_date = Sys.Date(), per = 6)
 }
 \arguments{
 \item{end_date}{Last date to show credit ratings.}
