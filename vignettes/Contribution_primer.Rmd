@@ -21,11 +21,13 @@ knitr::opts_chunk$set(
 2. Create a new branch with the feature you are developing (using git branch) and switch to it
 3. Update tests with the results you expect when your new functionality is built (in tests/testthat folder)
 4. Update R code (in R folder), make sure you also include Roxygen comments
-5. Run devtools::document() to update R documentation from your Roxygen comments
-6. Test package (Build > Test package) to check that your new functionality meets your expectations and historical tests. 
-7. Check package is building properly (Build > Check Package)
-8. Update the version number in DESCRIPTION file (see Version Numbers section below) if necessary.
-9. Submit a pull request which will check package on CI server
+5. Install devtools by running `install.packages("devtools")` (only once needed)
+6. Run devtools::document() to update R documentation from your Roxygen comments
+7. Install Rtools by downloading it from https://cran.r-project.org/bin/windows/Rtools/ and restart Rstudio (only once needed)
+8. Test package (Build > Test package) to check that your new functionality meets your expectations and historical tests. 
+9. Check package is building properly (Build > Check Package)
+10. Update the version number in DESCRIPTION file (see Version Numbers section below) if necessary.
+11. Submit a pull request which will check package on CI server
 
 ## Version Numbers
 
