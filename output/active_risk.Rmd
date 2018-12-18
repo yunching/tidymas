@@ -119,8 +119,8 @@ exp_corr <- calc_cor(exp_ret_by_owner %>% spread(owner, wt_return),
 ###################################################
 
 # Parameters to be displayed in later section
-current_quarter <- month(curr_date) %/% 3 + 1
-prev_quarter <- if (month(curr_date) %/% 3 == 0) 4 else month(curr_date) %/% 3
+current_quarter <- ceiling(month(curr_date) / 3)
+prev_quarter <- (current_quarter + 2) %% 4 + 1
 current_abs_active_risk <- active_risk_curr$Last3M$active_risk %>% abs %>% sum * 10000
 prev_abs_active_risk <- active_risk_prev$active_risk %>% abs %>% sum * 10000
 info_ratio <- 0.3
@@ -151,7 +151,7 @@ div_risk <- strat_active_risk %>%
 
 ```
 
-**The RMD ex BW active risk utilization for Q`r current_quarter` is expected to be around `r sprintf("%.1f", current_abs_active_risk)`bps in our baseline scenario**, which is `r if (current_abs_active_risk > prev_abs_active_risk) "above" else "below"` our estimates for the last quarters (`r prev_quarter`Q: `r sprintf("%.1f",prev_abs_active_risk)`bps). Assuming an information ratio of `r sprintf("%.1f", info_ratio)`, the expected portfolio excess return will be `r sprintf("%.1f", info_ratio * current_abs_active_risk)` (annualized). Under a stress scenario similar to the GFC and the Taper Tantrum, we expect absolute active risk utilization to increase to around `r sprintf("%.1f", gfc_abs_active_risk)` and `r sprintf("%.1f", taper_abs_active_risk)`bps respectively
+**The active risk utilization for Q`r current_quarter` is expected to be around `r sprintf("%.1f", current_abs_active_risk)`bps in our baseline scenario**, which is `r if (current_abs_active_risk > prev_abs_active_risk) "above" else "below"` our estimates for the last quarters (`r prev_quarter`Q: `r sprintf("%.1f",prev_abs_active_risk)`bps). Assuming an information ratio of `r sprintf("%.1f", info_ratio)`, the expected portfolio excess return will be `r sprintf("%.1f", info_ratio * current_abs_active_risk)` (annualized). Under a stress scenario similar to the GFC and the Taper Tantrum, we expect absolute active risk utilization to increase to around `r sprintf("%.1f", gfc_abs_active_risk)` and `r sprintf("%.1f", taper_abs_active_risk)`bps respectively
 
 **Key observations are: **
 
