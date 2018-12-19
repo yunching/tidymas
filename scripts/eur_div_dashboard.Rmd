@@ -12,7 +12,7 @@ library(knitr)
 library(kableExtra)
 #Connect to Bloomberg
 library(Rblpapi)
-library(tidymas)
+# library(tidymas)
 blpConnect()
 
 #Consolidate BBG calls here as they are very slow, then manipulate the data downstream
@@ -45,11 +45,14 @@ Column
 ### Team Positions (Open)
 
 ```{r}
-bdh_results %>% 
+rx1 <- bdh_results %>% 
   filter(Ticker=="RX1 Comdty") %>% 
   select(date, PX_LAST) %>% 
-  as.xts()
+  rename("RX1 Comdty"=PX_LAST) %>% 
+  timetk::tk_xts(select = "RX1 Comdty", date_var = date)
 
+dygraph(rx1) %>% 
+  dyRangeSelector()
 ```
 
 Column
