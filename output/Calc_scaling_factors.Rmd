@@ -67,11 +67,11 @@ dat
 ```
 
 ```{r show_scaling_factors_gov}
-select(sf_gov, country, rescaled_sf, capped_mv_wts)
+knitr::kable(select(sf_gov, country, rescaled_sf, capped_mv_wts))
 ```
 
 # Scaling factors ILB
 
 ```{r show_scaling_factors_ilb}
-select(sf_ilb, country, rescaled_sf, capped_mv_wts)
+knitr::kable(select(sf_ilb, country, rescaled_sf, capped_mv_wts))
 ```
