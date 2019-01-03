@@ -99,6 +99,44 @@ build_alpha <- function(input, start_date = as.Date("2000-01-01"), end_date = to
 }
 
 
+#' Get specifications for futures (include adjustment for expired tickers)
+#'
+#' @param tickers character vector containing bloomberg tickers
+#' @param fields character vector containing required fields
+#' @param ... parameters to be passed to `bdp`` formula e.g. options and overrides, see `bdp`
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' \donttest{
+#' bdp_fut(c("RX1 Comdty", "RXH6 Comdty"), c("FUT_VAL_PT", "CRNCY"))
+#' }
+bdp_fut <- function(tickers, fields, ...) {
+  futures_dat1 <- bdp(tickers, fields) %>%
+    rownames_to_column("instrument") %>%
+    replace(is.na(.), "")
+
+  renamed_futures <- futures_dat1 %>%
+    unite("all", -.data$instrument, sep = "") %>%
+    filter(.data$all == "") %>%
+    mutate(renamed_inst = str_replace(.data$instrument, "(?=[0-9]+ )", "1")) %>%
+    select(.data$instrument, .data$renamed_inst)
+
+  futures_dat2 <- NULL
+  if (nrow(renamed_futures) > 0) {
+    futures_dat2 <- bdp(renamed_futures$renamed_inst, fields) %>%
+      rownames_to_column("renamed_inst") %>%
+      left_join(renamed_futures, by = "renamed_inst")
+  }
+
+  bind_rows(futures_dat1 %>%
+              filter(!.data$instrument %in% renamed_futures$instrument) %>%
+              mutate(renamed_inst = NA),
+            futures_dat2) %>%
+    mutate(renamed_inst = ifelse(is.na(.data$renamed_inst), .data$instrument, .data$renamed_inst))
+}
+
 #' Get return of futures trades
 #'
 #' @param portfolio tidied dataframe containing `strategy`, `identifier`
@@ -108,7 +146,7 @@ build_alpha <- function(input, start_date = as.Date("2000-01-01"), end_date = to
 #' @export
 #'
 #' @examples
-get_trade_return_futures <- function(portfolio, trades) {
+get_trade_return_futures <- function(portfolio, trades, curr) {
   summ <- trades %>%
     group_by(.data$strategy, .data$identifier, .data$asset_class, .data$owner, .data$type) %>%
     summarise() %>%
@@ -116,30 +154,54 @@ get_trade_return_futures <- function(portfolio, trades) {
 
   portfolio <- portfolio %>% filter(instrument %in% filter(summ, asset_class == "Futures")$identifier)
 
-  futures <- unique(summ$identifier)
+  futures <- unique(portfolio$instrument)
   start_date <- min(portfolio$date)
   end_date <- max(portfolio$date)
 
-  futures_prices <- bdh_weekday(futures, "PX_LAST", start_date, end_date)%>%
+  # Download contract specifications
+  futures_specs <- bdp_fut(futures, c("FUT_VAL_PT", "CRNCY"))
+
+  # Download currency pairs
+  req_curr <- futures_specs['CRNCY'] %>%
+    unique %>%
+    filter(.data$CRNCY != curr) %>%
+    mutate(ticker = paste0(.data$CRNCY, curr, " Curncy")) %>%
+    rename(name = .data$CRNCY)
+
+  fx_prices <- bdh_weekday(req_curr, "PX_LAST", start_date, end_date) %>%
+    mutate(!!curr := 1) %>%
+    gather("fx", "fx_price", -.data$date)
+
+  # Download prices based on renamed futures names
+  futures_prices <- bdh_weekday(futures_specs$renamed_inst, "PX_LAST", start_date, end_date)%>%
     gather("instrument", "PX_LAST", -.data$date) %>%
-    filter(!is.na(.data$PX_LAST)) %>%
+#    filter(!is.na(.data$PX_LAST)) %>%
     left_join(
-      bdp(futures, "FUT_VAL_PT") %>% rownames_to_column("instrument"),
+      bdp(futures, c("FUT_VAL_PT", "CRNCY")) %>% rownames_to_column("instrument"),
       by = "instrument") %>%
-    mutate(FUT_VAL_PT = as.numeric(.data$FUT_VAL_PT))
+    mutate(FUT_VAL_PT = as.numeric(.data$FUT_VAL_PT)) %>%
+    rename(renamed_inst = .data$instrument, fx = .data$CRNCY) %>%
+    left_join(select(futures_specs, .data$instrument, .data$renamed_inst), by = "renamed_inst") %>%
+    select(-.data$renamed_inst)
+
+  # Futures FX returns is only the daily pnl in local currency terms multiplied by today's FX rates, as futures are traded on margin
+  # Hence there is no exposure on the contract value of the contracts.
 
   # Calculate per instrument daily pnl from market movements
   market_pnl <- portfolio %>%
     left_join(futures_prices, by = c("date", "instrument")) %>%
+    left_join(fx_prices, by = c("date", "fx")) %>%
     group_by(.data$strategy, .data$instrument) %>%
-    mutate(market_pnl = .data$size*.data$FUT_VAL_PT*(.data$PX_LAST - dplyr::lag(.data$PX_LAST))) %>%
+    mutate(market_pnl = .data$fx_price * .data$size*.data$FUT_VAL_PT*(.data$PX_LAST - dplyr::lag(.data$PX_LAST))) %>%
     replace_na(list(market_pnl=0)) %>%
     as_tibble()
 
   # Calculate timing pnl
-  timing_pnl <- trades %>% left_join(futures_prices, by = c("open_date" = "date", "identifier" = "instrument")) %>%
+  timing_pnl <- trades %>%
+    left_join(futures_prices, by = c("open_date" = "date", "identifier" = "instrument")) %>%
+    left_join(fx_prices, by = c("open_date" = "date", "fx")) %>%
     group_by(.data$strategy, .data$identifier) %>%
-    mutate(timing_pnl = .data$size * .data$FUT_VAL_PT*(.data$PX_LAST - .data$price)) %>%
+    mutate(timing_pnl = .data$fx_price * .data$size * .data$FUT_VAL_PT*(.data$PX_LAST - .data$price)) %>%
     replace_na(list(timing_pnl=0)) %>%
     as_tibble()
 
@@ -169,7 +231,7 @@ get_trade_return_futures <- function(portfolio, trades) {
 #' @export
 #'
 #' @examples
-get_trade_return_bonds <- function(portfolio, trades) {
+get_trade_return_bonds <- function(portfolio, trades, curr) {
   summ <- trades %>%
     group_by(.data$strategy, .data$identifier, .data$asset_class, .data$owner, .data$type) %>%
     summarise() %>%
@@ -183,38 +245,47 @@ get_trade_return_bonds <- function(portfolio, trades) {
   portfolio <- filter(portfolio, .data$instrument %in% bonds)
 
   if (length(bonds) == 1) {
-    bond_prices <- bdh_weekday(bonds, c("PX_LAST", "IDX_RATIO"), start_date, end_date) %>%
+    bond_prices_only <- bdh_weekday(bonds, c("PX_LAST", "IDX_RATIO"), start_date, end_date) %>%
       mutate(instrument = bonds)
   } else {
-    bond_prices <- bdh_weekday(bonds, c("PX_LAST", "IDX_RATIO"), start_date, end_date) %>%
+    bond_prices_only <- bdh_weekday(bonds, c("PX_LAST", "IDX_RATIO"), start_date, end_date) %>%
       bind_rows(.id = "instrument")
   }
 
-  bond_prices  <- bond_prices  %>%
+  bond_prices  <- bond_prices_only  %>%
     left_join(
-      bdp(bonds, "CPN") %>% rownames_to_column("instrument"),
+      bdp(bonds, c("CPN", "CRNCY")) %>% rownames_to_column("instrument"),
       by = "instrument") %>%
+    rename(fx = CRNCY) %>%
     replace_na(list(IDX_RATIO = 1))
 
-  pnl <- bond_prices  %>% group_by(.data$instrument) %>%
-    mutate(day_count = as.numeric(.data$date - dplyr::lag(.data$date)),
-           px_chg = (.data$PX_LAST - dplyr::lag(.data$PX_LAST)) * .data$IDX_RATIO / 100,
-           accrued_interest = .data$day_count / 365 * .data$CPN/100 * ifelse(is.na(.data$PX_LAST), NA, 1)) %>%
-    replace_na(list(px_chg = 0, accrued_interest = 0)) %>%
-    mutate(pnl = .data$px_chg + .data$accrued_interest)
+  req_curr <- bond_prices['fx'] %>%
+    unique %>%
+    filter(fx != curr) %>%
+    mutate(ticker = paste0(.data$fx, curr, " Curncy")) %>%
+    rename(name = fx)
 
-  market_pnl <- portfolio %>% left_join(bond_prices , by = c("date", "instrument")) %>%
-    mutate(day_count = as.numeric(.data$date - dplyr::lag(.data$date)),
-           px_chg = (.data$PX_LAST - dplyr::lag(.data$PX_LAST)) * .data$IDX_RATIO / 100,
-           accrued_interest = .data$day_count / 365 * .data$CPN/100 * ifelse(is.na(.data$PX_LAST), NA, 1)) %>%
-    replace_na(list(px_chg = 0, accrued_interest = 0)) %>%
-    mutate(market_pnl = .data$size * (.data$px_chg + .data$accrued_interest)) %>%
-    select(date, .data$strategy, .data$instrument, .data$size, .data$market_pnl)
+  fx_prices <- bdh_weekday(req_curr, "PX_LAST", start_date, end_date) %>%
+    mutate(!!curr := 1) %>%
+    gather("fx", "fx_rate", -.data$date)
+
+  market_pnl <- portfolio %>%
+    left_join(bond_prices , by = c("date", "instrument")) %>%
+    left_join(fx_prices, by = c("date", "fx")) %>%
+      mutate(day_count = as.numeric(.data$date - dplyr::lag(.data$date)),
+             px_chg = .data$fx_rate * (.data$PX_LAST - dplyr::lag(.data$PX_LAST)) * .data$IDX_RATIO / 100,
+             accrued_interest = .data$day_count / 365 * .data$CPN/100 * ifelse(is.na(.data$PX_LAST), NA, 1) * .data$fx_rate,
+             fx_ret = ((.data$PX_LAST * .data$fx_rate - dplyr::lag(.data$PX_LAST) * dplyr::lag(.data$fx_rate)) * .data$IDX_RATIO / 100) - px_chg) %>%
+    replace_na(list(px_chg = 0, accrued_interest = 0, fx_ret = 0)) %>%
+    mutate(market_pnl = .data$size * (.data$px_chg + .data$accrued_interest),
+           fx_pnl = .data$size * .data$fx_ret) %>%
+    select(date, .data$strategy, .data$instrument, .data$size, .data$market_pnl, .data$fx_pnl)
 
   timing_pnl <- filter(trades, .data$asset_class == "Bonds") %>%
     left_join(bond_prices, by = c("open_date" = "date", "identifier" = "instrument")) %>%
+    left_join(fx_prices, by = c("open_date" = "date", "fx")) %>%
     group_by(.data$strategy, .data$identifier) %>%
-    mutate(timing_pnl = .data$size * (.data$PX_LAST - .data$price)/100) %>%
+    mutate(timing_pnl = .data$size * (.data$PX_LAST - .data$price)/100 * .data$fx_rate) %>%
     replace_na(list(timing_pnl=0)) %>%
     as_tibble()
 
@@ -223,7 +294,7 @@ get_trade_return_bonds <- function(portfolio, trades) {
       select(timing_pnl, .data$strategy, .data$open_date, .data$timing_pnl, .data$identifier),
       by = c("date"="open_date", "strategy", "instrument" = "identifier")) %>%
     replace_na(list(timing_pnl = 0)) %>%
-    select(.data$strategy, .data$date, .data$instrument, .data$market_pnl, .data$timing_pnl) %>%
+    select(.data$strategy, .data$date, .data$instrument, .data$market_pnl, .data$timing_pnl, .data$fx_pnl) %>%
     gather("pnl_type", "pnl", -.data$strategy, -.data$date, -.data$instrument)
 
   total_pnl %>%
@@ -233,68 +304,4 @@ get_trade_return_bonds <- function(portfolio, trades) {
     group_by(.data$strategy, .data$pnl_type) %>%
     mutate(cum_pnl = cumsum(.data$pnl)) %>%
     ungroup
-}
-
-
-
-
-if (!interactive()) {
-  alpha <- build_alpha(file.path("data2", "trademaster.csv"), start_date = as.Date("2018-01-01"))
-
-  pnl_futures <- get_trade_return_futures(alpha$actual, alpha$trades) %>%
-    mutate(asset_class = "Futures")
-  pnl_bonds <- get_trade_return_bonds(alpha$actual, alpha$trades) %>%
-    mutate(asset_class = "Bonds")
-
-  pnl <- bind_rows(pnl_futures, pnl_bonds) %>%
-    group_by(strategy, date, pnl_type) %>%
-    summarise(pnl = sum(pnl, na.rm = T),
-              cum_pnl = sum(cum_pnl, na.rm = T))
-
-  date_limits <- alpha$actual %>% filter(size != 0) %>%
-    group_by(strategy) %>%
-    summarise(min_date = min(date), max_date = max(date))
-
-  # Plot by strategy
-  pnl %>%
-    group_by(strategy, date) %>%
-    summarise(cum_pnl = sum(.data$cum_pnl, na.rm =T)) %>%
-    ungroup() %>%
-    ggplot(aes(x = date, y= cum_pnl/1e6)) +
-    geom_area(aes(fill = strategy)) +
-    stat_summary(fun.y = sum, geom = "line", size = 1) +
-    theme(axis.title.x = element_blank(), legend.position = "bottom")
-
-  # Plot by market vs timing
-  pnl %>%
-    group_by(date, pnl_type) %>%
-    summarise(cum_pnl = sum(.data$cum_pnl, na.rm = T)) %>%
-    ungroup %>%
-    ggplot(aes(x = date, y=cum_pnl / 1e6)) +
-    geom_area(aes(fill = pnl_type)) +
-    stat_summary(fun.y = sum, geom = "line", size = 1) +
-    theme(axis.title.x = element_blank(), legend.position = "bottom")
-
-  # Cumulative Pnl by strategy and type
-  pnl %>%
-    left_join(date_limits, by = "strategy") %>%
-    filter(date < max_date, date > min_date) %>%
-    ggplot(aes(x = date, y = cum_pnl / 1e3)) +
-    geom_area(aes(fill = pnl_type)) +
-    stat_summary(fun.y = sum, geom = "line", size = 0.5) +
-    facet_wrap(~strategy, ncol = 2, scales = "free_x") +
-    theme(legend.position = "bottom") +
-    labs(title = "Cumulative pnl")
-
-  # Pnl by strategy and type
-  pnl %>%
-    left_join(date_limits, by = "strategy") %>%
-    filter(date < max_date, date > min_date) %>%
-    ggplot(aes(x = date, y = pnl / 1e6)) +
-    geom_col(aes(fill = pnl_type)) +
-    facet_wrap(~strategy, ncol = 2, scales = "free") +
-    theme(legend.position = "bottom") +
-    labs(title = "Non-cumulative pnl")
-
-
 }
