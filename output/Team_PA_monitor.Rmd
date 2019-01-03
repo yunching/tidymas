@@ -1,0 +1,218 @@
+---
+title: "PA monitoring"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r setup, message = FALSE, echo = FALSE}
+library(tidyverse)
+library(lubridate)
+library(Rblpapi)
+library(tidymas)
+library(knitr)
+blpConnect()
+opts_chunk$set(echo=FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r, message = FALSE}
+start_date <- as.Date("2018-01-01")
+end_date <- as.Date("2018-12-31")
+curr <- "SGD"
+ devtools::load_all(".")
+
+alpha <- build_alpha(file.path("..", "data2", "trademaster_full.csv"), start_date = start_date, end_date = end_date)
+
+pnl_futures <- get_trade_return_futures(alpha$actual, alpha$trades, curr) %>%
+  mutate(asset_class = "Futures")
+pnl_bonds <- get_trade_return_bonds(alpha$actual, alpha$trades, curr) %>%
+  mutate(asset_class = "Bonds")
+
+pnl <- bind_rows(pnl_futures, pnl_bonds) %>%
+  filter(pnl_type != "fx_pnl") %>%
+  group_by(strategy, date, pnl_type) %>%
+  summarise(pnl = sum(pnl, na.rm = T),
+            cum_pnl = sum(cum_pnl, na.rm = T)) %>%
+  ungroup
+
+date_limits <- alpha$actual %>% filter(size != 0) %>%
+  group_by(strategy) %>%
+  summarise(min_date = min(date), max_date = max(date))
+```
+
+Report period: `r start_date` to `r end_date`
+
+Currency: `r curr`
+
+# Trading statistics
+
+```{r display_statistics}
+start_nav <- 9e6
+
+daily_pnl <- pnl %>% 
+  group_by(date) %>% 
+  summarise(pnl = sum(pnl)) %>%
+  ungroup %>%
+  mutate(cum_pnl = cumsum(pnl),
+         mv = start_nav + cum_pnl,
+         ret = mv / dplyr::lag(mv) - 1) 
+
+sharpe <- mean(daily_pnl$ret, na.rm = TRUE) / sd(daily_pnl$ret, na.rm = TRUE)
+avg_win <- mean(filter(daily_pnl, pnl > 0)$pnl)
+avg_loss <- mean(filter(daily_pnl, pnl < 0)$pnl)
+avg_winloss <- abs(avg_win/avg_loss)
+
+max_win <- max(daily_pnl$pnl, na.rm = T)
+max_loss <- abs(min(daily_pnl$pnl, na.rm = T))
+max_winloss <- abs(max_win/max_loss)
+
+win_rate_all <- mean(daily_pnl$pnl > 0)
+win_rate_active <- mean(filter(daily_pnl, pnl != 0)$pnl > 0)
+```
+
+Avg Win/Loss: `r scales::number(avg_win, accuracy = 1, big.mark = ",")` / `r scales::number(abs(avg_loss), accuracy = 1, big.mark = ",")` = `r scales::number(avg_winloss, accuracy = 0.01)`
+
+Max Win/Loss: `r scales::number(max_win, accuracy = 1, big.mark = ",")` / `r scales::number(abs(max_loss), accuracy = 1, big.mark = ",")` = `r scales::number(max_winloss, accuracy = 0.01)`
+
+Win rate (all days): `r scales::percent(win_rate_all)`
+
+Win rate (active days): `r scales::percent(win_rate_active)`
+
+```{r}
+pnl_owner <- pnl %>% mutate(owner = str_match(strategy, "(?<=:::).*$"),
+               strategy = str_match(strategy, "^.*(?=:::)")) 
+
+pnl_owner %>% 
+  filter(pnl_type != "fx_pnl") %>%
+  group_by(date, owner) %>% 
+  summarise(pnl = sum(pnl)) %>%
+  group_by(owner) %>%
+  mutate(cum_pnl = cumsum(pnl)) %>%
+  ggplot(aes(x = date, y = cum_pnl / 1e6)) +
+  geom_area(aes(fill = owner)) +
+      stat_summary(fun.y = sum, geom = "line", size = 1) +
+  labs(title = "Team + PA, excluding FX")
+
+pnl_owner %>% 
+    filter(pnl_type != "fx_pnl") %>%
+  group_by(date, owner) %>% 
+  summarise(pnl = sum(pnl)) %>%
+  group_by(owner) %>%
+  filter(! owner %in% c("ES", "BC", "RX")) %>%
+  mutate(cum_pnl = cumsum(pnl)) %>%
+  ggplot(aes(x = date, y = cum_pnl / 1e6)) +
+  geom_area(aes(fill = owner)) +
+      stat_summary(fun.y = sum, geom = "line", size = 1) +
+  labs(title = "PA only, excluding FX")
+  
+
+pnl_owner %>% 
+    filter(pnl_type != "fx_pnl") %>%
+  group_by(date, pnl_type) %>% 
+  summarise(pnl = sum(pnl)) %>%
+  group_by(pnl_type) %>%
+  mutate(cum_pnl = cumsum(pnl)) %>%
+  ggplot(aes(x = date, y = cum_pnl / 1e6)) +
+  geom_area(aes(fill = pnl_type)) +
+      stat_summary(fun.y = sum, geom = "line", size = 1) +
+  labs(title = "Team + PA, excluding FX")
+  
+# pnl_owner %>% group_by(strategy, owner) %>%
+#   summarise(pnl = sum(pnl)) %>%
+#   filter(pnl != 0) %>%
+#   arrange(desc(abs(pnl))) %>%
+#   mutate(pnl = scales::number(pnl, big.mark = ","))
+  
+
+```
+
+# Strategies
+
+```{r}
+strat_status <- alpha$actual %>% 
+  filter(date == max(date)) %>% 
+  group_by(strategy) %>% 
+  summarise(size = sum(abs(size))) %>% 
+  mutate(status = ifelse(size == 0, "CLOSED", "OPEN")) %>% 
+  select(strategy, status)
+
+pnl %>% 
+  filter(str_detect(strategy, ":::(ES|BC)$")) %>%
+  left_join(strat_status, by = "strategy") %>%
+  mutate(strategy = str_extract(strategy, "^.*(?=:::)")) %>%
+  group_by(strategy, status) %>%
+  summarise(pnl = sum(pnl)) %>%
+  arrange(status, desc(pnl)) %>%
+  mutate(pnl = scales::number(pnl, big.mark = ",", accuracy = 1)) %>%
+  kable(align = "llr")
+```
+
+# PnL profile
+
+```{r}
+  # Plot by strategy
+pnl_owner %>%
+    filter(pnl_type != "fx_pnl", owner %in% c("ES")) %>%
+  #  mutate(strategy = str_extract(strategy, "^.*(?=:::)")) %>%
+    group_by(strategy, owner, date) %>%
+    summarise(cum_pnl = sum(.data$cum_pnl, na.rm =T)) %>%
+    ungroup() %>%
+    ggplot(aes(x = date, y= cum_pnl/1e6)) +
+  facet_wrap(~as.factor(owner), ncol = 1) +
+    geom_area(aes(fill = strategy)) +
+    stat_summary(fun.y = sum, geom = "line", size = 1) +
+    theme(axis.title.x = element_blank(), legend.position = "bottom") +
+    labs(title = "By strategy, excluding FX")
+
+pnl_owner %>%
+    filter(pnl_type != "fx_pnl", owner %in% c("BC")) %>%
+  #  mutate(strategy = str_extract(strategy, "^.*(?=:::)")) %>%
+    group_by(strategy, owner, date) %>%
+    summarise(cum_pnl = sum(.data$cum_pnl, na.rm =T)) %>%
+    ungroup() %>%
+    ggplot(aes(x = date, y= cum_pnl/1e6)) +
+  facet_wrap(~as.factor(owner), ncol = 1) +
+    geom_area(aes(fill = strategy)) +
+    stat_summary(fun.y = sum, geom = "line", size = 1) +
+    theme(axis.title.x = element_blank(), legend.position = "bottom") +
+    labs(title = "By strategy, excluding FX")
+
+
+```
+
+# Pnl of strategies
+
+```{r, fig.height = 11, fig.width = 7}
+  # Cumulative Pnl by strategy and type
+  pnl %>%
+    filter(str_detect(strategy, ":::ES$")) %>%
+    left_join(date_limits, by = "strategy") %>%
+    filter(date < max_date, date > min_date) %>%
+    ggplot(aes(x = date, y = cum_pnl / 1e3)) +
+    geom_area(aes(fill = pnl_type)) +
+    stat_summary(fun.y = sum, geom = "line", size = 0.5) +
+    facet_wrap(~strategy, ncol = 3, scales = "free_x") +
+    theme(legend.position = "bottom") +
+    labs(title = "Cumulative pnl")
+
+```
+
+```{r, fig.height = 11, fig.width = 7}
+  # Pnl by strategy and type
+  pnl %>%
+    filter(str_detect(strategy, ":::ES$")) %>%
+    left_join(date_limits, by = "strategy") %>%
+    filter(date < max_date, date > min_date) %>%
+    ggplot(aes(x = date, y = pnl / 1e6)) +
+    geom_col(aes(fill = pnl_type)) +
+    facet_wrap(~strategy, ncol = 3, scales = "free") +
+    theme(legend.position = "bottom") +
+    labs(title = "Non-cumulative pnl")
+```
+
+
+
+
+
+
+
