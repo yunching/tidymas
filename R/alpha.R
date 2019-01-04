@@ -28,9 +28,14 @@ build_alpha <- function(input, start_date = as.Date("2000-01-01"), end_date = to
   }
 
   strategies <- strategies %>%
+    rename(owner = .data$Owner, strategy = .data$Sub.strategy, type = .data$Strategy, open_date = .data$Entry.Date, identifier = .data$Security.ID, size = .data$Amount, price = .data$Entry.Price) %>%
+    mutate(identifier = str_replace(.data$identifier, " Corp$", " Govt")) %>%
+    mutate(asset_class = ifelse(str_detect(.data$identifier, " (Govt|Corp)"), "Bonds", "Futures"))
+
+  strategies <- strategies %>%
     mutate(open_date = ymd(.data$open_date),
            strategy = paste(.data$strategy, .data$owner, sep = ":::"),
-           size = as.numeric(size))
+           size = as.numeric(gsub(",", "", size)))
 
   ## Iterate through each unique strategy
   list_of_strat <- map(unique(strategies$strategy), function(i) {
@@ -170,7 +175,8 @@ get_trade_return_futures <- function(portfolio, trades, curr) {
 
   fx_prices <- bdh_weekday(req_curr, "PX_LAST", start_date, end_date) %>%
     mutate(!!curr := 1) %>%
-    gather("fx", "fx_price", -.data$date)
+    gather("fx", "fx_price", -.data$date) %>%
+    mutate(fx_price = ifelse(fx == "JPY", fx_price / 100, fx_price))
 
   # Download prices based on renamed futures names
   futures_prices <- bdh_weekday(futures_specs$renamed_inst, "PX_LAST", start_date, end_date)%>%
@@ -240,7 +246,7 @@ get_trade_return_bonds <- function(portfolio, trades, curr) {
   start_date <- min(portfolio$date)
   end_date <- max(portfolio$date)
 
-  bonds <- filter(summ, .data$asset_class == "Bonds")$identifier
+  bonds <- filter(summ, .data$asset_class == "Bonds")$identifier %>% unique
 
   portfolio <- filter(portfolio, .data$instrument %in% bonds)
 
@@ -267,19 +273,24 @@ get_trade_return_bonds <- function(portfolio, trades, curr) {
 
   fx_prices <- bdh_weekday(req_curr, "PX_LAST", start_date, end_date) %>%
     mutate(!!curr := 1) %>%
-    gather("fx", "fx_rate", -.data$date)
+    gather("fx", "fx_rate", -.data$date) %>%
+    mutate(fx_rate = ifelse(fx == "JPY", fx_rate / 100, fx_rate))
+
 
   market_pnl <- portfolio %>%
     left_join(bond_prices , by = c("date", "instrument")) %>%
     left_join(fx_prices, by = c("date", "fx")) %>%
+    group_by(.data$strategy, .data$instrument) %>%
       mutate(day_count = as.numeric(.data$date - dplyr::lag(.data$date)),
              px_chg = .data$fx_rate * (.data$PX_LAST - dplyr::lag(.data$PX_LAST)) * .data$IDX_RATIO / 100,
              accrued_interest = .data$day_count / 365 * .data$CPN/100 * ifelse(is.na(.data$PX_LAST), NA, 1) * .data$fx_rate,
              fx_ret = ((.data$PX_LAST * .data$fx_rate - dplyr::lag(.data$PX_LAST) * dplyr::lag(.data$fx_rate)) * .data$IDX_RATIO / 100) - px_chg) %>%
+
     replace_na(list(px_chg = 0, accrued_interest = 0, fx_ret = 0)) %>%
     mutate(market_pnl = .data$size * (.data$px_chg + .data$accrued_interest),
            fx_pnl = .data$size * .data$fx_ret) %>%
-    select(date, .data$strategy, .data$instrument, .data$size, .data$market_pnl, .data$fx_pnl)
+    select(date, .data$strategy, .data$instrument, .data$size, .data$market_pnl, .data$fx_pnl) %>%
+    ungroup()
 
   timing_pnl <- filter(trades, .data$asset_class == "Bonds") %>%
     left_join(bond_prices, by = c("open_date" = "date", "identifier" = "instrument")) %>%
