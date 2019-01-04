@@ -11,6 +11,42 @@ test_that("Accepts dataframe input", {
 test_that("Accepts character input but gives error when file cannot be found",
           expect_error(build_strategies("does_not_exist.csv")))
 
+test_that("Gives error when multiple strategy types for the same strategy", {
+  expect_error(build_strategies(
+    demo_strategies %>% mutate(type = ifelse(.data$strategy == "L_Nikkei_eg_chgsize" & .data$open_date == "20180404", "FX", .data$type))
+  ))
+})
+
+test_that("Gives error when invalid govt/ilb ticker", {
+  expect_error(build_strategies(demo_strategies %>% mutate(identifier = ifelse(.data$identifier == "us_govt_10y", "us_gov_10y", .data$identifier))))
+  expect_error(build_strategies(demo_strategies %>% mutate(identifier = ifelse(.data$identifier == "us_ilb_5y", "is_ilb_5y", .data$identifier))))
+
+})
+
+test_that("Error when invalid currency", {
+  expect_error(build_strategies(demo_strategies %>% mutate(identifier = ifelse(.data$identifier == "eurchf", "euchf", .data$identifier))))
+  expect_error(build_strategies(demo_strategies %>% mutate(identifier = ifelse(.data$identifier == "eurchf", "euechf", .data$identifier))))
+  expect_error(build_strategies(demo_strategies %>% mutate(identifier = ifelse(.data$identifier == "eurchf", "usdcap", .data$identifier))))
+})
+
+test_that("Error when invalid cds", {
+  expect_error(build_strategies(demo_strategies %>% mutate(identifier = ifelse(.data$identifier == "cdx_us_ig", "cdx_am_ig", .data$identifier))))
+})
+
+test_that("Warn when size_type not expected", {
+  expect_error(build_strategies(demo_strategies %>% mutate(size_type = ifelse(.data$strategy == "L_US_BreakE_10y", "abc", .data$size_type))))
+  expect_warning(build_strategies(demo_strategies %>% mutate(size_type = ifelse(.data$asset_class == "equity", "months", .data$size_type))))
+  expect_warning(build_strategies(demo_strategies %>% mutate(size_type = ifelse(.data$asset_class == "fx", "months", .data$size_type))))
+  expect_warning(build_strategies(demo_strategies %>% mutate(size_type = ifelse(.data$asset_class == "cds", "percent", .data$size_type))))
+  expect_warning(build_strategies(demo_strategies %>% mutate(size_type = ifelse(.data$asset_class == "fut", "percent", .data$size_type))))
+  expect_warning(build_strategies(demo_strategies %>% mutate(size_type = ifelse(.data$asset_class == "govt", "percent", .data$size_type))))
+  expect_warning(build_strategies(demo_strategies %>% mutate(size_type = ifelse(.data$asset_class == "ilb", "percent", .data$size_type))))
+})
+
+test_that("Warn when multiple lines with exact same entry, possible error in entry", {
+  expect_warning(build_strategies(rbind(demo_strategies, demo_strategies[c(1,2),])))
+})
+
 # Test outputs
 
 test_that("output contains summary, actual and sim", {
@@ -82,7 +118,6 @@ test_that("actual sizes are correct for currency positions", {
   expect_true(all(dplyr:::filter(actual, strategy == "L_EUR:::kev", instrument == "eurusd", !(date > as.Date("2018-01-03") & date <= as.Date("2018-08-10")))$size == 0))
 })
 
-##### BELOW NOT DONE
 
 # Test simulated sizes
 

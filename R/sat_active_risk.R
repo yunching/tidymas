@@ -159,38 +159,42 @@ get_and_check_tickers <- function(instruments_df, type = c("price", "duration"))
   output %>% rename(name = "identifier", ticker = ifelse(type == "duration", "ticker_duration", "ticker_price"))
 }
 
-#' Build strategies from an input csv file or dataframe of strategies, can use `demo_strategies` to generate a template file
-#'
-#' @param input A dataframe containing strategy inputs or A character variable containing the path to the input csv file
-#' @param start_date A Date variable with start date of generation, this can be earlier or later than the dates in the template file
-#' @param end_date A Date variable containing the end date for the position sizes, defaults to today
-#'
-#' @return A list containing the actual sizes (mix of months-weighted and percentage based on input file) and simulated sizes ie actual sizes but filled upwards, then downwards to use for simulation of returns
-#' @export
-#'
-#' @examples
-#' data(demo_strategies)
-#' build_strategies(demo_strategies, as.Date("2016-01-01"), as.Date("2018-12-07"))
-#' \donttest{
-#' build_strategies("input_file.csv")
-#' }
-build_strategies <- function(input, start_date = as.Date("2000-01-01"), end_date = today()) {
-  # Read in strategies
-  if (class(input) == "character") {
-    if (is.character(input) && file.exists(input)) {
-      strategies <- read.csv(input, stringsAsFactors = FALSE)
-    } else {
-      stop(sprintf("File %s cannot be found", input))
-    }
-  } else if ("data.frame" %in% class(input)) {
-    strategies <- input
-  } else{
-    stop("Invalid input, input can only be dataframe or character containing file path")
+# Checks if strategy input file has errors
+check_strategy_inputs <- function(strategies) {
+  # Check strategies and type
+  type_error <- strategies %>%
+    group_by(.data$strategy, .data$type) %>%
+    summarise() %>% ungroup %>%
+    group_by(.data$strategy) %>%
+    summarise(n = n()) %>%
+    filter(.data$n > 1)
+
+  if (nrow(type_error) > 0) {
+    stop(paste("Multiple `type` found for strategies:",
+               paste(type_error$strategy, collapse = ","),
+               ". See rows: ",
+               paste(strategies %>% mutate(row_num = rownames(.)) %>%  filter(.data$strategy %in% type_error$strategy) %>% .$row_num , collapse = ",")))
   }
 
-  strategies <- strategies %>%
-    mutate(open_date = ymd(.data$open_date), close_date = ymd(.data$close_date),
-           strategy = paste(.data$strategy, .data$owner, sep = ":::"))
+  # Check size_type
+  valid_size_type <- c("months", "percent")
+  size_types <- strategies$size_type %>% unique
+  if (mean(size_types %in% valid_size_type) < 1)
+    stop(paste("Invalid size_type found in input (only `months` and `percent` allowed):", paste(size_types[! size_types %in% valid_size_type], collapse = ",")))
+
+  size_warning <-  strategies %>%
+    group_by(.data$asset_class, .data$size_type) %>%
+    summarise() %>%
+    mutate(warning = ifelse((.data$asset_class %in% c("cds", "fut", "govt", "ilb") & .data$size_type != "months") |
+                            (.data$asset_class %in% c("equity", "fx") &.data$ size_type != "percent"), 1, 0)) %>%
+    filter(.data$warning != 0)
+
+  if (nrow(size_warning) > 0) {
+    show_warning_rows <- strategies %>% left_join(size_warning, by = c("asset_class", "size_type")) %>%
+      mutate(warning_msg = paste0("Row ", rownames(.), ":", .data$asset_class, "/", .data$size_type)) %>%
+      filter(!is.na(.data$warning))
+    warning(paste("Potentially wrong size_type found", paste(show_warning_rows$warning_msg, collapse = ",")))
+  }
 
   # Check asset classes
   valid_asset_class <- c("govt", "ilb", "fx", "equity", "cds", "fut")
@@ -232,16 +236,16 @@ build_strategies <- function(input, start_date = as.Date("2000-01-01"), end_date
            error = (!((.data$left_curr %in% fx_tickers$currency) & (.data$right_curr %in% fx_tickers$currency))) | (nchar(.data$identifier) != 6)) %>%
     filter(.data$error)
   if (nrow(fx_errors) > 0)
-    stop(paste("Invalid fx identifiers:", paste(fx_errors$identifier, collapse = ", ")))
+    stop(paste("Invalid fx identifiers:", paste(fx_errors$identifier, collapse = ", "), ". FX identifiers need to be in small caps. For valid identifiers, see `?get_tickers`"))
 
   # Check tickers for CDS
-  cds_errors <- strategies[10:20,] %>%
+  cds_errors <- strategies %>%
     filter(.data$asset_class == "cds") %>%
     left_join(cds_tickers, by = c("asset_class", "identifier")) %>%
     filter(is.na(.data$ticker_price))
 
   if (nrow(cds_errors) > 0) {
-    stop(paste("Invalid cds identifiers:", paste(cds_errors$identifier, collapse = ",")))
+    stop(paste("Invalid cds identifiers:", paste(cds_errors$identifier, collapse = ","), ". For valid identifiers, see `?get_tickers`"))
   }
 
   # Check tickers exist for other instruments
@@ -254,8 +258,56 @@ build_strategies <- function(input, start_date = as.Date("2000-01-01"), end_date
   if (any(is.na(strat_inst$ticker_price))) {
     not_found <- strat_inst %>% filter(is.na(.data$ticker_price)) %>%
       mutate(error_msg = paste(.data$asset_class, .data$identifier, sep = "/"))
-    stop(paste("Identifier not found: ", paste(not_found$error_msg, collapse = ",")))
+    stop(paste("Identifier not found: ", paste(not_found$error_msg, collapse = ","), ". For valid identifiers, see `?get_tickers`"))
   }
+
+  # Check duplicate entries
+  dup_entries <- strategies %>%
+    mutate(row_n = rownames(.)) %>%
+    group_by(.data$owner, .data$strategy, .data$type, .data$open_date, .data$close_date,
+                               .data$identifier, .data$asset_class, .data$size_type) %>%
+    summarise(dup = paste(.data$row_n, collapse = ","), n = n()) %>%
+    filter(n > 1)
+
+  if (nrow(dup_entries) > 0) {
+    warning(paste("Potential duplicates found, rows:", paste(dup_entries$dup, collapse = " / ")))
+  }
+}
+
+#' Build strategies from an input csv file or dataframe of strategies, can use `demo_strategies` to generate a template file
+#'
+#' @param input A dataframe containing strategy inputs or A character variable containing the path to the input csv file
+#' @param start_date A Date variable with start date of generation, this can be earlier or later than the dates in the template file
+#' @param end_date A Date variable containing the end date for the position sizes, defaults to today
+#'
+#' @return A list containing the actual sizes (mix of months-weighted and percentage based on input file) and simulated sizes ie actual sizes but filled upwards, then downwards to use for simulation of returns
+#' @export
+#'
+#' @examples
+#' data(demo_strategies)
+#' build_strategies(demo_strategies, as.Date("2016-01-01"), as.Date("2018-12-07"))
+#' \donttest{
+#' build_strategies("input_file.csv")
+#' }
+build_strategies <- function(input, start_date = as.Date("2000-01-01"), end_date = today()) {
+  # Read in strategies
+  if (class(input) == "character") {
+    if (is.character(input) && file.exists(input)) {
+      strategies <- read.csv(input, stringsAsFactors = FALSE)
+    } else {
+      stop(sprintf("File %s cannot be found", input))
+    }
+  } else if ("data.frame" %in% class(input)) {
+    strategies <- input
+  } else{
+    stop("Invalid input, input can only be dataframe or character containing file path")
+  }
+
+  strategies <- strategies %>%
+    mutate(open_date = ymd(.data$open_date), close_date = ymd(.data$close_date),
+           strategy = paste(.data$strategy, .data$owner, sep = ":::"))
+
+  check_strategy_inputs(strategies)
 
   ## Iterate through each unique strategy
   list_of_strat <- map(unique(strategies$strategy), function(i) {

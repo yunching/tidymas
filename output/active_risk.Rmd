@@ -132,7 +132,8 @@ strat_active_risk <- active_risk_curr$Last3M %>%
   left_join(unique(select(instr_df, strategy, owner, type)), by = "strategy") %>%
   mutate(risk_percent = active_risk / sum(active_risk) * 100, 
          active_risk = active_risk * 10000,
-         owner = toupper(owner)) %>%
+         owner = toupper(owner),
+         name = str_extract(strategy, "^.*(?=:::)")) %>%
   arrange(desc(risk_percent))
 
 # Find highest active risk strategy
@@ -149,17 +150,30 @@ div_risk <- strat_active_risk %>%
   mutate(risk_percent = abs_active_risk / sum(abs_active_risk)) %>%
   arrange(desc(risk_percent))
 
+# Calculate active risk ex ED
+ex_ed_risk <- strat_active_risk %>% 
+  filter(owner != "ed") %>%
+  .$active_risk %>%
+  sum
+
+ex_ed_risk_prev <- active_risk_prev %>%
+  mutate(name = str_extract(strategy, "^.*(?=:::)"),
+         owner = str_extract(strategy, "(?<=:::).*$")) %>%
+  filter(owner != "ed") %>%
+  .$active_risk %>%
+  sum * 10000
+
 ```
 
-**The active risk utilization for Q`r current_quarter` is expected to be around `r sprintf("%.1f", current_abs_active_risk)`bps in our baseline scenario**, which is `r if (current_abs_active_risk > prev_abs_active_risk) "above" else "below"` our estimates for the last quarters (`r prev_quarter`Q: `r sprintf("%.1f",prev_abs_active_risk)`bps). Assuming an information ratio of `r sprintf("%.1f", info_ratio)`, the expected portfolio excess return will be `r sprintf("%.1f", info_ratio * current_abs_active_risk)` (annualized). Under a stress scenario similar to the GFC and the Taper Tantrum, we expect absolute active risk utilization to increase to around `r sprintf("%.1f", gfc_abs_active_risk)` and `r sprintf("%.1f", taper_abs_active_risk)`bps respectively
+**The active risk utilization for Q`r current_quarter` is expected to be `r sprintf("%.1f", current_abs_active_risk)`bps in our baseline scenario**, which is `r if (current_abs_active_risk > prev_abs_active_risk) "above" else "below"` our estimates for the last quarter (`r prev_quarter`Q: `r sprintf("%.1f",prev_abs_active_risk)`bps). Assuming an information ratio of `r sprintf("%.1f", info_ratio)`, the expected portfolio excess return will be `r sprintf("%.1f", info_ratio * current_abs_active_risk)`bps (annualized). Under a stress scenario similar to the GFC and the Taper Tantrum, we expect absolute active risk utilization to increase to `r sprintf("%.1f", gfc_abs_active_risk)` and `r sprintf("%.1f", taper_abs_active_risk)`bps respectively
 
 **Key observations are: **
 
-1. `r top_strategy$owner`'s `r top_strategy$type` strategy of `r top_strategy$name` constitutes the highest active risk. The trade has an active risk of `r sprintf("%.1f", top_strategy$active_risk)`bps, which is `r sprintf("%.1f", top_strategy$risk_percent)`% of total active risk
+1. `r top_strategy$owner`'s `r top_strategy$type` strategy of `r top_strategy$name` constitutes the highest active risk. The trade has an active risk of `r sprintf("%.1f", top_strategy$active_risk)`bps, which is `r sprintf("%.1f", top_strategy$risk_percent)`% of total active risk.
 
-2. The most diversifying strategy in the portfolio is the `r most_diverse$name` from the `r most_diverse$owner`, with a `r sprintf("%.1f", most_diverse$risk)`% risk contribution
+2. The most diversifying strategy in the portfolio is the `r most_diverse$name` from `r most_diverse$owner`, with a `r sprintf("%.1f", most_diverse$risk)`% risk contribution.
 
-3. Risk contribution across the different divisions are shown below. `r div_risk$owner[1]` accounts for bulk of total risk at `r sprintf("%.1f", div_risk$risk_percent[1] * 100)`%, followed by `r div_risk$owner[2]` and `r div_risk$owner[3]` at `r sprintf("%.1f", div_risk$risk_percent[2] * 100)`% and `r sprintf("%.1f", div_risk$risk_percent[3] * 100)`% respectively. 
+3. The risk contribution across the different divisions are shown below. `r div_risk$owner[1]` accounts for the largest share of total risk at `r sprintf("%.1f", div_risk$risk_percent[1] * 100)`%, followed by `r div_risk$owner[2]` and `r div_risk$owner[3]` at `r sprintf("%.1f", div_risk$risk_percent[2] * 100)`% and `r sprintf("%.1f", div_risk$risk_percent[3] * 100)`% respectively. Excluding ED, risk budget utilization is expected to be around `r sprintf("%.1f", ex_ed_risk)`bps, compared to `r sprintf("%.1f", ex_ed_risk_prev)`bps than in the previous quarter.
 
 ### Current Active Strategies
 
