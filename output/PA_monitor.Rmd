@@ -13,25 +13,29 @@ library(tidymas)
 library(knitr)
 blpConnect()
 opts_chunk$set(echo=FALSE, warning = FALSE, message = FALSE)
+
+start_date <- as.Date("2018-01-01")
+end_date <- as.Date("2018-12-31")
+curr <- "SGD"
+user <- "SN"
 ```
 
 ```{r, message = FALSE}
-start_date <- as.Date("2018-01-01")
-end_date <- as.Date("2018-12-31")
- devtools::load_all(".")
+devtools::load_all(".")
 
-alpha <- build_alpha(file.path("..", "data2", "trademaster.csv"), start_date = start_date, end_date = end_date)
+alpha <- build_alpha(file.path("..", "data2", "trademaster_full.csv"), start_date = start_date, end_date = end_date)
 
-pnl_futures <- get_trade_return_futures(alpha$actual, alpha$trades, "SGD") %>%
+pnl_futures <- get_trade_return_futures(alpha$actual, alpha$trades, curr) %>%
   mutate(asset_class = "Futures")
-pnl_bonds <- get_trade_return_bonds(alpha$actual, alpha$trades, "SGD") %>%
+pnl_bonds <- get_trade_return_bonds(alpha$actual, alpha$trades, curr) %>%
   mutate(asset_class = "Bonds")
 
 pnl <- bind_rows(pnl_futures, pnl_bonds) %>%
   group_by(strategy, date, pnl_type) %>%
   summarise(pnl = sum(pnl, na.rm = T),
             cum_pnl = sum(cum_pnl, na.rm = T)) %>%
-  ungroup
+  ungroup %>%
+  filter(str_detect(strategy, paste0(":::", user)))
 
 date_limits <- alpha$actual %>% filter(size != 0) %>%
   group_by(strategy) %>%
@@ -39,6 +43,10 @@ date_limits <- alpha$actual %>% filter(size != 0) %>%
 ```
 
 Report period: `r start_date` to `r end_date`
+
+Currency: `r curr`
+
+User: `r user`
 
 # Trading statistics
 
@@ -53,7 +61,11 @@ daily_pnl <- pnl %>%
          mv = start_nav + cum_pnl,
          ret = mv / dplyr::lag(mv) - 1) 
 
-sharpe <- mean(daily_pnl$ret, na.rm = TRUE) / sd(daily_pnl$ret, na.rm = TRUE)
+active_pnl <- daily_pnl %>% filter(pnl != 0)
+
+sharpe <- mean(daily_pnl$ret, na.rm = TRUE) * 250 / (sd(daily_pnl$ret, na.rm = TRUE) * sqrt(250))
+active_sharpe <- mean(active_pnl$ret, na.rm = TRUE) * 250 / (sd(active_pnl$ret, na.rm = TRUE) * sqrt(250))
+
 avg_win <- mean(filter(daily_pnl, pnl > 0)$pnl)
 avg_loss <- mean(filter(daily_pnl, pnl < 0)$pnl)
 avg_winloss <- abs(avg_win/avg_loss)
@@ -64,15 +76,26 @@ max_winloss <- abs(max_win/max_loss)
 
 win_rate_all <- mean(daily_pnl$pnl > 0)
 win_rate_active <- mean(filter(daily_pnl, pnl != 0)$pnl > 0)
+
+active_days <- nrow(active_pnl)
+total_days <- nrow(daily_pnl)
+
+total_pnl <- daily_pnl$cum_pnl %>% tail(1)
 ```
 
 Avg Win/Loss: `r scales::number(avg_win, accuracy = 1, big.mark = ",")` / `r scales::number(abs(avg_loss), accuracy = 1, big.mark = ",")` = `r scales::number(avg_winloss, accuracy = 0.01)`
 
 Max Win/Loss: `r scales::number(max_win, accuracy = 1, big.mark = ",")` / `r scales::number(abs(max_loss), accuracy = 1, big.mark = ",")` = `r scales::number(max_winloss, accuracy = 0.01)`
 
-Win rate (all days): `r scales::percent(win_rate_all)`
+Win rate, all days: `r scales::percent(win_rate_all)`
 
-Win rate (active days): `r scales::percent(win_rate_active)`
+Win rate, active days only: `r scales::percent(win_rate_active)`
+
+Active days: `r active_days` / `r total_days` = `r scales::percent(active_days / total_days)`
+
+Sharpe ratio (active days only): `r scales::number(sharpe, accuracy = 0.01)` (`r scales::number(active_sharpe, accuracy = 0.01)`)
+
+Total pnl: `r scales::number(total_pnl, accuracy = 1, big.mark = ",")`
 
 # Strategies
 
