@@ -28,79 +28,117 @@ build_alpha <- function(input, start_date = as.Date("2000-01-01"), end_date = to
   }
 
   strategies <- strategies %>%
-    rename(owner = .data$Owner, strategy = .data$Sub.strategy, type = .data$Strategy, open_date = .data$Entry.Date, identifier = .data$Security.ID, size = .data$Amount, price = .data$Entry.Price) %>%
+    rename(portfolio = .data$Portfolio, owner = .data$Owner, strategy = .data$Sub.strategy, type = .data$Strategy, open_date = .data$Entry.Date, identifier = .data$Security.ID, size = .data$Amount, price = .data$Entry.Price) %>%
     mutate(identifier = str_replace(.data$identifier, " Corp$", " Govt")) %>%
     mutate(asset_class = ifelse(str_detect(.data$identifier, " (Govt|Corp)"), "Bonds", "Futures"))
 
   strategies <- strategies %>%
     mutate(open_date = ymd(.data$open_date),
-           strategy = paste(.data$strategy, .data$owner, sep = ":::"),
+#           strategy = paste(.data$strategy, .data$owner, sep = ":::"),
            size = as.numeric(gsub(",", "", size)))
 
   ## Iterate through each unique strategy
-  list_of_strat <- map(unique(strategies$strategy), function(i) {
-    # Filter out current strategy
-    curr_strat <- strategies %>% filter(.data$strategy == i)
-    inst_list <- curr_strat$identifier %>% unique
-    actual_size <- data.frame(date = gen_weekdays(start_date, end_date))
+  # list_of_strat <- map(unique(strategies$strategy), function(i) {
+  #   # Filter out current strategy
+  #   curr_strat <- strategies %>% filter(.data$strategy == i)
+  #   inst_list <- curr_strat$identifier %>% unique
+  #   actual_size <- data.frame(date = gen_weekdays(start_date, end_date))
+  #
+  #   # Iterate through all identifiers required for this strategy
+  #   for (curr_inst in inst_list) {
+  #     curr_inst_df <- curr_strat %>% filter(.data$identifier == curr_inst)
+  #
+  #     actual_size[[curr_inst]] <- 0
+  #
+  #     # Set weight as actual first
+  #     for (j in 1:nrow(curr_inst_df)) {
+  #       # Strat start and end
+  #       strat_start <- if (is.na(curr_inst_df$open_date[j])) end_date - 1 else curr_inst_df$open_date[j]
+  #       strat_end <- end_date
+  #
+  #       actual_size[[curr_inst]] <- actual_size[[curr_inst]] +
+  #         if_else(actual_size$date <= strat_end & actual_size$date > strat_start,
+  #                 curr_inst_df$size[j], 0)
+  #     }
+  #   }
+  #
+  #       # Calculate simulated size
+  #   sim_size <- actual_size %>%
+  #     mutate(has_position = sign(rowSums(abs(.[-1])))) %>%  # Check if there's any position at the time
+  #     gather("asset", "size", -.data$date, -.data$has_position) %>%  # convert into gathered dataframe
+  #     mutate(size = ifelse(.data$has_position, .data$size, NA)) %>%   # if does not have any position, replace with NA
+  #     spread(.data$asset, .data$size) %>%  # Convert back into original layout
+  #     select(-.data$has_position) %>%
+  #     fill(-.data$date, .direction = "up")  %>%
+  #     fill(-.data$date, .direction = "down") # Fill up, then down to times without position, to calculate returns for simulation and correlations
+  #
+  #   # Mutate into tidy form
+  #   actual_size <- actual_size %>%
+  #     mutate(strategy = i) %>%
+  #     gather("instrument", "size", -.data$date, -.data$strategy)
+  #
+  #   sim_size <- sim_size %>%
+  #     mutate(strategy = i) %>%
+  #     gather("instrument", "size", -.data$date, -.data$strategy)
+  #
+  #
+  #   list(actual = actual_size,
+  #        sim = sim_size)
+  # })
 
-    # Iterate through all identifiers required for this strategy
-    for (curr_inst in inst_list) {
-      curr_inst_df <- curr_strat %>% filter(.data$identifier == curr_inst)
+  # Iterate through all unique strategies (incl portfolio, strategy, owner)
+  all_actual_size <- pmap(unique(select(strategies, portfolio, strategy, owner)),
+                        function(portfolio, strategy, owner) {
+                          # Filter out trades in current strategy
+                          curr_strat <- strategies %>% dplyr::filter(.data$strategy == strategy, .data$portfolio == portfolio, .data$owner == owner)
+                          inst_list <- curr_strat$identifier %>% unique
+                          actual_size <- data.frame(date = gen_weekdays(start_date, end_date))
 
-      actual_size[[curr_inst]] <- 0
+                          # Iterate through all identifiers required for this strategy
+                          for (curr_inst in inst_list) {
+                            curr_inst_df <- curr_strat %>% filter(.data$identifier == curr_inst)
 
-      # Set weight as actual first
-      for (j in 1:nrow(curr_inst_df)) {
-        # Strat start and end
-        strat_start <- if (is.na(curr_inst_df$open_date[j])) end_date - 1 else curr_inst_df$open_date[j]
-        strat_end <- end_date
+                            actual_size[[curr_inst]] <- 0
 
-        actual_size[[curr_inst]] <- actual_size[[curr_inst]] +
-          if_else(actual_size$date <= strat_end & actual_size$date > strat_start,
-                  curr_inst_df$size[j], 0)
-      }
-    }
+                            # Set weight as actual first
+                            for (j in 1:nrow(curr_inst_df)) {
+                              # Strat start and end
+                              strat_start <- if (is.na(curr_inst_df$open_date[j])) end_date - 1 else curr_inst_df$open_date[j]
+                              strat_end <- end_date
 
-    # Calculate simulated size
-    sim_size <- actual_size %>%
-      mutate(has_position = sign(rowSums(abs(.[-1])))) %>%  # Check if there's any position at the time
-      gather("asset", "size", -.data$date, -.data$has_position) %>%  # convert into gathered dataframe
-      mutate(size = ifelse(.data$has_position, .data$size, NA)) %>%   # if does not have any position, replace with NA
-      spread(.data$asset, .data$size) %>%  # Convert back into original layout
-      select(-.data$has_position) %>%
-      fill(-.data$date, .direction = "up")  %>%
-      fill(-.data$date, .direction = "down") # Fill up, then down to times without position, to calculate returns for simulation and correlations
+                              actual_size[[curr_inst]] <- actual_size[[curr_inst]] +
+                                if_else(actual_size$date <= strat_end & actual_size$date > strat_start,
+                                        curr_inst_df$size[j], 0)
+                            }
+                          }
 
-    # Mutate into tidy form
-    actual_size <- actual_size %>%
-      mutate(strategy = i) %>%
-      gather("instrument", "size", -.data$date, -.data$strategy)
+                          # Mutate into tidy form
+                          actual_size <- actual_size %>%
+                            gather("instrument", "size", -.data$date) %>%
+                            mutate(portfolio = portfolio, strategy = strategy, owner = owner)
 
-    sim_size <- sim_size %>%
-      mutate(strategy = i) %>%
-      gather("instrument", "size", -.data$date, -.data$strategy)
+                          actual_size
+                        }) %>%
+    bind_rows() %>%
+    filter(.data$size != 0) %>%
+    as.tibble()
 
 
-    list(actual = actual_size,
-         sim = sim_size)
-  })
-
-  all_actual_size <- map(list_of_strat, ~.$actual) %>%
-    reduce(rbind) %>%
-    as.tibble
-
-  all_sim_size <- map(list_of_strat, ~.$sim) %>%
-    reduce(rbind) %>%
-    as.tibble
+  # all_actual_size <- map(list_of_strat, ~.$actual) %>%
+  #   reduce(rbind) %>%
+  #   as.tibble
+  #
+  # all_sim_size <- map(list_of_strat, ~.$sim) %>%
+  #   reduce(rbind) %>%
+  #   as.tibble
 
   # Summarise strategies (for use in size conversions later)
   strat_summ <- strategies %>%
-    group_by(.data$strategy, .data$identifier, .data$asset_class, .data$owner, .data$type) %>%
+    group_by(.data$strategy, .data$portfolio, .data$owner, .data$identifier, .data$asset_class, .data$owner, .data$type) %>%
     summarise() %>%
     ungroup()
 
-  list(summary = strat_summ, actual = all_actual_size, sim = all_sim_size, trades = strategies)
+  list(summary = strat_summ, actual = all_actual_size, trades = strategies)
 }
 
 
@@ -160,7 +198,7 @@ get_trade_return_futures <- function(portfolio, trades, curr) {
   portfolio <- portfolio %>% filter(instrument %in% filter(summ, asset_class == "Futures")$identifier)
 
   futures <- unique(portfolio$instrument)
-  start_date <- min(portfolio$date)
+  start_date <- min(portfolio$date - 5)
   end_date <- max(portfolio$date)
 
   # Download contract specifications
@@ -188,7 +226,9 @@ get_trade_return_futures <- function(portfolio, trades, curr) {
     mutate(FUT_VAL_PT = as.numeric(.data$FUT_VAL_PT)) %>%
     rename(renamed_inst = .data$instrument, fx = .data$CRNCY) %>%
     left_join(select(futures_specs, .data$instrument, .data$renamed_inst), by = "renamed_inst") %>%
-    select(-.data$renamed_inst)
+    select(-.data$renamed_inst) %>%
+    group_by(instrument) %>%
+    mutate(return = .data$PX_LAST - dplyr::lag(.data$PX_LAST))
 
   # Futures FX returns is only the daily pnl in local currency terms multiplied by today's FX rates, as futures are traded on margin
   # Hence there is no exposure on the contract value of the contracts.
