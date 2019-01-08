@@ -12,6 +12,7 @@ library(Rblpapi)
 library(lubridate)
 library(knitr)
 library(tidymas)
+library(ggpubr)
 
 blpConnect()
 ```
@@ -165,7 +166,7 @@ ex_ed_risk_prev <- active_risk_prev %>%
 
 ```
 
-**The active risk utilization for Q`r current_quarter` is expected to be `r sprintf("%.1f", current_abs_active_risk)`bps in our baseline scenario**, which is `r if (current_abs_active_risk > prev_abs_active_risk) "above" else "below"` our estimates for the last quarter (`r prev_quarter`Q: `r sprintf("%.1f",prev_abs_active_risk)`bps). Assuming an information ratio of `r sprintf("%.1f", info_ratio)`, the expected portfolio excess return will be `r sprintf("%.1f", info_ratio * current_abs_active_risk)`bps (annualized). Under a stress scenario similar to the GFC and the Taper Tantrum, we expect absolute active risk utilization to increase to `r sprintf("%.1f", gfc_abs_active_risk)` and `r sprintf("%.1f", taper_abs_active_risk)`bps respectively
+**The absolute active risk utilization for Q`r current_quarter` is expected to be `r sprintf("%.1f", current_abs_active_risk)`bps in our baseline scenario**, which is `r if (current_abs_active_risk > prev_abs_active_risk) "above" else "below"` our estimates for the last quarter (`r prev_quarter`Q: `r sprintf("%.1f",prev_abs_active_risk)`bps). Assuming an information ratio of `r sprintf("%.1f", info_ratio)`, the expected portfolio excess return will be `r sprintf("%.1f", info_ratio * current_abs_active_risk)`bps (annualized). Under a stress scenario similar to the GFC and the Taper Tantrum, we expect absolute active risk utilization to increase to `r sprintf("%.1f", gfc_abs_active_risk)` and `r sprintf("%.1f", taper_abs_active_risk)`bps respectively
 
 **Key observations are: **
 
@@ -173,7 +174,9 @@ ex_ed_risk_prev <- active_risk_prev %>%
 
 2. The most diversifying strategy in the portfolio is the `r most_diverse$name` from `r most_diverse$owner`, with a `r sprintf("%.1f", most_diverse$risk)`% risk contribution.
 
-3. The risk contribution across the different divisions are shown below. `r div_risk$owner[1]` accounts for the largest share of total risk at `r sprintf("%.1f", div_risk$risk_percent[1] * 100)`%, followed by `r div_risk$owner[2]` and `r div_risk$owner[3]` at `r sprintf("%.1f", div_risk$risk_percent[2] * 100)`% and `r sprintf("%.1f", div_risk$risk_percent[3] * 100)`% respectively. Excluding ED, risk budget utilization is expected to be around `r sprintf("%.1f", ex_ed_risk)`bps, compared to `r sprintf("%.1f", ex_ed_risk_prev)`bps than in the previous quarter.
+3. The risk contribution across the different divisions are shown below. `r div_risk$owner[1]` accounts for the largest share of total risk at `r sprintf("%.1f", div_risk$risk_percent[1] * 100)`%, followed by `r div_risk$owner[2]` and `r div_risk$owner[3]` at `r sprintf("%.1f", div_risk$risk_percent[2] * 100)`% and `r sprintf("%.1f", div_risk$risk_percent[3] * 100)`% respectively. 
+
+4. Excluding ED, risk budget utilization is expected to be `r sprintf("%.1f", ex_ed_risk)`bps, compared to `r sprintf("%.1f", ex_ed_risk_prev)`bps in the previous quarter.
 
 ### Current Active Strategies
 
@@ -324,7 +327,7 @@ sharpe_by_strategy <- actual_ret_filtered %>%
 
 *The returns and standard deviation below have been computed as annualized return in weighted basis points of R2.*
 
-### 2018 Year-to-Date
+### Trailing 12 months results
 
 #### By division
 `r kable(sharpe_by_owner)`
@@ -366,6 +369,65 @@ sharpe_breakdown2 %>% ggplot(aes(x = strategy, y = std_dev)) +
   labs(title = "Std dev of trades (bps of R2, annualized)")
 ```
 
+## Performance of strategies
+
+### Actual returns (Cumulative)
+
+```{r display_actual_ret, fig.width = 9}
+# Calculate start of last quarter's date
+prev_3m_date <- today() - months(4)
+day(prev_3m_date) <- days_in_month(prev_3m_date)
+
+# Calculate prev quarter returns
+prev_3m_ret <- wt_return$actual %>%
+  filter(date > prev_3m_date) %>%
+  replace_na(list(wt_return = 0)) %>%
+  group_by(strategy) %>%
+  mutate(cum_pnl = cumsum(wt_return)) %>%
+  ungroup %>%
+  mutate(owner = str_extract(strategy, "(?<=:::).*$"),
+         strategy = str_extract(strategy, "^.*(?=:::)"),
+         cum_pnl = cum_pnl * 10000)
+
+# Plot actual returns, starting from start_date_return, defined when calculating sharpe ratio
+actual_ret_cum <- wt_return$actual %>%
+  filter(date > start_date_return) %>%
+  replace_na(list(wt_return = 0)) %>%
+  group_by(strategy) %>%
+  mutate(cum_pnl = cumsum(wt_return)) %>%
+  ungroup %>%
+  mutate(owner = str_extract(strategy, "(?<=:::).*$"),
+         strategy = str_extract(strategy, "^.*(?=:::)"),
+         cum_pnl = cum_pnl * 10000) 
+
+# Plot cumulative return, one chart for each owner
+results <- lapply(unique(actual_ret_cum$owner), function(i) {
+  g1 <- actual_ret_cum %>% 
+    filter(owner == i) %>%                                  # Filter returns from current owner
+    ggplot(aes(x = date, y = cum_pnl)) +       
+    geom_area(aes(fill = strategy)) +                       # Plot area chart
+    stat_summary(fun.y = sum, geom = "line", size = 1) +    # Plot total line 
+    labs(y = "Cumulative Pnl (R2 wt bps)", title = paste0(toupper(i), ": Last 12m")) +
+    theme(axis.title.x = element_blank(), legend.position = "bottom")
+  
+  g2 <- prev_3m_ret %>%
+        filter(owner == i) %>%                                  # Filter returns from current owner
+    ggplot(aes(x = date, y = cum_pnl)) +       
+    geom_area(aes(fill = strategy)) +                       # Plot area chart
+    stat_summary(fun.y = sum, geom = "line", size = 1) +    # Plot total line 
+    labs(title = "Prev quarter") +
+    theme(axis.title.y = element_blank(), axis.title.x = element_blank(), legend.position = "bottom") 
+
+  min_y <- min(layer_scales(g1)$y$range$range[1], layer_scales(g2)$y$range$range[1])
+  max_y <- max(layer_scales(g1)$y$range$range[2], layer_scales(g2)$y$range$range[2])
+
+      
+  p <- ggarrange(g1 + ylim(c(min_y, max_y)), g2 + ylim(c(min_y, max_y)), ncol=2, widths = c(2, 1), common.legend = TRUE, legend="bottom")
+
+  print(p)
+})
+```
+
 ## Correlations
 
 ### Team Correlations
@@ -384,12 +446,12 @@ exp_corr %>%
 ```{r display_corr_heatmap, fig.width = 9, fig.height = 5}
 # Plot correlation of returns between strategies
 
-#Find strategies ordered by owner name (for plotting purposes)
-ordered_strategies <- instr_df %>% select(strategy, owner) %>%
-  mutate(strategy = str_extract(strategy, "^.*(?=:::)")) %>%
-  arrange(owner, strategy) %>%
-  .$strategy %>%
-  unique
+# #Find strategies ordered by owner name (for plotting purposes)
+# ordered_strategies <- instr_df %>% select(strategy, owner) %>%
+#   mutate(strategy = str_extract(strategy, "^.*(?=:::)")) %>%
+#   arrange(owner, strategy) %>%
+#   .$strategy %>%
+#   unique
 
 # Extract unweighted return of all strategies still open
 uniq_unwt_ret <- unwt_return %>%
@@ -400,163 +462,18 @@ uniq_unwt_ret <- unwt_return %>%
   ungroup 
 
 # Calculate correlation between all open trades across all scenarios
-strat_cor_all <- bind_rows(
+strat_cor_all <- 
   apply(scenarios, 1,  # "Loop" through all scenarios
         function(x)
           # Calculate correlation for each  scenario
-          calc_cor(uniq_unwt_ret %>% spread(strategy, return), start_date = x['start_date'], end_date = x['end_date'], period_name = x['period']))) %>%
-  mutate(strat1 = factor(strat1, levels = ordered_strategies),   # Order strategies for plotting
-         strat2 = factor(strat2, levels = ordered_strategies))
+          calc_cor(uniq_unwt_ret %>% spread(strategy, return), start_date = x['start_date'], end_date = x['end_date'], period_name = x['period']))# %>%
+  # mutate(strat1 = factor(strat1, levels = ordered_strategies),   # Order strategies for plotting
+  #        strat2 = factor(strat2, levels = ordered_strategies))
 
 # Plot all correlation matrices
-for (i in rev(unique(strat_cor_all$period))) {
-  cor_df <- strat_cor_all %>% filter(period == i)
+temp <- map(rev(names(strat_cor_all)), function(i) {
+  cor_df <- strat_cor_all[[i]]
   plot_cor(cor_df,  paste("Correlation during", i))
-}
-
-```
-
-## Performance of strategies
-
-### Actual returns (Cumulative Rolling 12 months)
-
-```{r display_actual_ret, fig.width = 9}
-# Plot actual returns, starting from start_date_return, defined when calculating sharpe ratio
-actual_ret_filtered <- wt_return$actual %>%
-  filter(date > start_date_return) 
-
-actual_ret_filtered[is.na(actual_ret_filtered)] <- 0    # Set all NAs to 0, to facilitate summing
-
-# Find cumulative sum of returns
-actual_ret_cum <- actual_ret_filtered %>%     
-  group_by(strategy) %>%
-  mutate(cum_pnl = cumsum(wt_return)) %>%
-  ungroup %>%
-  mutate(owner = str_extract(strategy, "(?<=:::).*$"),
-         strategy = str_extract(strategy, "^.*(?=:::)"),
-         cum_pnl = cum_pnl * 10000) 
-
-# Plot cumulative return, one chart for each owner
-results <- lapply(unique(actual_ret_cum$owner), function(i) {
-  g <- actual_ret_cum %>% 
-    filter(owner == i) %>%                                  # Filter returns from current owner
-    ggplot(aes(x = date, y = cum_pnl)) +       
-    geom_area(aes(fill = strategy)) +                       # Plot area chart
-    stat_summary(fun.y = sum, geom = "line", size = 1) +    # Plot total line 
-    labs(y = "Cumulative Pnl (R2 wt bps)", title = i) +
-    theme(axis.title.x = element_blank(), legend.position = "bottom")
-  print(g)
 })
-```
-
-### Historical simulated returns profile of strategies
-
-Below are 3 month returns arising from current strategies extrapolated into history. Higher intensive of green/red indicates a larger positive profit/loss over a 3 month period, while white indicates no significant PnL impact. Grey indicates the underlying instrument/s was not available during the period
-
-*Unweighted return is the strategy's return over its own notional size. For curve trades, the notional of the higher duration leg is taken to be the trade size. This allows us to have an idea how each strategy would have performed over different periods in history*
-
-```{r display_return_over_time, fig.width = 9}
-######################################
-#  Compute rolling 3 month returns
-######################################
-window = 20 * 3
-
-unwt_ret_sp <- spread(unwt_return, strategy, return) %>% ungroup
-wt_ret_sp <- spread(wt_return$sim, strategy, wt_return) %>% ungroup
-
-unwt_ret_roll <- apply(select(unwt_ret_sp, -date), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
-unwt_ret_roll <- cbind(data.frame(date = unwt_ret_sp$date[-(1:(window-1))]), unwt_ret_roll)
-
-sim_ret_roll <- apply(select(wt_ret_sp, -date), 2, RcppRoll::roll_sum, n = window) %>% as.data.frame
-sim_ret_roll <- cbind(data.frame(date = wt_ret_sp$date[-(1:(window-1))]), sim_ret_roll)
-
-######################################
-# Plot heatmap of returns across time
-######################################
-
-active_unwt_ret_roll <- unwt_ret_roll[,c("date", unique(curr_strat$strategy))]
-
-max_ret_unwt <- max(select(active_unwt_ret_roll, -date), na.rm = T)
-min_ret_unwt <- min(select(active_unwt_ret_roll, -date), na.rm = T)
-
-# Adjusting x-axis to display dates properly
-recalc_date <- active_unwt_ret_roll %>% 
-  select(date) %>%
-  mutate(yr = year(date), factored_date = as.factor(date)) %>%
-  group_by(yr) %>%
-  mutate(first_day = min(date)) %>%
-  ungroup %>%
-  mutate(new_date = ifelse(first_day == date & yr > 1994, sprintf("%02d", yr %% 100), ""),
-         row_date = row_number()) %>%
-  filter(new_date != "")
-  
-break_positions <- which(recalc_date$new_date != "")
-date_labels <- recalc_date %>%
-  filter(new_date != "") %>%
-  .$new_date
-
-active_unwt_ret_roll %>% 
-  gather(strategy, ret_3m, -date) %>% 
-  mutate(owner = str_extract(strategy, "(?<=:::).*$")) %>%
-  arrange(owner, strategy) %>%
-  mutate(strategy = factor(strategy, levels = unique(strategy))) %>%
-  mutate(date = as.factor(date)) %>%
-  ggplot(aes(x = date, y = strategy)) +
-  geom_tile(aes(fill = ret_3m)) +
-  scale_fill_gradientn(colours = c("#F70000", "#FF4040", "#FA6C6C","white", "lightgreen", "green","darkgreen"),
-                       values = scales::rescale(c(c(1, 0.3, 0.1) * min_ret_unwt, 0, c(0.1, 0.3, 1) * max_ret_unwt), to = c(0,1)),
-                       labels = scales::percent(c(-0.2, 0, 0.2), accuracy =1),
-                       breaks = c(-0.2, 0, 0.2)) +
-  scale_x_discrete(labels = date_labels, breaks = recalc_date$factored_date) +
-  labs(title = "Unweighted 3m return (% of notional)") +
-  theme(legend.position = "bottom", axis.title = element_blank())
 
 ```
-
-*Weighted return is assuming current strategy sizes extrapolated into history to calculate the return contribution of each of the strategies based on different periods in history. Consistent light shades of colours across all periods in history could indicate the trade is sized too small for its historical volatility*
-
-```{r display_weighted_return_timeline, fig.width = 9}
-
-######################################
-# Plot heatmap of weighted simulated returns
-######################################
-
-# Adjusting x-axis to display dates properly
-recalc_date <- sim_ret_roll %>% 
-  select(date) %>%
-  mutate(yr = year(date), factored_date = as.factor(date)) %>%
-  group_by(yr) %>%
-  mutate(first_day = min(date)) %>%
-  ungroup %>%
-  mutate(new_date = ifelse(first_day == date & yr > 1994, sprintf("%02d", yr %% 100), ""),
-         row_date = row_number()) %>%
-  filter(new_date != "") 
-
-break_positions <- which(recalc_date$new_date != "")
-date_labels <- recalc_date %>%
-  filter(new_date != "") %>%
-  .$new_date
-
-max_ret_wt <- max(select(sim_ret_roll, -date), na.rm = T) * 10000
-min_ret_wt <- min(select(sim_ret_roll, -date), na.rm = T) * 10000
-
-sim_ret_roll %>% 
-  select(date, unique(curr_strat$strategy)) %>%
-  mutate(date = as.factor(date)) %>%
-  gather(strategy, ret_3m, -date) %>%
-  mutate(owner = str_extract(strategy, "(?<=:::).*$")) %>%
-  arrange(owner, strategy) %>%
-  mutate(strategy = factor(strategy, levels = unique(strategy)),
-         ret_3m = ret_3m * 10000) %>%  
-  ggplot(aes(x = date, y = strategy)) +
-  geom_tile(aes(fill = ret_3m)) +
-  scale_fill_gradientn(colours = c("#F70000", "#FF4040", "#FA6C6C","white", "lightgreen", "green","darkgreen"),
-                       values = scales::rescale(c(c(1, 0.3, 0.1) * min_ret_wt, 0, c(0.1, 0.3, 1) * max_ret_wt), to = c(0,1)),
-                       labels = scales::number(c(-10, 0, 10), accuracy =1),
-                       breaks = c(-10, 0, 10)) +
-  scale_x_discrete(labels = date_labels, breaks = recalc_date$factored_date) +
-  labs(title = "Weighted 3m return (bp of R2)") +
-  theme(legend.position = "bottom", axis.title = element_blank())
-  
-```
-

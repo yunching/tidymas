@@ -976,6 +976,7 @@ calc_active_risk <- function(unwt_ret, curr_wt, start_date = today()-years(10), 
 #' @export
 #'
 #' @importFrom stats cor
+#' @importFrom psych mat.sort
 #'
 #' @examples
 #' unwt_ret <- data.frame(date = as.Date(c("2018-01-02", "2018-01-03", "2018-01-04", "2018-01-05")),
@@ -995,7 +996,13 @@ calc_cor <- function(unwt_ret_df, start_date = NA, end_date = NA, period_name = 
     unwt_ret_df <- unwt_ret_df %>% filter(date > start_date & date <= end_date)
   }
 
-  df <- cor(unwt_ret_df %>% remove_date, use = "pairwise.complete.obs") %>%
+  # Calculate correlation and sort by similar correlations
+  cor_table <- cor(unwt_ret_df %>% remove_date, use = "pairwise.complete.obs") %>%
+    psych::mat.sort()
+
+  sorted_categories <- colnames(cor_table)
+
+  df <- cor_table %>%
     clear_diag %>%
     as.data.frame
 
@@ -1008,7 +1015,9 @@ calc_cor <- function(unwt_ret_df, start_date = NA, end_date = NA, period_name = 
     df <- df %>% mutate(period = period_name)
   }
 
-  df
+  df %>%
+    mutate(strat1 = factor(.data$strat1, levels = sorted_categories),
+           strat2 = factor(.data$strat2, levels = sorted_categories))
 }
 
 #' Plotting correlation heatmaps based on correlation of assets
