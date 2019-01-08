@@ -879,6 +879,7 @@ simulate_history <- function(unwt_ret, curr_wt, start_date, end_date) {
 #' Calculate individual daily returns of a dataframe containing multiple assets
 #'
 #' @param df dataframe containing asset prices, `date` column is optional
+#' @param return_type character of `percent` or `dollar` indicating if the return values should be in percentage or dollar
 #'
 #' @return dataframe containing returns
 #' @export
@@ -886,11 +887,18 @@ simulate_history <- function(unwt_ret, curr_wt, start_date, end_date) {
 #' @examples
 #' df <- data.frame(spx = c(2850, 2820, 2890), ukx = c(7004, 7010, 7080))
 #' calc_returns(df)
-calc_returns <- function(df) {
+calc_returns <- function(df, return_type = "percent") {
+  if (!return_type %in% c("percent", "dollar"))
+    stop("Invalid return type, only 'percent' and 'dollar' allowed")
   has_date <- !is.null(df$date)
   if (has_date) df <- remove_date(df)
+
   # calc returns
-  df <- df / mutate_all(df, funs(lag)) -1
+  if (return_type == "dollar") {
+    df <- df - mutate_all(df, funs(lag))
+  } else {
+    df <- df / mutate_all(df, funs(lag)) -1
+  }
 
   if (has_date) cbind(date = as.Date(row.names(df)), df)
   else df
