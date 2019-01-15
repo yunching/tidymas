@@ -12,7 +12,7 @@ output:
 ```{r setup, include=FALSE}
 library(Rblpapi)
 knitr::opts_chunk$set(echo = FALSE)
-source("C:\\Users\\yclim\\OneDrive\\Documents\\R\\tidymas\\scripts\\convenience.R")
+source("C:\\Users\\yunch\\Documents\\Projects\\tidymas\\scripts\\convenience.R")
 blpConnect()
 ```
 
