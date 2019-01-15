@@ -7,4 +7,30 @@ output: html_notebook
 ```{r setup}
 library(Rblpapi)
 library(tidyverse)
+blpConnect()
+aapl <- bdh("AAPL US Equity", "PX_LAST", start.date=Sys.Date()-5*365)
+```
+
+```{r get_data}
+rf_rate <- 0.04/252
+aapl.processed <- aapl %>% 
+  rename(Date = date,
+         Price = PX_LAST) %>% 
+  mutate(Dailyret = (Price - lag(Price, 1)) / lag(Price, 1),
+         Excess_dailyret = Dailyret - rf_rate) %>% 
+  drop_na() %>% 
+  mutate(cumret = cumprod(1 + Dailyret) - 1,
+         high_watermark = cummax(cumret),
+         drawdown = (1 + cumret) / (1 + high_watermark) - 1,
+         drawdown_day = if_else(drawdown != 0, 1, 0)
+         )
+
+#Calculate max drawdown
+max_drawdown <- aapl.processed %>% 
+  summarise(max_drawdown = min(drawdown))
+
+#Calculate max drawdown period
+max_drawdown_period <- aapl.processed %>% 
+  select(drawdown_day) %>% 
+  (function(x) {max(rle(x$drawdown_day)$lengths)})
 ```
