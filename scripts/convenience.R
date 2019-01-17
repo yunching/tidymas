@@ -2,7 +2,7 @@ library(tidyverse)
 library(grid)
 library(gridExtra)
 library(Rblpapi)
-library(MacrobondAPI)
+#library(MacrobondAPI)
 library(xts)
 library(lubridate)
 library(forecast)
@@ -58,7 +58,11 @@ getData_xts <- function(ticker, start_date = Sys.Date()-365, end_date = today())
 #' @examples
 #' ggTS("AAPL US Equity")
 ggTS <- function(ticker, title = ticker, yield_mode = FALSE, start_date = Sys.Date()-365){
-  data <- getData(ticker = ticker, start_date = start_date)
+  require(dplyr)
+  ticker <- rlang::enquo(ticker)
+  data <- read_csv("./BBG_snapshot.csv", col_types = cols()) %>%
+    filter(Ticker == !!ticker)
+  # data <- getData(ticker = ticker, start_date = start_date)
   if (yield_mode == FALSE){
     my_subtitle <- paste("Last:", format(round(data$PX_LAST[length(data$PX_LAST)], digits = 2), big.mark = ","),
                          "1D ret:", paste0(format(round((data$PX_LAST[length(data$PX_LAST)] / data$PX_LAST[length(data$PX_LAST) - 1] - 1) * 100, 2), nsmall = 2), "%"),
@@ -162,4 +166,137 @@ sec_summary <- function(my_df){
   cat("\n")
   paste("Standard deviation: ", round(sd(Chg$Chg, na.rm = TRUE), digits = 2)) %>%  cat()
   Chg %>% na.omit() %>% ggplot(aes(Chg)) + geom_bar(stat = "bin", bins = 30)
+}
+
+bulk_load_data <- function(){
+  require(dplyr)
+  sec_list <- c("RX1 Comdty",
+  "G 1 Comdty",
+  "IK1 Comdty",
+  "OAT1 Comdty",
+  "GBPUSD Curncy",
+  "GBPEUR Curncy",
+  "UKTWBROA Index",
+  "GTGBP2Y Govt",
+  "GTGBP5Y Govt",
+  "GTGBP10Y Govt",
+  "GTGBP30Y Govt",
+  "UKGGBE05Y Index",
+  "UKGGBE10Y Index",
+  "UKGGBE30Y Index",
+  "GB0BPR Index",
+  "EURUSD Curncy",
+  "EURGBP Curncy",
+  "GTDEM2Y Govt",
+  "GTDEM5Y Govt",
+  "GTDEM10Y Govt",
+  "GTDEM30Y Govt",
+  "GTESP2Y Govt",
+  "GTESP5Y Govt",
+  "GTESP10Y Govt",
+  "GTESP30Y Govt",
+  "GTITL2Y Govt",
+  "GTITL5Y Govt",
+  "GTITL10Y Govt",
+  "GTITL30Y Govt",
+  "EURCHF Curncy",
+  "SNBN SW Equity",
+  "BBDXY Index",
+  "GT2 Govt",
+  "GT5 Govt",
+  "GT10 Govt",
+  "GT30 Govt",
+  "USGGBE02 Index",
+  "USGGBE05 Index",
+  "USGGBE10 Index",
+  "USGGBE30 Index",
+  "SPX Index",
+  "INDU Index",
+  "CCMP Index",
+  "RTY Index",
+  "UKX Index",
+  "MCX Index",
+  "ASX Index",
+  "SX5E Index",
+  "DAX Index",
+  "CAC Index",
+  "SMI Index",
+  "IBEX Index",
+  "FTSEMIB Index",
+  "BVLX Index",
+  "ASE Index",
+  "NKY Index",
+  "HSI Index",
+  "KOSPI Index",
+  "STI Index",
+  "VIX Index",
+  "V2X Index",
+  "V1X Index",
+  "VFTSE Index",
+  "CL1 Comdty",
+  "CO1 Comdty",
+  "XAU Curncy",
+  "XAG Curncy",
+  "C 1 Comdty",
+  "W 1 Comdty",
+  "FB US Equity",
+  "AAPL US Equity",
+  "AMZN US Equity",
+  "NFLX US Equity",
+  "GOOG US Equity",
+  "TSLA US Equity",
+  "SPOT US Equity",
+  "MSFT US Equity",
+  "V US Equity",
+  "ORCL US Equity",
+  "MA US Equity",
+  "CRM US Equity",
+  "IBM US Equity",
+  "CSCO US Equity",
+  "INTC US Equity",
+  "NVDA US Equity",
+  "AMD US Equity",
+  "MU US Equity",
+  "TXN US Equity",
+  "AMAT US Equity",
+  "6954 JT Equity",
+  "6861 JT Equity",
+  "JPM US Equity",
+  "WFC US Equity",
+  "BAC US Equity",
+  "C US Equity",
+  "GS US Equity",
+  "MS US Equity",
+  "BLK US Equity",
+  "BK US Equity",
+  "STT US Equity",
+  "NTRS US Equity",
+  "BX US Equity",
+  "KKR US Equity",
+  "APO US Equity",
+  "CG US Equity",
+  "OAK US Equity",
+  "III LN Equity",
+  "XBTUSD BGN Curncy",
+  "XRPUSD BGN Curncy",
+  "XETUSD BGN Curncy",
+  "XLCUSD BGN Curncy",
+  "5 HK Equity",
+  "144 HK Equity",
+  "939 HK Equity",
+  "941 HK Equity",
+  "1398 HK Equity",
+  "3988 HK Equity",
+  "1548 HK Equity",
+  "BABA US Equity",
+  "BIDU US Equity",
+  "TCEHY US Equity",
+  "BZUN US Equity",
+  "CAPL SP Equity",
+  "GENS SP Equity"
+  )
+  Rblpapi::bdh(sec_list, "PX_LAST", Sys.Date()-365) %>%
+    dplyr::bind_rows(.id = "Ticker") %>%
+    tibble::as_tibble() %>%
+    write_csv("./scripts/BBG_snapshot.csv")
 }

@@ -88,7 +88,7 @@ This project aims to provide a macro view on alpha strategies, it includes vario
     b. `strategy`: any strategy name will do, use `_` instead of spaces
     c. `type`: `Duration`, `Spread`, `Curve`, `Inflation`, `FX`, `Equity`, `Others`
     d. `open_date` & `close_date`: In the format `yyyymmdd` without spaces or dashes. Do not use Excel built in date formats as it will certainly screw up
-    e. `instrument`: ticker of instrument to be traded, matching the identifiers in the `inputs/tickers_XXX` files
+    e. `identifier`: ticker of instrument to be traded, matching the identifiers in the `inputs/tickers_XXX` files
     f. `asset_class`: `govt`, `ilb`, `future`, `fx`, `equity`, `cds`. Program searches identifier in the corresponding asset files
     g. `size`: e.g. 0.5 can be used for both 0.5mths OR 0.5% of R2
     h. `size_type`: `months`, `percent`
