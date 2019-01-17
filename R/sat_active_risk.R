@@ -200,7 +200,7 @@ check_strategy_inputs <- function(strategies) {
   valid_asset_class <- c("govt", "ilb", "fx", "equity", "cds", "fut")
   asset_classes <- strategies$asset_class %>% unique
   if (mean(asset_classes %in% valid_asset_class) < 1)
-    stop(paste("Invalid asset class found in input:", paste(asset_classes[! asset_classes %in% valid_asset_class], collapse = ",")))
+    stop(paste("Invalid asset class found in input:", paste(asset_classes[! asset_classes %in% valid_asset_class], collapse = ","), ". Valid asset classes are:", paste(valid_asset_class, collapse = ",")))
 
   # Check if differing size_types for same instrument in the same strategy
   unique_sizes_for_instrument <- strategies %>%
@@ -404,11 +404,13 @@ get_dur_fut_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), 
     filter(.data$na == 1) %>%
     left_join(reduced_sec_df, by = c("identifier"="name"))
 
-  recent_dur <- bdp(all_nas$ticker, "FUT_EQV_DUR_NOTL")
-  recent_dur$identifier <- all_nas$identifier
+  if (nrow(all_nas) > 0) {
+    recent_dur <- bdp(all_nas$ticker, "FUT_EQV_DUR_NOTL")
+    recent_dur$identifier <- all_nas$identifier
 
-  for (i in 1:nrow(recent_dur)) {
-    dur_df[[recent_dur$identifier[i]]] <- recent_dur[i, 1]
+    for (i in 1:nrow(recent_dur)) {
+      dur_df[[recent_dur$identifier[i]]] <- recent_dur[i, 1]
+    }
   }
 
   # Some instruments have very short duration history e.g. ILBs, hence we just assume all previous to be the first duration.

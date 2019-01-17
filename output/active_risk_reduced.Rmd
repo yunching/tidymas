@@ -1,0 +1,177 @@
+---
+title: "SAT Active Risk Report (Reduced)"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+library(tidyverse)
+library(Rblpapi)
+library(lubridate)
+library(knitr)
+library(tidymas)
+library(ggpubr)
+
+blpConnect()
+```
+
+```{r build_portfolios_and_get_return, message = FALSE}
+# Get strategies from file and their sizes (mix of month weighted and %)
+strategies_list <- build_strategies("../data2/strategies_reduced.csv")
+
+# Get required instruments and portfolios (actual vs sim)
+instr_df <- strategies_list$summary
+portfolios_list <- strategies_list[names(strategies_list) != "summary"]
+
+# Get duration from Bloomberg
+dur_df <- get_dur_bbg(instr_df)
+
+# Calculate all weights in %
+clean_pf_list <- map(portfolios_list, 
+                  ~convert_dur_size(., instr_df, dur_df))
+
+# Get returns of assets from Bloomberg
+asset_return <- get_ret_bbg(instr_df)
+
+# Calculate weight return of strategies
+wt_return <- map(clean_pf_list, 
+                  ~calc_strat_wt_return(., asset_return))
+
+# Calculate weight of strategies
+strat_headline_size <- map(clean_pf_list, 
+                           ~calc_strat_headline_size(.))
+
+# Calculate unweighted return of strategies
+unwt_return <- calc_strat_unwt_return(wt_return$sim, strat_headline_size$sim)
+```
+
+```{r get_scenarios}
+# Set dates for analysis
+curr_date <- today()
+prev_date <- curr_date - months(3)
+
+# Create scenarios for analysis
+scenarios_input <- read.table(
+  text = "period,       start_date, end_date
+          TaperTantrum, 2013-05-31, 2013-12-31
+          GFCStress,    2007-10-31, 2009-02-27", 
+  sep = ",", header = TRUE, strip.white = TRUE, colClasses = c("character", "Date", "Date")) 
+
+# Add series of most recent quarter
+scenarios <- rbind(scenarios_input, 
+      data.frame(period = c("Last3M"), start_date = c(curr_date - months(3)), end_date = c(curr_date))) 
+
+rownames(scenarios) <- scenarios$period 
+
+# Order by last 3M, then based on start dates (for plotting purposes)
+ordered_periods <- c("Last3M", scenarios$period[order(scenarios$start_date)][!scenarios$period[order(scenarios$start_date)] %in% c("Last3M")])
+
+# Get current strategies
+curr_strat <- get_strat_size(strat_headline_size$actual, curr_date)
+# prev_strat <- get_strat_size(strat_headline_size$actual, prev_date)
+# 
+# # Calculate active risk of previous quarters strategies 
+# active_risk_prev <- calc_active_risk(unwt_return, 
+#                                 prev_strat,
+#                                 start_date = prev_date - months(3), end_date = prev_date)
+
+# Calculate active risk of current strategies
+active_risk_curr <- apply(scenarios, 1, 
+                     function(x) {
+                       calc_active_risk(unwt_return, 
+                                        curr_strat,
+                                        start_date = x['start_date'], end_date = x['end_date'])
+                     })
+
+# calculate historical return based on scenario dates with current strategy
+scenario_return <- apply(scenarios, 1, 
+                           function(x) {
+                             simulate_history(unwt_return, 
+                                      curr_strat, 
+                                      x['start_date'], x['end_date'])
+                           })
+```
+
+## Active risk
+
+```{r active_risk}
+# Parameters to be displayed in later section
+current_quarter <- ceiling(month(curr_date) / 3)
+prev_quarter <- (current_quarter + 2) %% 4 + 1
+current_abs_active_risk <- active_risk_curr$Last3M$active_risk %>% abs %>% sum * 10000
+info_ratio <- 0.3
+gfc_abs_active_risk <- active_risk_curr$GFCStress$active_risk %>% abs %>% sum * 10000
+taper_abs_active_risk <- active_risk_curr$TaperTantrum$active_risk %>% abs %>% sum * 10000
+max_risk <- max(gfc_abs_active_risk, taper_abs_active_risk)
+
+# Format active risk table (by strategies)
+strat_active_risk <- active_risk_curr$Last3M %>%  
+  left_join(unique(select(instr_df, strategy, owner, type)), by = "strategy") %>%
+  mutate(risk_percent = active_risk / sum(active_risk) * 100, 
+         active_risk = active_risk * 10000,
+         owner = toupper(owner),
+         name = str_extract(strategy, "^.*(?=:::)")) %>%
+  arrange(desc(risk_percent))
+```
+
+The suite of RMD active strategies is likely to utilise `r sprintf("%.1f", current_abs_active_risk)`bps of active risk budget if fully implemented. Should correlations increase during stress episodes, the active risk utilisation could potentially rise to about `r sprintf("%.1f", max_risk)`bps. We expect these strategies to deliver about `r sprintf("%.1f", info_ratio * current_abs_active_risk)`bps based on RMD's long-term expected information ratio of `r sprintf("%.1f", info_ratio)`
+
+
+```{r display_strategies}
+# Get strategies sizes in %
+strat_percent_size <- get_strat_size(strat_headline_size$actual, curr_date) %>%
+  rename(size_percent = size)
+
+# Extract necessary portfolio information
+pf_overview <- pf_summary(portfolios_list$actual, curr_date) %>%
+  select(-date) %>%
+  gather(strategy, size) %>%
+  left_join(unique(select(instr_df, strategy, size_type, owner, type)), by = "strategy") %>%
+  left_join(strat_percent_size, by = "strategy") %>% 
+  left_join(select(strat_active_risk, strategy, active_risk, risk_percent), by = "strategy") %>% 
+  arrange(desc(active_risk)) 
+
+# Format and print portfolio information
+pf_overview %>%
+  mutate(size = str_replace(sprintf("%.2f %s", size, size_type)," percent","%") %>% str_replace(" months", "m"),  # Format numbers
+         size_percent = scales::percent(size_percent,accuracy = 0.01),
+         active_risk = scales::number(active_risk, accuracy = 0.1),
+         risk_percent = scales::percent(risk_percent/100, accuracy = 0.1)) %>%
+  mutate(strategy = str_extract(strategy, "^.*(?=:::)"),               # Format naming of strategy to remove division, add serial number
+         no = 1:nrow(.)) %>%
+  select(no, strategy, type, size, size_percent, active_risk, risk_percent) %>%   # Select required fields for display
+  rename("active_risk (bps)" = "active_risk",                          # Format headers of the table
+         "active_risk (% R2)" = "risk_percent") %>% 
+  kable                                                                # Display table
+```
+
+## Correlations
+
+### Strategy Correlations
+
+```{r display_corr_heatmap, fig.width = 9, fig.height = 5}
+# Plot correlation of returns between strategies
+
+# Extract unweighted return of all strategies still open
+uniq_unwt_ret <- unwt_return %>%
+  filter(strategy %in% curr_strat$strategy) %>%
+  mutate(strategy = str_extract(strategy, "^.*(?=:::)")) %>%
+  group_by(date, strategy) %>%
+  summarise(return = mean(return, na.rm = TRUE)) %>%
+  ungroup 
+
+# Calculate correlation between all open trades across all scenarios
+strat_cor_all <- 
+  apply(scenarios, 1,  # "Loop" through all scenarios
+        function(x)
+          # Calculate correlation for each  scenario
+          calc_cor(uniq_unwt_ret %>% spread(strategy, return), start_date = x['start_date'], end_date = x['end_date'], period_name = x['period']))# %>%
+
+# Plot all correlation matrices
+cor_df <- strat_cor_all$Last3M
+plot_cor(cor_df, "Correlation")
+
+
+write.csv(strat_cor_all$Last3M %>% select(-period) %>% spread(strat2, corr), "active_risk_reduced_output.csv")
+print("correlation output to csv file: active_risk_reduced_output.csv")
+```
