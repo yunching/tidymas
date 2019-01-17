@@ -87,10 +87,10 @@ build_alpha <- function(input, start_date = as.Date("2000-01-01"), end_date = to
   # })
 
   # Iterate through all unique strategies (incl portfolio, strategy, owner)
-  all_actual_size <- pmap(unique(select(strategies, portfolio, strategy, owner)),
-                        function(portfolio, strategy, owner) {
+  all_actual_size <- pmap(unique(select(strategies, pf = portfolio, strat = strategy, own = owner)),
+                        function(pf, strat, own) {
                           # Filter out trades in current strategy
-                          curr_strat <- strategies %>% dplyr::filter(.data$strategy == strategy, .data$portfolio == portfolio, .data$owner == owner)
+                          curr_strat <- strategies %>% dplyr::filter(.data$strategy == strat, .data$portfolio == pf, .data$owner == own)
                           inst_list <- curr_strat$identifier %>% unique
                           actual_size <- data.frame(date = gen_weekdays(start_date, end_date))
 
@@ -115,7 +115,7 @@ build_alpha <- function(input, start_date = as.Date("2000-01-01"), end_date = to
                           # Mutate into tidy form
                           actual_size <- actual_size %>%
                             gather("instrument", "size", -.data$date) %>%
-                            mutate(portfolio = portfolio, strategy = strategy, owner = owner)
+                            mutate(portfolio = pf, strategy = strat, owner = own)
 
                           actual_size
                         }) %>%
@@ -238,7 +238,7 @@ get_trade_return_futures <- function(portfolio, trades, curr) {
     left_join(futures_prices, by = c("date", "instrument")) %>%
     left_join(fx_prices, by = c("date", "fx")) %>%
     group_by(.data$strategy, .data$instrument) %>%
-    mutate(market_pnl = .data$fx_price * .data$size*.data$FUT_VAL_PT*(.data$PX_LAST - dplyr::lag(.data$PX_LAST))) %>%
+    mutate(market_pnl = .data$fx_price * .data$size*.data$FUT_VAL_PT*(.data$return)) %>%
     replace_na(list(market_pnl=0)) %>%
     as_tibble()
 
@@ -252,15 +252,16 @@ get_trade_return_futures <- function(portfolio, trades, curr) {
     as_tibble()
 
   total_pnl <- market_pnl %>%
+    select(.data$date, .data$instrument, .data$size, .data$portfolio, .data$strategy, .data$owner, .data$market_pnl) %>%
     left_join(
       select(timing_pnl, .data$strategy, .data$open_date, .data$timing_pnl, .data$identifier),
       by = c("date"="open_date", "strategy", "instrument" = "identifier")) %>%
     replace_na(list(timing_pnl = 0)) %>%
-    select(.data$strategy, .data$date, .data$instrument, .data$market_pnl, .data$timing_pnl) %>%
-    gather("pnl_type", "pnl", -.data$strategy, -.data$date, -.data$instrument)
+    select(.data$strategy, .data$portfolio, .data$owner, .data$date, .data$instrument, .data$market_pnl, .data$timing_pnl) %>%
+    gather("pnl_type", "pnl", -.data$strategy, -.data$date, -.data$instrument, -.data$portfolio, -.data$owner)
 
   total_pnl %>%
-    group_by(.data$strategy, .data$date, .data$pnl_type) %>%
+    group_by(.data$strategy, .data$portfolio, .data$owner, .data$date, .data$pnl_type) %>%
     summarise(pnl = sum(.data$pnl, na.rm = T))  %>%
     ungroup() %>%
     group_by(.data$strategy, .data$pnl_type) %>%
@@ -283,7 +284,7 @@ get_trade_return_bonds <- function(portfolio, trades, curr) {
     summarise() %>%
     ungroup()
 
-  start_date <- min(portfolio$date)
+  start_date <- min(portfolio$date - 5)
   end_date <- max(portfolio$date)
 
   bonds <- filter(summ, .data$asset_class == "Bonds")$identifier %>% unique
@@ -316,11 +317,16 @@ get_trade_return_bonds <- function(portfolio, trades, curr) {
     gather("fx", "fx_rate", -.data$date) %>%
     mutate(fx_rate = ifelse(fx == "JPY", fx_rate / 100, fx_rate))
 
+  # Add one extra earlier day where all positions are zero, for proper PNL calculations
+  one_day <- filter(bond_prices, .data$date < min(portfolio$date))$date %>% unique %>% max()
+
+  portfolio <- rbind(portfolio %>% filter(.data$date == min(.data$date)) %>% mutate(size = 0, date = one_day),
+        portfolio)
 
   market_pnl <- portfolio %>%
     left_join(bond_prices , by = c("date", "instrument")) %>%
     left_join(fx_prices, by = c("date", "fx")) %>%
-    group_by(.data$strategy, .data$instrument) %>%
+    group_by(.data$strategy, .data$owner, .data$portfolio, .data$instrument) %>%
       mutate(day_count = as.numeric(.data$date - dplyr::lag(.data$date)),
              px_chg = .data$fx_rate * (.data$PX_LAST - dplyr::lag(.data$PX_LAST)) * .data$IDX_RATIO / 100,
              accrued_interest = .data$day_count / 365 * .data$CPN/100 * ifelse(is.na(.data$PX_LAST), NA, 1) * .data$fx_rate,
@@ -329,7 +335,7 @@ get_trade_return_bonds <- function(portfolio, trades, curr) {
     replace_na(list(px_chg = 0, accrued_interest = 0, fx_ret = 0)) %>%
     mutate(market_pnl = .data$size * (.data$px_chg + .data$accrued_interest),
            fx_pnl = .data$size * .data$fx_ret) %>%
-    select(date, .data$strategy, .data$instrument, .data$size, .data$market_pnl, .data$fx_pnl) %>%
+    select(date, .data$strategy, .data$portfolio, .data$owner, .data$instrument, .data$size, .data$market_pnl, .data$fx_pnl) %>%
     ungroup()
 
   timing_pnl <- filter(trades, .data$asset_class == "Bonds") %>%
@@ -345,14 +351,15 @@ get_trade_return_bonds <- function(portfolio, trades, curr) {
       select(timing_pnl, .data$strategy, .data$open_date, .data$timing_pnl, .data$identifier),
       by = c("date"="open_date", "strategy", "instrument" = "identifier")) %>%
     replace_na(list(timing_pnl = 0)) %>%
-    select(.data$strategy, .data$date, .data$instrument, .data$market_pnl, .data$timing_pnl, .data$fx_pnl) %>%
-    gather("pnl_type", "pnl", -.data$strategy, -.data$date, -.data$instrument)
+    select(.data$strategy, .data$portfolio, .data$owner, .data$date, .data$instrument, .data$market_pnl, .data$timing_pnl, .data$fx_pnl) %>%
+    gather("pnl_type", "pnl", -.data$strategy, -.data$date, -.data$instrument, -.data$portfolio, -.data$owner)
 
   total_pnl %>%
-    group_by(.data$strategy, .data$date, .data$pnl_type) %>%
+    group_by(.data$strategy, .data$portfolio, .data$owner, .data$date, .data$pnl_type) %>%
     summarise(pnl = sum(.data$pnl, na.rm = T)) %>%
     ungroup() %>%
     group_by(.data$strategy, .data$pnl_type) %>%
     mutate(cum_pnl = cumsum(.data$pnl)) %>%
-    ungroup
+    ungroup %>%
+    filter(.data$date != one_day)
 }

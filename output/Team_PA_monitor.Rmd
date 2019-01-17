@@ -14,7 +14,7 @@ library(knitr)
 blpConnect()
 opts_chunk$set(echo=FALSE, warning = FALSE, message = FALSE)
 
-start_date <- as.Date("2018-11-01")
+start_date <- as.Date("2018-01-01")
 end_date <- as.Date("2018-12-31")
 curr <- "SGD"
 ```
@@ -32,7 +32,7 @@ pnl_bonds <- get_trade_return_bonds(alpha$actual, alpha$trades, curr) %>%
 
 pnl <- bind_rows(pnl_futures, pnl_bonds) %>%
   filter(pnl_type != "fx_pnl") %>%
-  group_by(strategy, date, pnl_type) %>%
+  group_by(strategy, portfolio, owner, date, pnl_type) %>%
   summarise(pnl = sum(pnl, na.rm = T),
             cum_pnl = sum(cum_pnl, na.rm = T)) %>%
   ungroup
@@ -99,29 +99,26 @@ Total pnl: `r scales::number(total_pnl, accuracy = 1, big.mark = ",")`
 
 ```{r}
 strat_status <- alpha$actual %>% 
-  filter(date == max(date)) %>% 
-  group_by(strategy) %>% 
-  summarise(size = sum(abs(size))) %>% 
-  mutate(status = ifelse(size == 0, "CLOSED", "OPEN")) %>% 
-  select(strategy, status)
+  group_by(strategy, portfolio, owner) %>% 
+  summarise(max_date = max(date)) %>% 
+  ungroup %>% 
+  mutate(status = ifelse(max_date != end_date, "CLOSED", "OPEN")) %>% 
+  select(portfolio, owner, strategy, status)
 
 pnl %>% 
-  filter(str_detect(strategy, ":::(ES|BC)$")) %>%
-  left_join(strat_status, by = "strategy") %>%
-  mutate(strategy = str_extract(strategy, "^.*(?=:::)")) %>%
-  group_by(strategy, status) %>%
-  summarise(pnl = sum(pnl)) %>%
-  arrange(status, desc(pnl)) %>%
+  filter(owner %in% c("ES", "BC")) %>%
+  left_join(strat_status, by = c("strategy", "portfolio", "owner")) %>%
+  group_by(.data$strategy, .data$portfolio, .data$owner, .data$status) %>%
+  summarise(pnl = sum(.data$pnl)) %>%
+  ungroup %>%
+  arrange(desc(status), desc(pnl)) %>%
   mutate(pnl = scales::number(pnl, big.mark = ",", accuracy = 1)) %>%
   kable(align = "llr")
 ```
 
 
 ```{r}
-pnl_owner <- pnl %>% mutate(owner = str_match(strategy, "(?<=:::).*$"),
-               strategy = str_match(strategy, "^.*(?=:::)")) 
-
-pnl_owner %>% 
+pnl %>% 
   filter(pnl_type != "fx_pnl") %>%
   group_by(date, owner) %>% 
   summarise(pnl = sum(pnl)) %>%
@@ -132,7 +129,7 @@ pnl_owner %>%
       stat_summary(fun.y = sum, geom = "line", size = 1) +
   labs(title = "Team + PA, excluding FX")
 
-pnl_owner %>% 
+pnl %>% 
     filter(pnl_type != "fx_pnl") %>%
   group_by(date, owner) %>% 
   summarise(pnl = sum(pnl)) %>%
@@ -145,7 +142,7 @@ pnl_owner %>%
   labs(title = "PA only, excluding FX")
   
 
-pnl_owner %>% 
+pnl %>% 
     filter(pnl_type != "fx_pnl") %>%
   group_by(date, pnl_type) %>% 
   summarise(pnl = sum(pnl)) %>%
@@ -169,7 +166,7 @@ pnl_owner %>%
 
 ```{r}
   # Plot by strategy
-pnl_owner %>%
+pnl %>%
     filter(pnl_type != "fx_pnl", owner %in% c("ES")) %>%
     mutate(strategy_clean =trimws(str_extract(strategy, "^.*(?= *[-\\[\\(])")),
            strategy = ifelse(is.na(strategy_clean), strategy, strategy_clean)) %>%
@@ -186,7 +183,7 @@ strategy = str_replace(strategy, coll("steepener", TRUE), "stpn")) %>%
     theme(axis.title.x = element_blank(), legend.position = "bottom") +
     labs(title = "By strategy, excluding FX")
 
-pnl_owner %>%
+pnl %>%
     filter(pnl_type != "fx_pnl", owner %in% c("BC")) %>%
     mutate(strategy_clean =trimws(str_extract(strategy, "^.*(?= *[-\\[\\(])")),
            strategy = ifelse(is.na(strategy_clean), strategy, strategy_clean)) %>%
@@ -228,7 +225,7 @@ pnl_w_type %>%
 
 ```{r, fig.height = 11, fig.width = 7}
   top_es_9 <- pnl %>% 
-      filter(str_detect(strategy, ":::ES$")) %>%
+      filter(owner == "ES") %>%
     group_by(strategy, date) %>%
     summarise(cum_pnl = sum(cum_pnl)) %>%
     ungroup %>%
@@ -242,7 +239,7 @@ pnl_w_type %>%
 
   # Cumulative Pnl by strategy and type
   pnl %>%
-    filter(str_detect(strategy, ":::ES$"), strategy %in% top_es_9) %>%
+    filter(owner == "ES", strategy %in% top_es_9) %>%
     left_join(date_limits, by = "strategy") %>%
         mutate(strategy = factor(strategy, levels = top_es_9)) %>%
     filter(date < max_date, date > min_date) %>%
@@ -258,10 +255,45 @@ pnl_w_type %>%
 # ROR
 
 ```{r}
-strat_by_port <- alpha$trades %>% 
-  select(strategy, portfolio = Portfolio) %>%
+calc_ror <- function(portfolio, trades, target_port, curr) {
+  
+  strat_by_port <- trades %>% 
+  select(strategy, portfolio, owner) %>%
   unique()
+  # G-EUR
+pnl_futures <- get_trade_return_futures(portfolio, trades, curr) %>%
+  mutate(asset_class = "Futures")
+pnl_bonds <- get_trade_return_bonds(portfolio, trades, curr) %>%
+  mutate(asset_class = "Bonds")
 
+pnl <- bind_rows(pnl_futures, pnl_bonds) %>%
+  filter(pnl_type != "fx_pnl") %>%
+  group_by(strategy, date, pnl_type) %>%
+  summarise(pnl = sum(pnl, na.rm = T),
+            cum_pnl = sum(cum_pnl, na.rm = T)) %>%
+  ungroup
+
+pnl_port <- pnl %>% 
+  left_join(strat_by_port, by = "strategy") %>%
+  filter(portfolio == target_port) %>%
+  filter(pnl_type != "fx_pnl") %>%
+  mutate(month_year = format(date, "%Y-%m")) %>%
+  group_by(strategy, month_year) %>%
+  summarise(pnl = sum(pnl)) %>%
+  filter(pnl != 0) %>%
+  spread(month_year, pnl)
+
+bind_rows(pnl_port,
+      as.tibble(
+        cbind(data.frame(strategy = "TOTAL", stringsAsFactors = FALSE), 
+              t(data.frame(total = colSums(pnl_port[,-1], na.rm = TRUE))))))
+}
+
+temp <- calc_ror(alpha$actual, alpha$trades, "G-EUR", "EUR")
+
+strat_by_port <- alpha$trades %>% 
+  select(strategy, portfolio, owner) %>%
+  unique()
 
 # G-EUR
 pnl_futures <- get_trade_return_futures(alpha$actual, alpha$trades, "EUR") %>%
@@ -311,23 +343,3 @@ pnl_gbp_port <- pnl_gbp %>%
 # Build ROR for every portfolio over rolling 12 months
 
 ```
-
-```{r, fig.height = 11, fig.width = 7}
-  # Pnl by strategy and type
-  pnl %>%
-    filter(str_detect(strategy, ":::ES$")) %>%
-    left_join(date_limits, by = "strategy") %>%
-    filter(date < max_date, date > min_date) %>%
-    ggplot(aes(x = date, y = pnl / 1e6)) +
-    geom_col(aes(fill = pnl_type)) +
-    facet_wrap(~strategy, ncol = 3, scales = "free") +
-    theme(legend.position = "bottom") +
-    labs(title = "Non-cumulative pnl")
-```
-
-
-
-
-
-
-
