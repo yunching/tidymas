@@ -3,6 +3,8 @@ title: "Team Performance Monitoring"
 output:
   pdf_document: default
   html_notebook: default
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, message = FALSE, echo = FALSE}
@@ -17,11 +19,17 @@ opts_chunk$set(echo=FALSE, warning = FALSE, message = FALSE)
 start_date <- as.Date("2018-01-01")
 end_date <- as.Date("2018-12-31")
 curr <- "SGD"
+
+####### Suggestions
+# Additional trading metrics: e.g Max drawdown, sortino ratio
+
 ```
 
 ```{r, message = FALSE}
+### ISSUES: NOT DOWNLOADING OLD TICKERS
+### ALSO AGGREGATION BY OWNERS SEEM TO BE OFF DUE TO LACK OF CONTINUATION OF SERIES
 
- devtools::load_all(".")
+devtools::load_all(".")
 
 alpha <- build_alpha(file.path("..", "data2", "trademaster_full.csv"), start_date = start_date, end_date = end_date)
 
@@ -143,7 +151,7 @@ pnl %>%
   
 
 pnl %>% 
-    filter(pnl_type != "fx_pnl") %>%
+  filter(pnl_type != "fx_pnl") %>%
   group_by(date, pnl_type) %>% 
   summarise(pnl = sum(pnl)) %>%
   group_by(pnl_type) %>%
@@ -286,10 +294,15 @@ pnl_port <- pnl %>%
 bind_rows(pnl_port,
       as.tibble(
         cbind(data.frame(strategy = "TOTAL", stringsAsFactors = FALSE), 
-              t(data.frame(total = colSums(pnl_port[,-1], na.rm = TRUE))))))
+              t(data.frame(total = colSums(pnl_port[,-1], na.rm = TRUE)))))) %>%
+  ungroup %>%
+  mutate(TOTAL = rowSums(select(., -strategy), na.rm = T))
 }
 
-temp <- calc_ror(alpha$actual, alpha$trades, "G-EUR", "EUR")
+geur_ror <- calc_ror(alpha$actual, alpha$trades, "G-EUR", "EUR")
+ieur_ror <- calc_ror(alpha$actual, alpha$trades, "I-EUR", "EUR")
+ggbp_ror <- calc_ror(alpha$actual, alpha$trades, "G-GBP", "GBP")
+igbp_ror <- calc_ror(alpha$actual, alpha$trades, "I-GBP", "GBP")
 
 strat_by_port <- alpha$trades %>% 
   select(strategy, portfolio, owner) %>%
@@ -338,6 +351,8 @@ pnl_gbp_port <- pnl_gbp %>%
   group_by(strategy) %>%
   summarise(pnl = sum(pnl)) %>%
   filter(pnl != 0)
+
+kable(geur_ror)
   
 
 # Build ROR for every portfolio over rolling 12 months

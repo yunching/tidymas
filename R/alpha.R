@@ -234,12 +234,14 @@ get_trade_return_futures <- function(portfolio, trades, curr) {
   # Hence there is no exposure on the contract value of the contracts.
 
   # Calculate per instrument daily pnl from market movements
+
   market_pnl <- portfolio %>%
     left_join(futures_prices, by = c("date", "instrument")) %>%
     left_join(fx_prices, by = c("date", "fx")) %>%
     group_by(.data$strategy, .data$instrument) %>%
     mutate(market_pnl = .data$fx_price * .data$size*.data$FUT_VAL_PT*(.data$return)) %>%
-    replace_na(list(market_pnl=0)) %>%
+    replace_na(list(pnl=0)) %>%
+    select(.data$date, .data$instrument, .data$portfolio, .data$strategy, .data$owner,.data$market_pnl) %>%
     as_tibble()
 
   # Calculate timing pnl
@@ -248,16 +250,12 @@ get_trade_return_futures <- function(portfolio, trades, curr) {
     left_join(fx_prices, by = c("open_date" = "date", "fx")) %>%
     group_by(.data$strategy, .data$identifier) %>%
     mutate(timing_pnl = .data$fx_price * .data$size * .data$FUT_VAL_PT*(.data$PX_LAST - .data$price)) %>%
-    replace_na(list(timing_pnl=0)) %>%
+    replace_na(list(pnl=0)) %>%
+    select(date= .data$open_date, instrument = .data$identifier, .data$portfolio, .data$strategy, .data$owner, .data$timing_pnl) %>%
     as_tibble()
 
-  total_pnl <- market_pnl %>%
-    select(.data$date, .data$instrument, .data$size, .data$portfolio, .data$strategy, .data$owner, .data$market_pnl) %>%
-    left_join(
-      select(timing_pnl, .data$strategy, .data$open_date, .data$timing_pnl, .data$identifier),
-      by = c("date"="open_date", "strategy", "instrument" = "identifier")) %>%
-    replace_na(list(timing_pnl = 0)) %>%
-    select(.data$strategy, .data$portfolio, .data$owner, .data$date, .data$instrument, .data$market_pnl, .data$timing_pnl) %>%
+  total_pnl <- full_join(market_pnl, timing_pnl, by = c("date", "instrument", "portfolio", "strategy", "owner")) %>%
+    replace_na(list(timing_pnl = 0, market_pnl = 0)) %>%
     gather("pnl_type", "pnl", -.data$strategy, -.data$date, -.data$instrument, -.data$portfolio, -.data$owner)
 
   total_pnl %>%
