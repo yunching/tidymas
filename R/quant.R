@@ -1,6 +1,6 @@
 library(tidyverse)
 library(readxl)
-bar <- read_excel("Z:\\Downloads\\example3_4.xls")
+# bar <- read_excel("Z:\\Downloads\\example3_4.xls")
 
 #' Augment a time series with new features
 #'
