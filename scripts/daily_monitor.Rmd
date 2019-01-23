@@ -13,6 +13,7 @@ output:
 library(Rblpapi)
 knitr::opts_chunk$set(echo = FALSE)
 source("C:\\Users\\yunch\\Documents\\Projects\\tidymas\\scripts\\convenience.R")
+bulk_load_data()
 blpConnect()
 ```
 

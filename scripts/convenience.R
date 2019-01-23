@@ -298,5 +298,5 @@ bulk_load_data <- function(){
   Rblpapi::bdh(sec_list, "PX_LAST", Sys.Date()-365) %>%
     dplyr::bind_rows(.id = "Ticker") %>%
     tibble::as_tibble() %>%
-    write_csv("./scripts/BBG_snapshot.csv")
+    write_csv("./BBG_snapshot.csv")
 }

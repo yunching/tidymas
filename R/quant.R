@@ -1,7 +1,3 @@
-library(tidyverse)
-library(readxl)
-bar <- read_excel("Z:\\Downloads\\example3_4.xls")
-
 #' Augment a time series with new features
 #'
 #' @description Augments a time series data frame with quantitative calculations
@@ -41,11 +37,60 @@ ts_summary <- function(data){
 }
 
 #Calculate max drawdown
-bar.max_drawdown <- bar.processed %>%
-  summarise(max_drawdown = min(drawdown))
+# bar.max_drawdown <- bar.processed %>%
+#   summarise(max_drawdown = min(drawdown))
+#
+# #Calculate max drawdown period
+# bar.max_drawdown_period <- bar.processed %>%
+#   select(drawdown_day) %>%
+#   (function(x) {max(rle(x$drawdown_day)$lengths)})
 
-#Calculate max drawdown period
-bar.max_drawdown_period <- bar.processed %>%
-  select(drawdown_day) %>%
-  (function(x) {max(rle(x$drawdown_day)$lengths)})
+#' Cache Bloomberg data locally
+#'
+#' @param ticker Single ticker to save OHLC and volume data
+#' @param start.date Start date
+#' @param end.date End date
+#'
+#' @return Saves a csv file in the data2 folder
+#' @export
+#'
+#' @examples
+get_bbg_data <- function(ticker, start.date = Sys.Date() - 365 * 1, end.date = Sys.Date()){
+  filename <- stringr::str_replace_all(ticker, " ", "_")
+  filename <- paste0(start.date, "_", end.date, "_", filename)
 
+  #Download all data in single call so it runs fast
+  data <- Rblpapi::bdh(ticker,
+               fields = c("PX_OPEN", "PX_HIGH", "PX_LOW", "PX_LAST", "VOLUME"),
+               start.date = start.date,
+               end.date = end.date) %>%
+          dplyr::bind_rows(.id = "Ticker") %>%
+          tibble::as_tibble()
+
+  #But save each ticker into its own csv file
+  data %>%
+    readr::write_csv(file.path(getwd(), "data2", paste0(filename, ".csv")))
+}
+
+get_many_bbg_data <- function(ticker, start.date = Sys.Date() - 365 * 1, end.date = Sys.Date()){
+  # filename <- stringr::str_replace_all(ticker, " ", "_")
+  filename_header <- paste0(start.date, "_", end.date, "_")
+
+  #Download all data in single call so it runs fast
+  data <- Rblpapi::bdh(ticker,
+                       fields = c("PX_OPEN", "PX_HIGH", "PX_LOW", "PX_LAST", "VOLUME"),
+                       start.date = start.date,
+                       end.date = end.date)
+
+  #But save each ticker into its own csv file
+
+  purrr::walk2(data, ticker,
+             function(edata, eticker){
+              eticker <- stringr::str_replace_all(eticker, " ", "_")
+              readr::write_csv(edata, file.path(getwd(), "data2", paste0(filename_header, eticker, ".csv")))
+             })
+}
+
+stationary_screen <- function(data){
+
+}
