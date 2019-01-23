@@ -99,12 +99,12 @@ get_many_bbg_data <- function(ticker, start.date = Sys.Date() - 365 * 1, end.dat
 # stationary_screen <- function(data){
 #
 # }
-
-bar.max_drawdown <- bar.processed %>%
-  summarise(max_drawdown = min(drawdown))
-
-#Calculate max drawdown period
-bar.max_drawdown_period <- bar.processed %>%
-  select(drawdown_day) %>%
-  (function(x) {max(rle(x$drawdown_day)$lengths)})
+#
+# bar.max_drawdown <- bar.processed %>%
+#   summarise(max_drawdown = min(drawdown))
+#
+# #Calculate max drawdown period
+# bar.max_drawdown_period <- bar.processed %>%
+#   select(drawdown_day) %>%
+#   (function(x) {max(rle(x$drawdown_day)$lengths)})
 
