@@ -11,6 +11,7 @@ library(readxl)
 #' @param rf_rate Risk-free rate for calculating excess returns
 #'
 #' @return A dataframe containing extra features.
+#' @importFrom rlang .data
 #' @export
 #'
 #' @examples
@@ -23,12 +24,12 @@ ts_augment <- function(data, date = date, price = PX_LAST, rf_rate = 0.04 / 252)
     as_tibble() %>%
     select(date = !!date,
            price = !!price) %>%
-    mutate(dailyret = (price - lag(price, 1)) / lag(price, 1),
-           excess_dailyret = dailyret - rf_rate) %>%
+    mutate(dailyret = (.data$price - lag(.data$price, 1)) / lag(.data$price, 1),
+           excess_dailyret = .data$dailyret - rf_rate) %>%
     tidyr::drop_na() %>%
-    mutate(cumret = cumprod(1 + dailyret) - 1,
-           high_watermark = cummax(cumret),
-           drawdown = (1 + cumret) / (1 + high_watermark) - 1,
+    mutate(cumret = cumprod(1 + .data$dailyret) - 1,
+           high_watermark = cummax(.data$cumret),
+           drawdown = (1 + .data$cumret) / (1 + .data$high_watermark) - 1,
            drawdown_day = if_else(drawdown != 0, 1, 0)
     )
 }
