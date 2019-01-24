@@ -1,5 +1,6 @@
-library(tidyverse)
-library(readxl)
+# library(tidyverse)
+# library(readxl)
+
 # bar <- read_excel("Z:\\Downloads\\example3_4.xls")
 
 #' Augment a time series with new features
@@ -13,10 +14,7 @@ library(readxl)
 #' @return A dataframe containing extra features.
 #' @importFrom rlang .data
 #' @export
-#'
-#' @examples
-ts_augment <- function(data, date = date, price = PX_LAST, rf_rate = 0.04 / 252){
-  require(dplyr)
+ts_augment <- function(data, date = date, price = .data$PX_LAST, rf_rate = 0.04 / 252){
   date <- rlang::enquo(date)
   price <- rlang::enquo(price)
 
@@ -30,13 +28,13 @@ ts_augment <- function(data, date = date, price = PX_LAST, rf_rate = 0.04 / 252)
     mutate(cumret = cumprod(1 + .data$dailyret) - 1,
            high_watermark = cummax(.data$cumret),
            drawdown = (1 + .data$cumret) / (1 + .data$high_watermark) - 1,
-           drawdown_day = if_else(drawdown != 0, 1, 0)
+           drawdown_day = if_else(.data$drawdown != 0, 1, 0)
     )
 }
 
 ts_summary <- function(data){
   max_drawdown <- data %>%
-    summarise(max_drawdown = min(drawdown))
+    summarise(max_drawdown = min(.data$drawdown))
 
   list(max_drawdown)
 }
@@ -60,6 +58,10 @@ ts_summary <- function(data){
 #' @export
 #'
 #' @examples
+#' \donttest{
+#' Rblpapi::blpConnect()
+#' get_bbg_data("AAPL US Equity")
+#' }
 get_bbg_data <- function(ticker, start.date = Sys.Date() - 365 * 1, end.date = Sys.Date()){
   filename <- stringr::str_replace_all(ticker, " ", "_")
   filename <- paste0(start.date, "_", end.date, "_", filename)
