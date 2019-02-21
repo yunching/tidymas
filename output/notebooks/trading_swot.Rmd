@@ -1,0 +1,34 @@
+---
+title: "Trading SWOT Notebook"
+output: html_notebook
+---
+
+```{r setup}
+library(tidyverse)
+library(Rblpapi)
+
+blpConnect()
+```
+
+```{r load_sec}
+sec_list <- c("AAPL US Equity", "MMM US Equity")
+bbg_data_raw <- bdh(sec_list, c("PX_OPEN", "PX_HIGH", "PX_LOW", "PX_LAST"), start.date = Sys.Date() - 365)
+
+bbg_data_raw %>% 
+  bind_rows(.id = "Ticker") %>% 
+  as_tibble() ->
+  bbg_data
+```
+
+```{r calc_ta}
+
+bbg_data %>%
+  group_by(Ticker) %>% 
+  nest() %>% 
+  mutate(ewma_10 = map_dbl(data, ~ tail(ema(.x$PX_LAST, 10), 1)),
+         ewma_20 = map(data, ~ ema(.x$PX_LAST, 20)),
+         ewma_30 = map(data, ~ ema(.x$PX_LAST, 30))
+         )
+
+
+```
