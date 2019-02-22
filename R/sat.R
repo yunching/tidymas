@@ -378,7 +378,7 @@ plot_credit_ratings <- function(my_data){
   # wt_caps <- factor(c(
   #   "0%" = "dashed",
   #   "5%" = "dotdash",
-  #   "15%" = "dotted"
+  #   "10%" = "dotted"
   # ))
 
   credit_rating_levels <- c("BBB-", "BBB", "BBB+",  "A-",  "A",  "A+",  "AA-",  "AA", "AA+", "AAA")
@@ -400,13 +400,13 @@ plot_credit_ratings <- function(my_data){
          title = "Median credit rating over time for benchmark countries",
          col = "Country",
          subtitle = credit_rating_subtitle) +
-    geom_hline(aes(yintercept=1, linetype=factor("0%", levels = c("0%", "5%", "15%"))), col="red") +
-    geom_hline(aes(yintercept=3, linetype=factor("5%", levels = c("0%", "5%", "15%"))), col="red") +
-    geom_hline(aes(yintercept=6, linetype=factor("15%", levels = c("0%", "5%", "15%"))), col="red") +
+    geom_hline(aes(yintercept=1, linetype=factor("0%", levels = c("0%", "5%", "10%"))), col="red") +
+    geom_hline(aes(yintercept=3, linetype=factor("5%", levels = c("0%", "5%", "10%"))), col="red") +
+    geom_hline(aes(yintercept=6, linetype=factor("10%", levels = c("0%", "5%", "10%"))), col="red") +
     facet_wrap(.data$country ~ .) +
-    scale_x_date(labels = date_format("%y")) +
+    scale_x_date(labels = date_format("%m%y")) +
     scale_y_discrete(limits=forcats::fct_rev(credit_rating_levels)) +
-    scale_linetype_manual(name="Weight caps", breaks=c("0%", "5%", "15%"), values=c(2, 3, 4)) +
+    scale_linetype_manual(name="Weight caps", breaks=c("0%", "5%", "10%"), values=c(2, 3, 4)) +
     scale_color_discrete(guide=FALSE) +
     scale_shape_discrete(name = "Rating agency", breaks=c("fitch", "moody", "snp"), labels=c("Fitch", "Moody", "S&P"))
 }
