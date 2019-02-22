@@ -120,7 +120,7 @@ build_alpha <- function(input, start_date = as.Date("2000-01-01"), end_date = to
                           actual_size
                         }) %>%
     bind_rows() %>%
-    filter(.data$size != 0) %>%
+#    filter(.data$size != 0) %>%
     as.tibble()
 
 
@@ -251,7 +251,11 @@ get_trade_return_futures <- function(portfolio, trades, curr) {
     group_by(.data$strategy, .data$identifier) %>%
     mutate(timing_pnl = .data$fx_price * .data$size * .data$FUT_VAL_PT*(.data$PX_LAST - .data$price)) %>%
     replace_na(list(pnl=0)) %>%
+    ungroup() %>%
+    group_by(.data$strategy, .data$identifier, .data$portfolio, .data$owner, .data$open_date) %>%
+    summarise(timing_pnl = sum(.data$timing_pnl)) %>%
     select(date= .data$open_date, instrument = .data$identifier, .data$portfolio, .data$strategy, .data$owner, .data$timing_pnl) %>%
+    ungroup() %>%
     as_tibble()
 
   total_pnl <- full_join(market_pnl, timing_pnl, by = c("date", "instrument", "portfolio", "strategy", "owner")) %>%
