@@ -1,0 +1,19 @@
+---
+title: "Trading crap"
+output: html_notebook
+---
+
+ 
+
+```{r}
+library(tidymas)
+library(tidyverse)
+data(swat_data)
+
+df <- swat_data
+```
+
+```{r}
+df_rx <- df %>% filter(Ticker == "RX1 Comdty") %>% select(-Ticker)
+en.pivot(df_rx) %>% tail()
+```
