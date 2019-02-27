@@ -23,19 +23,18 @@ ilb_caps <- read.csv("countries_cap_ilb.csv", header = TRUE, colClasses = c("cha
   mutate(cap = ifelse(is.na(cap), 1, cap))
 
 ratings <- get_bm_ratings(per = 12) %>%
-  dplyr::filter(country %in% gov_caps$country)
+  dplyr::filter(country %in% gov_caps$country | country %in% ilb_caps$country)
 plot_credit_ratings(ratings)
 ```
 
-
 ```{r calc_scaling_factors}
-# Run scaling factor report in BBG and save data as sf_mv.csv
+# Get MV of countries
 mv <- read.csv("sf_mv.csv", header = TRUE, skip = 7, colClasses = c("character", "numeric", "numeric")) %>%
   .[1:head(which(str_detect(.[,1], "^Disclaimer")), 1)-1, c(1,2,3)] %>%
   stats::setNames(c("country", "DM_GOV", "DM_ILB")) %>%
   dplyr::filter(country != "" & country != "Total")
 
-# Set appropriate caps in countries_cap.csv
+# Set appropriate caps in countries_cap_XXX.csv
 gov_caps_mv <- gov_caps %>%
   left_join(mv, by = "country") 
 
@@ -54,7 +53,6 @@ sf_gov <- market_capping(gov$DM_GOV, gov$cap) %>%
 sf_ilb <- market_capping(ilb$DM_ILB, ilb$cap) %>%
   cbind(country = ilb[,"country"])
 ```
-
 
 # Scaling factors for Gov
 
@@ -75,34 +73,87 @@ exp_date <- data.frame(date = seq(today() - day(today())-5, today() - day(today(
   filter(! weekdays %in% c("Saturday", "Sunday")) %>% 
   tail(1) %>% 
   .$date
-
 ```
 
 ### Date of market values: **`r dat`**
 
 # `r if (exp_date != dat) {paste("Warning: expected date is", exp_date)}`
 
+```{r check_scaling_factors}
+exp_cap <- function(rating_num) {
+  if (rating_num >= 10) {  # BBB- and worse
+    return(0)
+  } else if (rating_num >= 8) {  # BBB+ and worse
+    return(0.05)
+  } else if (rating_num >= 5) {  # A+ and worse
+    return(0.1)
+  } else {  # AA- and better
+    return(1)
+  }
+}
+
+# Get latest ratings
+latest_ratings <- ratings %>% 
+  ungroup %>% 
+  filter(date == max(date)) %>%
+  select(country, mas_rating, mas_median_num) 
+
+# Check if any errors for gov scaling factors
+gov_show <- sf_gov %>%
+  left_join(latest_ratings, by = "country") %>%
+  mutate(exp_cap = map_dbl(mas_median_num, exp_cap)) %>%
+  select(country,mas_rating, rescaled_sf, capped_mv_wts, capped_wts, exp_cap) %>%
+  mutate(error = !(capped_wts == exp_cap))
+
+error_msg_gov <- NA
+if (sum(gov_show$error) > 0) {
+  error_countries_gov <- filter(gov_show, error)$country
+  error_msg_gov <- paste("!!! WARNING: caps are different from expected caps for", paste(error_countries_gov, collapse = ", "))
+}
+
+ilb_show <- sf_ilb %>%
+  left_join(latest_ratings, by = "country") %>%
+  mutate(exp_cap = map_dbl(mas_median_num, exp_cap)) %>%
+  select(country,mas_rating, rescaled_sf, capped_mv_wts, capped_wts, exp_cap) %>%
+  mutate(error = !(capped_wts == exp_cap))
+
+error_msg_ilb <- NA
+if (sum(ilb_show$error) > 0) {
+  error_countries_ilb <- filter(ilb_show, error)$country
+  error_msg_ilb <- paste("!!! WARNING: caps are different from expected caps for", paste(error_countries_ilb, collapse = ", "))
+}
+```
+
+### `r if (!is.na(error_msg_gov)) error_msg_gov`
+
 ```{r show_scaling_factors_gov}
-select(sf_gov, country, rescaled_sf, capped_mv_wts, capped_wts) %>%
+gov_show %>%
+  select(-error) %>%
   mutate(rescaled_sf = scales::percent(rescaled_sf, 0.01), 
          capped_mv_wts = scales::percent(capped_mv_wts, 0.01),
-         capped_wts = scales::percent(capped_wts, 0.01)) %>%
+         capped_wts = scales::percent(capped_wts, 1),
+         exp_cap = scales::percent(exp_cap, 1)) %>%
   knitr::kable()
 ```
 
 # Scaling factors ILB
 
+### `r if (!is.na(error_msg_ilb)) error_msg_ilb`
+
 ```{r show_scaling_factors_ilb}
-select(sf_ilb, country, rescaled_sf, capped_mv_wts, capped_wts)  %>%
+ilb_show %>%
+  select(-error) %>%
   mutate(rescaled_sf = scales::percent(rescaled_sf, 0.01), 
          capped_mv_wts = scales::percent(capped_mv_wts, 0.01),
-         capped_wts = scales::percent(capped_wts, 0.01)) %>%
+         capped_wts = scales::percent(capped_wts, 1),
+         exp_cap = scales::percent(exp_cap, 1)) %>%
   knitr::kable()
 ```
+
 ```{r save_scaling_factors}
 # Input
-gov_disp <- select(sf_gov, country, rescaled_sf, capped_mv_wts, capped_wts) 
-ilb_disp <- select(sf_ilb, country, rescaled_sf, capped_mv_wts, capped_wts)
+gov_xl_disp <- select(gov_show, country, mas_rating, rescaled_sf, capped_mv_wts, capped_wts) 
+ilb_xl_disp <- select(ilb_show, country, mas_rating, rescaled_sf, capped_mv_wts, capped_wts)
 
 # create a new workbook for outputs
 wb <- createWorkbook(type="xlsx")
@@ -146,15 +197,15 @@ setCellValue(cells[[5, 7]], "Inflation Linked Bonds")
 setCellStyle(cells[[5, 7]], SUB_TITLE_STYLE)
 
 # Add scaling factor tables
-addDataFrame(gov_disp, sheet, startRow = 6, startColumn = 1, 
+addDataFrame(gov_xl_disp, sheet, startRow = 6, startColumn = 1, 
              colnamesStyle = TABLE_COLNAMES_STYLE,
              rownamesStyle = TABLE_ROWNAMES_STYLE, row.names = FALSE,
-             colStyle = list('2' = PERCENT_STYLE, '3' = PERCENT_STYLE, '4' = PERCENT_STYLE))
+             colStyle = list('3' = PERCENT_STYLE, '4' = PERCENT_STYLE, '5' = PERCENT_STYLE))
 
-addDataFrame(ilb_disp, sheet, startRow = 6, startColumn = 7, 
+addDataFrame(ilb_xl_disp, sheet, startRow = 6, startColumn = 7, 
              colnamesStyle = TABLE_COLNAMES_STYLE,
              rownamesStyle = TABLE_ROWNAMES_STYLE, row.names = FALSE,
-             colStyle = list('2' = PERCENT_STYLE, '3' = PERCENT_STYLE, '4' = PERCENT_STYLE))
+             colStyle = list('3' = PERCENT_STYLE, '4' = PERCENT_STYLE, '5' = PERCENT_STYLE))
 
 # Change column width
 setColumnWidth(sheet, colIndex = 1:11, colWidth = 11)
