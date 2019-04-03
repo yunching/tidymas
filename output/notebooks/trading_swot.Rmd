@@ -11,8 +11,11 @@ blpConnect()
 ```
 
 ```{r load_sec}
-sec_list <- c("AAPL US Equity", "MMM US Equity")
-bbg_data_raw <- bdh(sec_list, c("PX_OPEN", "PX_HIGH", "PX_LOW", "PX_LAST"), start.date = Sys.Date() - 365)
+# Downloads data from BBG - Yun Ching
+sec_list <- c("RX1 Comdty", "G 1 Comdty", "IK1 Comdty", "OAT1 Comdty", 
+              "ES1 Index", "VG1 Index", "Z 1 Index",
+              "TY1 Comdty")
+bbg_data_raw <- bdh(sec_list, c("PX_OPEN", "PX_HIGH", "PX_LOW", "PX_LAST", "Volume"), start.date = Sys.Date() - 365)
 
 bbg_data_raw %>% 
   bind_rows(.id = "Ticker") %>% 
@@ -20,15 +23,23 @@ bbg_data_raw %>%
   bbg_data
 ```
 
-```{r calc_ta}
+```{r calc_analytics}
+#Calculate analytics - Stanley Neo
 
-bbg_data %>%
-  group_by(Ticker) %>% 
-  nest() %>% 
-  mutate(ewma_10 = map_dbl(data, ~ tail(ema(.x$PX_LAST, 10), 1)),
-         ewma_20 = map(data, ~ ema(.x$PX_LAST, 20)),
-         ewma_30 = map(data, ~ ema(.x$PX_LAST, 30))
-         )
+# bbg_data %>%
+#   group_by(Ticker) %>% 
+#   nest() %>% 
+#   mutate(ewma_10 = map_dbl(data, ~ tail(ema(.x$PX_LAST, 10), 1)),
+#          ewma_20 = map(data, ~ ema(.x$PX_LAST, 20)),
+#          ewma_30 = map(data, ~ ema(.x$PX_LAST, 30))
+#          )
 
+```
 
+```{r draw_grobs}
+# Draw grobs for all data in step above - Jie Rong
+```
+
+```{r arrange_grobs}
+# Arrange generated grobs for pretty printing and generate PDF - Ethel Ngiam
 ```
