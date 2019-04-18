@@ -1,3 +1,62 @@
+#' Wrapper for bdh with pre-built options for getting daily data for all calendar days, non-trading days will have previous value
+#'
+#' @param field A character vector with Bloomberg query fields.
+#' @param start_date A Date variable with the query start date.
+#' @param series A dataframe containing multiple securities with column names `ticker` and optional `name`
+#' @param options_overrides A list containing any additional options besides those to get weekdays
+#' @param end_date An optional Date variable with the query end date; if omitted the most recent available date is used.
+#'
+#' @return A list with as a many entries as there are entries in securities; each list contains a data.frame with one row per observations and as many columns as entries in fields. If the list is of length one, it is collapsed into a single data frame. Note that the order of securities returned is determined by the backend and may be different from the order of securities in the securities field.
+#' @export
+#'
+#' @examples
+#' \donttest{
+#' bdh_allday(c("SPX Index", "STI Index"), "PX_LAST", start.date = Sys.Date() - 31)
+#' }
+bdh_allday <- function(series, field = "PX_LAST", start_date = as.Date("1994-01-01"), end_date = NULL, options_overrides = NULL) {
+  # Set options
+  defaults <- c("periodicitySelection" = "DAILY",
+                "nonTradingDayFillOption" = "ALL_CALENDAR_DAYS",
+                "nonTradingDayFillMethod" = "PREVIOUS_VALUE")
+  options <- if (is.null(options_overrides)) defaults else c(options_overrides, defaults[! names(defaults) %in% names(options_overrides)])
+
+  ## ADDITIONAL OPTIONS FOR REFERENCE
+  # option.fields <- c("periodicitySelection", "nonTradingDayFillOption",
+  #                    "nonTradingDayFillMethod", "periodicityAdjustment",
+  #                    "adjustmentFollowDPDF", "currency")
+  #
+  # option.values <- c("DAILY", "NON_TRADING_WEEKDAYS", "NIL_VALUE",
+  #                    "CALENDAR", "TRUE", "USD")
+
+  # If series is data.frame, match name to ticker
+  if (any(class(series) == 'data.frame')) {
+    if (is.null(series$ticker)) stop("securities is a dataframe, column 'ticker' is missing")
+
+    bbg_series <- data.frame(ticker = series$ticker, stringsAsFactors = FALSE)
+    bbg_series$name <- if (is.null(series$name)) series$ticker else series$name
+  }
+  # If series is just a character vector, search for name of vector, otherwise just use ticker as header
+  else {
+    bbg_series <- data.frame(ticker = series, stringsAsFactors = FALSE)
+    bbg_series$name <- if (is.null(names(series))) series else names(series)
+  }
+
+  data <- bdh(bbg_series$ticker, field, start.date = start_date, end.date = end_date, options = options)
+
+  if (length(field) == 1) {
+    if (length(bbg_series$ticker) > 1) {
+      df <- data %>% reduce(inner_join, by = "date")
+      df <- df %>% setNames(c("date", data.frame(ticker = names(data), stringsAsFactors = FALSE) %>% left_join(bbg_series, by = "ticker") %>% .$name))
+    }
+    else {
+      df <- data %>% setNames(c("date", bbg_series$name))
+    }
+  }
+  else
+    df <- data
+  df
+}
+
 #' Build strategies from an input csv file or dataframe of strategies, can use `demo_strategies` to generate a template file
 #'
 #' @param input A dataframe containing strategy inputs or A character variable containing the path to the input csv file
