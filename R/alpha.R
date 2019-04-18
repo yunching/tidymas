@@ -92,7 +92,7 @@ build_alpha <- function(input, start_date = as.Date("2000-01-01"), end_date = to
                           # Filter out trades in current strategy
                           curr_strat <- strategies %>% dplyr::filter(.data$strategy == strat, .data$portfolio == pf, .data$owner == own)
                           inst_list <- curr_strat$identifier %>% unique
-                          actual_size <- data.frame(date = gen_weekdays(start_date, end_date))
+                          actual_size <- data.frame(date = seq(start_date, end_date, 1))
 
                           # Iterate through all identifiers required for this strategy
                           for (curr_inst in inst_list) {
@@ -120,8 +120,9 @@ build_alpha <- function(input, start_date = as.Date("2000-01-01"), end_date = to
                           actual_size
                         }) %>%
     bind_rows() %>%
-#    filter(.data$size != 0) %>%
-    as.tibble()
+    as_tibble() %>%
+    group_by(instrument, portfolio, strategy, owner) %>%
+    nest(.key = "size")
 
 
   # all_actual_size <- map(list_of_strat, ~.$actual) %>%
@@ -139,6 +140,54 @@ build_alpha <- function(input, start_date = as.Date("2000-01-01"), end_date = to
     ungroup()
 
   list(summary = strat_summ, actual = all_actual_size, trades = strategies)
+}
+
+build_alpha2 <- function(input, start_date = as.Date("2000-01-01"), end_date = today()) {
+  # Read in strategies
+  if (class(input) == "character") {
+    if (is.character(input) && file.exists(input)) {
+      strategies <- read.csv(input, stringsAsFactors = FALSE)
+    } else {
+      stop(sprintf("File %s cannot be found", input))
+    }
+  } else if ("data.frame" %in% class(input)) {
+    strategies <- input
+  } else{
+    stop("Invalid input, input can only be dataframe or character containing file path")
+  }
+
+  strategies <- strategies %>%
+    rename(portfolio = .data$Portfolio, owner = .data$Owner, strategy = .data$Sub.strategy, type = .data$Strategy, open_date = .data$Entry.Date, identifier = .data$Security.ID, size = .data$Amount, price = .data$Entry.Price) %>%
+    mutate(identifier = str_replace(.data$identifier, " Corp$", " Govt")) %>%
+    mutate(asset_class = ifelse(str_detect(.data$identifier, " (Govt|Corp)"), "Bonds", "Futures"))
+
+  strategies <- strategies %>%
+    mutate(open_date = ymd(.data$open_date),
+           #           strategy = paste(.data$strategy, .data$owner, sep = ":::"),
+           size = as.numeric(gsub(",", "", size))) %>%
+    as_tibble
+
+  alpha <- strategies %>%
+    # Select required fields
+    select(portfolio, strategy, owner, identifier, type, asset_class, open_date, size, price) %>%
+    # Nest trades based on strategy and instrument
+    group_by(portfolio, strategy, owner, identifier, type, asset_class) %>%
+    nest(.key = "trades") %>%
+    # Calculate size of trade across time
+    mutate(size = map(trades,~select(.x, date = open_date, size) %>%
+                        arrange(date) %>%  # Ensure dates are sorted
+                        mutate(size = cumsum(size)) %>%  # Calculate cumulative sizes
+                        full_join(tibble(date = seq(start_date - 1, end_date, 1)), by = "date") %>%  # Join with the full list of dates
+                        arrange(date) %>%  # Ensure dates are arranged in order after a join
+                        group_by(date) %>%
+                        summarise(size = sum(size)) %>%
+                        fill(size, .direction = "down") %>%   # Fill any blanks with previous
+                        filter(date >= start_date - 1, date <= end_date) %>%  # Filter out only dates we need
+                        replace_na(list(size = 0))
+
+    ))
+
+  alpha
 }
 
 
@@ -189,20 +238,19 @@ bdp_fut <- function(tickers, fields, ...) {
 #' @export
 #'
 #' @examples
-get_trade_return_futures <- function(portfolio, trades, curr) {
-  summ <- trades %>%
-    group_by(.data$strategy, .data$identifier, .data$asset_class, .data$owner, .data$type) %>%
-    summarise() %>%
-    ungroup()
+get_trade_return_futures <- function(portfolio, curr) {
+  instruments <- portfolio %>%
+    filter(asset_class == "Futures")
 
-  portfolio <- portfolio %>% filter(instrument %in% filter(summ, asset_class == "Futures")$identifier)
+  start_date <- min(portfolio$size[[1]]$date)
+  end_date <- max(portfolio$size[[1]]$date)
 
-  futures <- unique(portfolio$instrument)
-  start_date <- min(portfolio$date - 5)
-  end_date <- max(portfolio$date)
+  futures <- unique(instruments$identifier)
 
   # Download contract specifications
-  futures_specs <- bdp_fut(futures, c("FUT_VAL_PT", "CRNCY"))
+  futures_specs <- bdp_fut(futures, c("FUT_VAL_PT", "CRNCY")) %>%
+    mutate(FUT_VAL_PT = as.numeric(FUT_VAL_PT)) %>%
+    as_tibble()
 
   # Download currency pairs
   req_curr <- futures_specs['CRNCY'] %>%
@@ -211,65 +259,141 @@ get_trade_return_futures <- function(portfolio, trades, curr) {
     mutate(ticker = paste0(.data$CRNCY, curr, " Curncy")) %>%
     rename(name = .data$CRNCY)
 
-  fx_prices <- bdh_weekday(req_curr, "PX_LAST", start_date, end_date) %>%
+  if (nrow(req_curr) == 0) { # Prevent error if there are no required currency pairs
+    req_curr <- data.frame(name = "dummy", ticker = "ZARUSD Curncy")
+  }
+
+  fx_prices <- bdh_allday(req_curr, "PX_LAST", start_date, end_date) %>%
     mutate(!!curr := 1) %>%
     gather("fx", "fx_price", -.data$date) %>%
-    mutate(fx_price = ifelse(fx == "JPY", fx_price / 100, fx_price))
+    mutate(fx_price = ifelse(fx == "JPY", fx_price / 100, fx_price)) %>%
+    group_by(.data$fx) %>%
+    nest(.key = "fx_price")
 
-  # Download prices based on renamed futures names
-  futures_prices <- bdh_weekday(futures_specs$renamed_inst, "PX_LAST", start_date, end_date)%>%
+  futures_prices <- bdh_allday(futures_specs$renamed_inst, "PX_LAST", start_date, end_date) %>%
     gather("instrument", "PX_LAST", -.data$date) %>%
-#    filter(!is.na(.data$PX_LAST)) %>%
-    left_join(
-      bdp(futures, c("FUT_VAL_PT", "CRNCY")) %>% rownames_to_column("instrument"),
-      by = "instrument") %>%
-    mutate(FUT_VAL_PT = as.numeric(.data$FUT_VAL_PT)) %>%
-    rename(renamed_inst = .data$instrument, fx = .data$CRNCY) %>%
-    left_join(select(futures_specs, .data$instrument, .data$renamed_inst), by = "renamed_inst") %>%
-    select(-.data$renamed_inst) %>%
-    group_by(instrument) %>%
-    mutate(return = .data$PX_LAST - dplyr::lag(.data$PX_LAST))
+    group_by(.data$instrument) %>%
+    nest(.key = "price")
 
-  # Futures FX returns is only the daily pnl in local currency terms multiplied by today's FX rates, as futures are traded on margin
-  # Hence there is no exposure on the contract value of the contracts.
+  # Filter size so dates are the same as prices
+  instruments <- instruments %>%
+    mutate(size = map(.data$size, ~filter(.x, date >= start_date - 1, date <= end_date)))
 
-  # Calculate per instrument daily pnl from market movements
+  ## TODO: Give error if desired date exceeds size
 
-  market_pnl <- portfolio %>%
-    left_join(futures_prices, by = c("date", "instrument")) %>%
-    left_join(fx_prices, by = c("date", "fx")) %>%
-    group_by(.data$strategy, .data$instrument) %>%
-    mutate(market_pnl = .data$fx_price * .data$size*.data$FUT_VAL_PT*(.data$return)) %>%
-    replace_na(list(pnl=0)) %>%
-    select(.data$date, .data$instrument, .data$portfolio, .data$strategy, .data$owner,.data$market_pnl) %>%
-    as_tibble()
+  ## TODO: Give error if size and prices dates are different
 
-  # Calculate timing pnl
-  timing_pnl <- trades %>%
-    left_join(futures_prices, by = c("open_date" = "date", "identifier" = "instrument")) %>%
-    left_join(fx_prices, by = c("open_date" = "date", "fx")) %>%
-    group_by(.data$strategy, .data$identifier) %>%
-    mutate(timing_pnl = .data$fx_price * .data$size * .data$FUT_VAL_PT*(.data$PX_LAST - .data$price)) %>%
-    replace_na(list(pnl=0)) %>%
+  instruments %>% left_join(futures_specs, by = c("identifier" = "instrument")) %>%
+    left_join(futures_prices, by = c("renamed_inst" = "instrument")) %>%
+    left_join(fx_prices, by = c("CRNCY" = "fx")) %>%
     ungroup() %>%
-    group_by(.data$strategy, .data$identifier, .data$portfolio, .data$owner, .data$open_date) %>%
-    summarise(timing_pnl = sum(.data$timing_pnl)) %>%
-    select(date= .data$open_date, instrument = .data$identifier, .data$portfolio, .data$strategy, .data$owner, .data$timing_pnl) %>%
-    ungroup() %>%
-    as_tibble()
-
-  total_pnl <- full_join(market_pnl, timing_pnl, by = c("date", "instrument", "portfolio", "strategy", "owner")) %>%
-    replace_na(list(timing_pnl = 0, market_pnl = 0)) %>%
-    gather("pnl_type", "pnl", -.data$strategy, -.data$date, -.data$instrument, -.data$portfolio, -.data$owner)
-
-  total_pnl %>%
-    group_by(.data$strategy, .data$portfolio, .data$owner, .data$date, .data$pnl_type) %>%
-    summarise(pnl = sum(.data$pnl, na.rm = T))  %>%
-    ungroup() %>%
-    group_by(.data$strategy, .data$pnl_type) %>%
-    mutate(cum_pnl = cumsum(.data$pnl)) %>%
-    ungroup
+    as_tibble() %>%
+    # Calculate market pnl
+    mutate(market_pnl = pmap(list(size = size, price = price, fx_price = fx_price, multiplier = FUT_VAL_PT),
+                      function(size, price, multiplier, fx_price) {
+                        size %>%
+                          left_join(price, by = "date") %>%
+                          left_join(fx, by = "date") %>%
+                          mutate(pnl = size * (PX_LAST - dplyr::lag(PX_LAST)) * fx_price * multiplier,
+                                 pnl = ifelse(is.na(pnl), 0, pnl)) %>%
+                          .$pnl
+                      })) %>%
+    # Calculate timing pnl
+    mutate(timing_pnl = pmap(list(trades, price, fx_price, FUT_VAL_PT),
+                                     function(trades, price, fx_price,FUT_VAL_PT) {
+                                       price %>%
+                                         left_join(fx_price, by = "date") %>%
+                                         left_join(trades, by = c("date" = "open_date")) %>%
+                                         mutate(timing_pnl = size * (PX_LAST - price) * fx_price * FUT_VAL_PT,
+                                                timing_pnl = ifelse(is.na(timing_pnl), 0, timing_pnl)) %>%
+                                         group_by(date) %>%
+                                         summarise(timing_pnl = sum(timing_pnl)) %>%
+                                         .$timing_pnl
+                                       })) %>%
+    mutate(pnl = map2(market_pnl, timing_pnl, ~ .x + .y))
 }
+
+# get_trade_return_futures_old <- function(portfolio, trades, curr) {
+#   summ <- trades %>%
+#     group_by(.data$strategy, .data$identifier, .data$asset_class, .data$owner, .data$type) %>%
+#     summarise() %>%
+#     ungroup()
+#
+#   portfolio <- portfolio %>% filter(instrument %in% filter(summ, asset_class == "Futures")$identifier)
+#
+#   futures <- unique(portfolio$instrument)
+#   start_date <- min(portfolio$date - 5)
+#   end_date <- max(portfolio$date)
+#
+#   # Download contract specifications
+#   futures_specs <- bdp_fut(futures, c("FUT_VAL_PT", "CRNCY"))
+#
+#   # Download currency pairs
+#   req_curr <- futures_specs['CRNCY'] %>%
+#     unique %>%
+#     filter(.data$CRNCY != curr) %>%
+#     mutate(ticker = paste0(.data$CRNCY, curr, " Curncy")) %>%
+#     rename(name = .data$CRNCY)
+#
+#   fx_prices <- bdh_weekday(req_curr, "PX_LAST", start_date, end_date) %>%
+#     mutate(!!curr := 1) %>%
+#     gather("fx", "fx_price", -.data$date) %>%
+#     mutate(fx_price = ifelse(fx == "JPY", fx_price / 100, fx_price))
+#
+#   # Download prices based on renamed futures names
+#   futures_prices <- bdh_weekday(futures_specs$renamed_inst, "PX_LAST", start_date, end_date)%>%
+#     gather("instrument", "PX_LAST", -.data$date) %>%
+# #    filter(!is.na(.data$PX_LAST)) %>%
+#     left_join(
+#       bdp(futures, c("FUT_VAL_PT", "CRNCY")) %>% rownames_to_column("instrument"),
+#       by = "instrument") %>%
+#     mutate(FUT_VAL_PT = as.numeric(.data$FUT_VAL_PT)) %>%
+#     rename(renamed_inst = .data$instrument, fx = .data$CRNCY) %>%
+#     left_join(select(futures_specs, .data$instrument, .data$renamed_inst), by = "renamed_inst") %>%
+#     select(-.data$renamed_inst) %>%
+#     group_by(instrument) %>%
+#     mutate(return = .data$PX_LAST - dplyr::lag(.data$PX_LAST))
+#
+#   # Futures FX returns is only the daily pnl in local currency terms multiplied by today's FX rates, as futures are traded on margin
+#   # Hence there is no exposure on the contract value of the contracts.
+#
+#   # Calculate per instrument daily pnl from market movements
+#
+#   market_pnl <- portfolio %>%
+#     left_join(futures_prices, by = c("date", "instrument")) %>%
+#     left_join(fx_prices, by = c("date", "fx")) %>%
+#     group_by(.data$strategy, .data$instrument) %>%
+#     mutate(market_pnl = .data$fx_price * .data$size*.data$FUT_VAL_PT*(.data$return)) %>%
+#     replace_na(list(pnl=0)) %>%
+#     select(.data$date, .data$instrument, .data$portfolio, .data$strategy, .data$owner,.data$market_pnl) %>%
+#     as_tibble()
+#
+#   # Calculate timing pnl
+#   timing_pnl <- trades %>%
+#     left_join(futures_prices, by = c("open_date" = "date", "identifier" = "instrument")) %>%
+#     left_join(fx_prices, by = c("open_date" = "date", "fx")) %>%
+#     group_by(.data$strategy, .data$identifier) %>%
+#     mutate(timing_pnl = .data$fx_price * .data$size * .data$FUT_VAL_PT*(.data$PX_LAST - .data$price)) %>%
+#     replace_na(list(pnl=0)) %>%
+#     ungroup() %>%
+#     group_by(.data$strategy, .data$identifier, .data$portfolio, .data$owner, .data$open_date) %>%
+#     summarise(timing_pnl = sum(.data$timing_pnl)) %>%
+#     select(date= .data$open_date, instrument = .data$identifier, .data$portfolio, .data$strategy, .data$owner, .data$timing_pnl) %>%
+#     ungroup() %>%
+#     as_tibble()
+#
+#   total_pnl <- full_join(market_pnl, timing_pnl, by = c("date", "instrument", "portfolio", "strategy", "owner")) %>%
+#     replace_na(list(timing_pnl = 0, market_pnl = 0)) %>%
+#     gather("pnl_type", "pnl", -.data$strategy, -.data$date, -.data$instrument, -.data$portfolio, -.data$owner)
+#
+#   total_pnl %>%
+#     group_by(.data$strategy, .data$portfolio, .data$owner, .data$date, .data$pnl_type) %>%
+#     summarise(pnl = sum(.data$pnl, na.rm = T))  %>%
+#     ungroup() %>%
+#     group_by(.data$strategy, .data$pnl_type) %>%
+#     mutate(cum_pnl = cumsum(.data$pnl)) %>%
+#     ungroup
+# }
 
 #' Get return of bonds trades
 #'
@@ -280,18 +404,14 @@ get_trade_return_futures <- function(portfolio, trades, curr) {
 #' @export
 #'
 #' @examples
-get_trade_return_bonds <- function(portfolio, trades, curr) {
-  summ <- trades %>%
-    group_by(.data$strategy, .data$identifier, .data$asset_class, .data$owner, .data$type) %>%
-    summarise() %>%
-    ungroup()
+get_trade_return_bonds <- function(portfolio, curr) {
+  instruments <- portfolio %>%
+    filter(asset_class == "Bonds")
 
-  start_date <- min(portfolio$date - 5)
-  end_date <- max(portfolio$date)
+  start_date <- min(portfolio$size[[1]]$date)
+  end_date <- max(portfolio$size[[1]]$date)
 
-  bonds <- filter(summ, .data$asset_class == "Bonds")$identifier %>% unique
-
-  portfolio <- filter(portfolio, .data$instrument %in% bonds)
+  # Stopped here
 
   if (length(bonds) == 1) {
     bond_prices_only <- bdh_weekday(bonds, c("PX_LAST", "IDX_RATIO"), start_date, end_date) %>%
@@ -323,16 +443,16 @@ get_trade_return_bonds <- function(portfolio, trades, curr) {
   one_day <- filter(bond_prices, .data$date < min(portfolio$date))$date %>% unique %>% max()
 
   portfolio <- rbind(portfolio %>% filter(.data$date == min(.data$date)) %>% mutate(size = 0, date = one_day),
-        portfolio)
+                     portfolio)
 
   market_pnl <- portfolio %>%
     left_join(bond_prices , by = c("date", "instrument")) %>%
     left_join(fx_prices, by = c("date", "fx")) %>%
     group_by(.data$strategy, .data$owner, .data$portfolio, .data$instrument) %>%
-      mutate(day_count = as.numeric(.data$date - dplyr::lag(.data$date)),
-             px_chg = .data$fx_rate * (.data$PX_LAST - dplyr::lag(.data$PX_LAST)) * .data$IDX_RATIO / 100,
-             accrued_interest = .data$day_count / 365 * .data$CPN/100 * ifelse(is.na(.data$PX_LAST), NA, 1) * .data$fx_rate,
-             fx_ret = ((.data$PX_LAST * .data$fx_rate - dplyr::lag(.data$PX_LAST) * dplyr::lag(.data$fx_rate)) * .data$IDX_RATIO / 100) - px_chg) %>%
+    mutate(day_count = as.numeric(.data$date - dplyr::lag(.data$date)),
+           px_chg = .data$fx_rate * (.data$PX_LAST - dplyr::lag(.data$PX_LAST)) * .data$IDX_RATIO / 100,
+           accrued_interest = .data$day_count / 365 * .data$CPN/100 * ifelse(is.na(.data$PX_LAST), NA, 1) * .data$fx_rate,
+           fx_ret = ((.data$PX_LAST * .data$fx_rate - dplyr::lag(.data$PX_LAST) * dplyr::lag(.data$fx_rate)) * .data$IDX_RATIO / 100) - px_chg) %>%
 
     replace_na(list(px_chg = 0, accrued_interest = 0, fx_ret = 0)) %>%
     mutate(market_pnl = .data$size * (.data$px_chg + .data$accrued_interest),
@@ -365,3 +485,89 @@ get_trade_return_bonds <- function(portfolio, trades, curr) {
     ungroup %>%
     filter(.data$date != one_day)
 }
+
+# get_trade_return_bonds_old <- function(portfolio, trades, curr) {
+#   summ <- trades %>%
+#     group_by(.data$strategy, .data$identifier, .data$asset_class, .data$owner, .data$type) %>%
+#     summarise() %>%
+#     ungroup()
+#
+#   start_date <- min(portfolio$date - 5)
+#   end_date <- max(portfolio$date)
+#
+#   bonds <- filter(summ, .data$asset_class == "Bonds")$identifier %>% unique
+#
+#   portfolio <- filter(portfolio, .data$instrument %in% bonds)
+#
+#   if (length(bonds) == 1) {
+#     bond_prices_only <- bdh_weekday(bonds, c("PX_LAST", "IDX_RATIO"), start_date, end_date) %>%
+#       mutate(instrument = bonds)
+#   } else {
+#     bond_prices_only <- bdh_weekday(bonds, c("PX_LAST", "IDX_RATIO"), start_date, end_date) %>%
+#       bind_rows(.id = "instrument")
+#   }
+#
+#   bond_prices  <- bond_prices_only  %>%
+#     left_join(
+#       bdp(bonds, c("CPN", "CRNCY")) %>% rownames_to_column("instrument"),
+#       by = "instrument") %>%
+#     rename(fx = CRNCY) %>%
+#     replace_na(list(IDX_RATIO = 1))
+#
+#   req_curr <- bond_prices['fx'] %>%
+#     unique %>%
+#     filter(fx != curr) %>%
+#     mutate(ticker = paste0(.data$fx, curr, " Curncy")) %>%
+#     rename(name = fx)
+#
+#   fx_prices <- bdh_weekday(req_curr, "PX_LAST", start_date, end_date) %>%
+#     mutate(!!curr := 1) %>%
+#     gather("fx", "fx_rate", -.data$date) %>%
+#     mutate(fx_rate = ifelse(fx == "JPY", fx_rate / 100, fx_rate))
+#
+#   # Add one extra earlier day where all positions are zero, for proper PNL calculations
+#   one_day <- filter(bond_prices, .data$date < min(portfolio$date))$date %>% unique %>% max()
+#
+#   portfolio <- rbind(portfolio %>% filter(.data$date == min(.data$date)) %>% mutate(size = 0, date = one_day),
+#         portfolio)
+#
+#   market_pnl <- portfolio %>%
+#     left_join(bond_prices , by = c("date", "instrument")) %>%
+#     left_join(fx_prices, by = c("date", "fx")) %>%
+#     group_by(.data$strategy, .data$owner, .data$portfolio, .data$instrument) %>%
+#       mutate(day_count = as.numeric(.data$date - dplyr::lag(.data$date)),
+#              px_chg = .data$fx_rate * (.data$PX_LAST - dplyr::lag(.data$PX_LAST)) * .data$IDX_RATIO / 100,
+#              accrued_interest = .data$day_count / 365 * .data$CPN/100 * ifelse(is.na(.data$PX_LAST), NA, 1) * .data$fx_rate,
+#              fx_ret = ((.data$PX_LAST * .data$fx_rate - dplyr::lag(.data$PX_LAST) * dplyr::lag(.data$fx_rate)) * .data$IDX_RATIO / 100) - px_chg) %>%
+#
+#     replace_na(list(px_chg = 0, accrued_interest = 0, fx_ret = 0)) %>%
+#     mutate(market_pnl = .data$size * (.data$px_chg + .data$accrued_interest),
+#            fx_pnl = .data$size * .data$fx_ret) %>%
+#     select(date, .data$strategy, .data$portfolio, .data$owner, .data$instrument, .data$size, .data$market_pnl, .data$fx_pnl) %>%
+#     ungroup()
+#
+#   timing_pnl <- filter(trades, .data$asset_class == "Bonds") %>%
+#     left_join(bond_prices, by = c("open_date" = "date", "identifier" = "instrument")) %>%
+#     left_join(fx_prices, by = c("open_date" = "date", "fx")) %>%
+#     group_by(.data$strategy, .data$identifier) %>%
+#     mutate(timing_pnl = .data$size * (.data$PX_LAST - .data$price)/100 * .data$fx_rate) %>%
+#     replace_na(list(timing_pnl=0)) %>%
+#     as_tibble()
+#
+#   total_pnl <- market_pnl %>%
+#     left_join(
+#       select(timing_pnl, .data$strategy, .data$open_date, .data$timing_pnl, .data$identifier),
+#       by = c("date"="open_date", "strategy", "instrument" = "identifier")) %>%
+#     replace_na(list(timing_pnl = 0)) %>%
+#     select(.data$strategy, .data$portfolio, .data$owner, .data$date, .data$instrument, .data$market_pnl, .data$timing_pnl, .data$fx_pnl) %>%
+#     gather("pnl_type", "pnl", -.data$strategy, -.data$date, -.data$instrument, -.data$portfolio, -.data$owner)
+#
+#   total_pnl %>%
+#     group_by(.data$strategy, .data$portfolio, .data$owner, .data$date, .data$pnl_type) %>%
+#     summarise(pnl = sum(.data$pnl, na.rm = T)) %>%
+#     ungroup() %>%
+#     group_by(.data$strategy, .data$pnl_type) %>%
+#     mutate(cum_pnl = cumsum(.data$pnl)) %>%
+#     ungroup %>%
+#     filter(.data$date != one_day)
+# }

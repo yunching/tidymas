@@ -33,6 +33,10 @@ devtools::load_all(".")
 
 alpha <- build_alpha(file.path("..", "data2", "trademaster_full.csv"), start_date = start_date, end_date = end_date)
 
+alpha2 <- build_alpha2(file.path("..", "data2", "trademaster.csv"), start_date = start_date, end_date = end_date)
+
+pnl_futures <- get_trade_return_futures(alpha2, curr)
+
 pnl_futures <- get_trade_return_futures(alpha$actual, alpha$trades, curr) %>%
   mutate(asset_class = "Futures")
 pnl_bonds <- get_trade_return_bonds(alpha$actual, alpha$trades, curr) %>%
