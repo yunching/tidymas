@@ -19,7 +19,8 @@ bbg_data_raw <- bdh(sec_list, c("PX_OPEN", "PX_HIGH", "PX_LOW", "PX_LAST", "Volu
 
 bbg_data_raw %>% 
   bind_rows(.id = "Ticker") %>% 
-  as_tibble() ->
+  as_tibble() %>%
+  na.omit ->
   bbg_data
 ```
 
@@ -33,6 +34,19 @@ bbg_data_raw %>%
 #          ewma_20 = map(data, ~ ema(.x$PX_LAST, 20)),
 #          ewma_30 = map(data, ~ ema(.x$PX_LAST, 30))
 #          )
+
+asset. = bbg_data %>% select(-Volume) %>% nest(-Ticker)
+
+asset  = asset. %>% mutate(
+  PIVOT = map(data, ~ select(tidy.ZOO(as.zoo(ta.PIVOT(tidy.ZOO(.x, tidy=TRUE))), zoo=TRUE), -date)),
+  ATR   = map(data, ~ select(tidy.ZOO(ta.ATR(tidy.ZOO(.x, tidy=TRUE), 20, smooth='e', wilder=TRUE), zoo=TRUE, tname='ATR'), -date)),
+  EMA10 = map(data, ~ select(tidy.ZOO(ta.EMA(tidy.ZOO(.x, tidy=TRUE)$PX_LAST, 10), zoo=TRUE, tname='EMA10'), -date)),
+  EMA40 = map(data, ~ select(tidy.ZOO(ta.EMA(tidy.ZOO(.x, tidy=TRUE)$PX_LAST, 40), zoo=TRUE, tname='EMA40'), -date)),
+  EMA144= map(data, ~ select(tidy.ZOO(ta.EMA(tidy.ZOO(.x, tidy=TRUE)$PX_LAST, 144), zoo=TRUE, tname='EMA144'), -date)),
+  RSI   = map(data, ~ select(tidy.ZOO(ta.RSI(tidy.ZOO(.x, tidy=TRUE)$PX_LAST, 7), zoo=TRUE, tname='RSI'), -date)),
+  STOCH = map(data, ~ select(tidy.ZOO(ta.STOCH(tidy.ZOO(.x, tidy=TRUE), 5,5,3,1), zoo=TRUE), -date)),
+  TTMSQ = map(data, ~ select(tidy.ZOO(ta.TTMSQ(tidy.ZOO(.x, tidy=TRUE), 20, smooth='e', wilder=TRUE), zoo=TRUE), -date))
+  ) %>% unnest %>% nest(-Ticker)
 
 ```
 
