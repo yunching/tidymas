@@ -485,3 +485,22 @@ tidy.ZOO = function(tseries, zoo=FALSE, tidy=FALSE, tname='Value'){
   if(tidy==TRUE) dseries = tseries[2:length(colnames(tseries))] %>% zoo(order.by=tseries$date)
   return(dseries)
 }
+
+#--------------------------------------------------------------------------------------------------#
+# PORTFOLIO TOOLBOX
+
+# Sharpe
+calc_sharpe <- function(ret, annualize_factor = 252) {
+  mean_ret <- mean(ret, na.rm = T)
+  sd_ret <- sd(ret, na.rm = T)
+
+  (mean_ret * annualize_factor)/(sd_ret * sqrt(annualize_factor))
+}
+
+# Sortino
+calc_sortino = function(ret, annualize_factor = 252) {
+  mean_ret = mean(ret, na.rm = T)
+  ret = ifelse(ret < 0, ret,0)
+  sd_downside = sd(ret, na.rm = T)
+  (mean_ret * annualize_factor)/(sd_downside * sqrt(annualize_factor))
+}

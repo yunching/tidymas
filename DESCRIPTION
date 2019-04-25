@@ -29,7 +29,8 @@ Imports:
     forcats,
     RcppRoll,
     scales,
-    psych
+    psych,
+    generics
 Suggests: knitr,rmarkdown, zoo, xts, TTR
 VignetteBuilder: knitr
 RoxygenNote: 6.1.1
