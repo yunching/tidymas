@@ -6,6 +6,7 @@ output: html_notebook
 ```{r setup}
 library(tidyverse)
 library(Rblpapi)
+library(zoo)
 
 blpConnect()
 ```
@@ -52,6 +53,664 @@ asset  = asset. %>% mutate(
 
 ```{r draw_grobs}
 # Draw grobs for all data in step above - Jie Rong
+#Calling data
+RX1.df = asset %>% tidy.SELECT("RX1 Comdty") %>%  tidy.VIEW(type = "t", rows = 252)
+G1.df = asset %>% tidy.SELECT("G 1 Comdty") %>%  tidy.VIEW(type = "t", rows = 252)
+IK1.df = asset %>% tidy.SELECT("IK1 Comdty") %>%  tidy.VIEW(type = "t", rows = 252)
+OAT1.df = asset %>% tidy.SELECT("OAT1 Comdty") %>%  tidy.VIEW(type = "t", rows = 252)
+ES1.df = asset %>% tidy.SELECT("ES1 Index") %>%  tidy.VIEW(type = "t", rows = 252)
+VG1.df = asset %>% tidy.SELECT("VG1 Index") %>%  tidy.VIEW(type = "t", rows = 252)
+Z1.df = asset %>% tidy.SELECT("Z 1 Index") %>%  tidy.VIEW(type = "t", rows = 252)
+TY1.df = asset %>% tidy.SELECT("TY1 Comdty") %>%  tidy.VIEW(type = "t", rows = 252)
+
+#RX1 Comdty
+# Price chart
+RX1_pricechart = 
+    ggplot(data= RX1.df, aes(x=date, y = PX_LAST)) +
+    geom_linerange(aes(ymin=PX_LOW, ymax=PX_HIGH)) +
+    theme_bw() +
+    labs(title="RX1 Price Range") +
+    labs(x = "Date", y = "Price")+
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+  
+# Daily Close
+RX1_dailyclose = 
+    ggplot(data = RX1.df, aes(x = date, y = PX_LAST)) +
+    geom_line() +
+    labs(x = "Date", y = "Price") +
+    labs(title = "RX1 Daily Close") +
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+
+# RSI Chart
+RX1_RSI =
+    ggplot(data = RX1.df) +
+    geom_line(aes(x=date,y=RSI),colour="red") +
+    geom_hline(aes(yintercept = 70),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    geom_hline(aes(yintercept = 30),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    scale_y_continuous(breaks= c(30,50,70)) +
+    labs(x = "Date", y = "RSI") +
+    labs(title = "RX1 RSI")
+
+# Stochastic
+RX1_stoc = 
+  ggplot(data = RX1.df) +
+  geom_line(aes(x=date,y=fastD),colour="red") +
+  geom_line(aes(x=date,y=slowD), colour="blue") +
+  geom_hline(aes(yintercept = 80),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  geom_hline(aes(yintercept = 20),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  scale_y_continuous(breaks= c(20,50,80)) +
+  labs(x = "Date", y = "Stochastic") +
+  labs(title = "RX1 Stochastic")
+
+# ATR
+RX1_ATR = 
+  ggplot(data = RX1.df) +
+  geom_line(aes(x=date,y=ATR),colour="black") +
+  labs(x = "Date", y = "ATR") +
+  labs(title = "RX1 ATR")
+
+# Price frequencies
+RX1_pricefrequencies = 
+  ggplot(data=RX1.df, aes(x=RX1.df$PX_LAST)) + 
+  geom_histogram(breaks=seq(155, 170, by=0.5), col="red", fill="green", alpha = .2) + 
+  labs(title="RX1 Price frequencies", x="Price", y="Density")
+
+# HistSQ
+
+RX1_dotsq0 = RX1.df$dotSQ
+RX1_dotsq0[RX1_dotsq0 == 1] = NA
+
+RX1_dotsq1 = RX1.df$dotSQ
+RX1_dotsq1[RX1_dotsq1 == 0] = NA 
+RX1_dotsq1[RX1_dotsq1 == 1] = 0 
+
+RX1_histSQ = 
+  ggplot(data=RX1.df) +
+  geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
+  geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
+  geom_point(aes(x=date, y=RX1_dotsq0),colour = "green", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=RX1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  labs(title = "RX1 HistSQ", x="Date", y= "HistSQ")
+
+# Interactive viewer using plotly
+RX1.df %>% 
+plot_ly(x = ~date, type = "ohlc", 
+        open = ~PX_OPEN, close = ~PX_LAST,
+        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+  layout(title="RX1 OHLC",
+         xaxis = list(rangeslider = list (visible = F)))
+
+#G1 Comdty
+# Price chart
+G1_pricechart = 
+    ggplot(data= G1.df, aes(x=date, y = PX_LAST)) +
+    geom_linerange(aes(ymin=PX_LOW, ymax=PX_HIGH)) +
+    theme_bw() +
+    labs(title="G1 Price Range") +
+    labs(x = "Date", y = "Price")+
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+  
+# Daily Close
+G1_dailyclose = 
+    ggplot(data = G1.df, aes(x = date, y = PX_LAST)) +
+    geom_line() +
+    labs(x = "Date", y = "Price") +
+    labs(title = "G1 Daily Close") +
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+
+# RSI Chart
+G1_RSI =
+    ggplot(data = G1.df) +
+    geom_line(aes(x=date,y=RSI),colour="red") +
+    geom_hline(aes(yintercept = 70),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    geom_hline(aes(yintercept = 30),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    scale_y_continuous(breaks= c(30,50,70)) +
+    labs(x = "Date", y = "RSI") +
+    labs(title = "G1 RSI")
+
+# Stochastic
+G1_stoc = 
+  ggplot(data = G1.df) +
+  geom_line(aes(x=date,y=fastD),colour="red") +
+  geom_line(aes(x=date,y=slowD), colour="blue") +
+  geom_hline(aes(yintercept = 80),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  geom_hline(aes(yintercept = 20),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  scale_y_continuous(breaks= c(20,50,80)) +
+  labs(x = "Date", y = "Stochastic") +
+  labs(title = "G1 Stochastic")
+
+# ATR
+G1_ATR = 
+  ggplot(data = G1.df) +
+  geom_line(aes(x=date,y=ATR),colour="black") +
+  labs(x = "Date", y = "ATR") +
+  labs(title = "G1 ATR")
+
+# Price frequencies
+G1_pricefrequencies = 
+  ggplot(data=G1.df, aes(x=G1.df$PX_LAST)) + 
+  geom_histogram(breaks=seq(115, 135, by=0.5), col="red", fill="green", alpha = .2) + 
+  labs(title="G1 Price frequencies", x="Price", y="Density")
+
+# HistSQ
+
+G1_dotsq0 = G1.df$dotSQ
+G1_dotsq0[G1_dotsq0 == 1] = NA
+
+G1_dotsq1 = G1.df$dotSQ
+G1_dotsq1[G1_dotsq1 == 0] = NA 
+G1_dotsq1[G1_dotsq1 == 1] = 0 
+
+G1_histSQ = 
+  ggplot(data=G1.df) +
+  geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
+  geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
+  geom_point(aes(x=date, y=G1_dotsq0),colour = "green", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=G1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  labs(title = "G1 HistSQ", x="Date", y= "HistSQ")
+
+# Interactive viewer using plotly
+G1.df %>% 
+plot_ly(x = ~date, type = "ohlc", 
+        open = ~PX_OPEN, close = ~PX_LAST,
+        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+  layout(title="G1 OHLC",
+         xaxis = list(rangeslider = list (visible = F)))
+
+#IK1 Comdty
+# Price chart
+IK1_pricechart = 
+    ggplot(data= IK1.df, aes(x=date, y = PX_LAST)) +
+    geom_linerange(aes(ymin=PX_LOW, ymax=PX_HIGH)) +
+    theme_bw() +
+    labs(title="IK1 Price Range") +
+    labs(x = "Date", y = "Price")+
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+  
+# Daily Close
+IK1_dailyclose = 
+    ggplot(data = IK1.df, aes(x = date, y = PX_LAST)) +
+    geom_line() +
+    labs(x = "Date", y = "Price") +
+    labs(title = "IK1 Daily Close") +
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+
+# RSI Chart
+IK1_RSI =
+    ggplot(data = IK1.df) +
+    geom_line(aes(x=date,y=RSI),colour="red") +
+    geom_hline(aes(yintercept = 70),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    geom_hline(aes(yintercept = 30),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    scale_y_continuous(breaks= c(30,50,70)) +
+    labs(x = "Date", y = "RSI") +
+    labs(title = "IK1 RSI")
+
+# Stochastic
+IK1_stoc = 
+  ggplot(data = IK1.df) +
+  geom_line(aes(x=date,y=fastD),colour="red") +
+  geom_line(aes(x=date,y=slowD), colour="blue") +
+  geom_hline(aes(yintercept = 80),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  geom_hline(aes(yintercept = 20),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  scale_y_continuous(breaks= c(20,50,80)) +
+  labs(x = "Date", y = "Stochastic") +
+  labs(title = "IK1 Stochastic")
+
+# ATR
+IK1_ATR = 
+  ggplot(data = IK1.df) +
+  geom_line(aes(x=date,y=ATR),colour="black") +
+  labs(x = "Date", y = "ATR") +
+  labs(title = "IK1 ATR")
+
+# Price frequencies
+IK1_pricefrequencies = 
+  ggplot(data=IK1.df, aes(x=IK1.df$PX_LAST)) + 
+  geom_histogram(breaks=seq(115, 145, by=0.5), col="red", fill="green", alpha = .2) + 
+  labs(title="IK1 Price frequencies", x="Price", y="Density")
+
+# HistSQ
+
+IK1_dotsq0 = IK1.df$dotSQ
+IK1_dotsq0[IK1_dotsq0 == 1] = NA
+
+IK1_dotsq1 = IK1.df$dotSQ
+IK1_dotsq1[IK1_dotsq1 == 0] = NA 
+IK1_dotsq1[IK1_dotsq1 == 1] = 0 
+
+IK1_histSQ = 
+  ggplot(data=IK1.df) +
+  geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
+  geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
+  geom_point(aes(x=date, y=IK1_dotsq0),colour = "green", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=IK1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  labs(title = "IK1 HistSQ", x="Date", y= "HistSQ")
+
+# Interactive viewer using plotly
+IK1.df %>% 
+plot_ly(x = ~date, type = "ohlc", 
+        open = ~PX_OPEN, close = ~PX_LAST,
+        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+  layout(title="IK1 OHLC",
+         xaxis = list(rangeslider = list (visible = F)))
+
+#OAT1 Comdty
+# Price chart
+OAT1_pricechart = 
+    ggplot(data= OAT1.df, aes(x=date, y = PX_LAST)) +
+    geom_linerange(aes(ymin=PX_LOW, ymax=PX_HIGH)) +
+    theme_bw() +
+    labs(title="OAT1 Price Range") +
+    labs(x = "Date", y = "Price")+
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+  
+# Daily Close
+OAT1_dailyclose = 
+    ggplot(data = OAT1.df, aes(x = date, y = PX_LAST)) +
+    geom_line() +
+    labs(x = "Date", y = "Price") +
+    labs(title = "OAT1 Daily Close") +
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+
+# RSI Chart
+OAT1_RSI =
+    ggplot(data = OAT1.df) +
+    geom_line(aes(x=date,y=RSI),colour="red") +
+    geom_hline(aes(yintercept = 70),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    geom_hline(aes(yintercept = 30),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    scale_y_continuous(breaks= c(30,50,70)) +
+    labs(x = "Date", y = "RSI") +
+    labs(title = "OAT1 RSI")
+
+# Stochastic
+OAT1_stoc = 
+  ggplot(data = OAT1.df) +
+  geom_line(aes(x=date,y=fastD),colour="red") +
+  geom_line(aes(x=date,y=slowD), colour="blue") +
+  geom_hline(aes(yintercept = 80),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  geom_hline(aes(yintercept = 20),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  scale_y_continuous(breaks= c(20,50,80)) +
+  labs(x = "Date", y = "Stochastic") +
+  labs(title = "OAT1 Stochastic")
+
+# ATR
+OAT1_ATR = 
+  ggplot(data = OAT1.df) +
+  geom_line(aes(x=date,y=ATR),colour="black") +
+  labs(x = "Date", y = "ATR") +
+  labs(title = "OAT1 ATR")
+
+# Price frequencies
+OAT1_pricefrequencies = 
+  ggplot(data=OAT1.df, aes(x=OAT1.df$PX_LAST)) + 
+  geom_histogram(breaks=seq(145, 165, by=0.5), col="red", fill="green", alpha = .2) + 
+  labs(title="OAT1 Price frequencies", x="Price", y="Density")
+
+# HistSQ
+
+OAT1_dotsq0 = OAT1.df$dotSQ
+OAT1_dotsq0[OAT1_dotsq0 == 1] = NA
+
+OAT1_dotsq1 = OAT1.df$dotSQ
+OAT1_dotsq1[OAT1_dotsq1 == 0] = NA 
+OAT1_dotsq1[OAT1_dotsq1 == 1] = 0 
+
+OAT1_histSQ = 
+  ggplot(data=OAT1.df) +
+  geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
+  geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
+  geom_point(aes(x=date, y=OAT1_dotsq0),colour = "green", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=OAT1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  labs(title = "OAT1 HistSQ", x="Date", y= "HistSQ")
+
+# Interactive viewer using plotly
+OAT1.df %>% 
+plot_ly(x = ~date, type = "ohlc", 
+        open = ~PX_OPEN, close = ~PX_LAST,
+        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+  layout(title="OAT1 OHLC",
+         xaxis = list(rangeslider = list (visible = F)))
+
+#ES1 Comdty
+# Price chart
+ES1_pricechart = 
+    ggplot(data= ES1.df, aes(x=date, y = PX_LAST)) +
+    geom_linerange(aes(ymin=PX_LOW, ymax=PX_HIGH)) +
+    theme_bw() +
+    labs(title="ES1 Price Range") +
+    labs(x = "Date", y = "Price")+
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+  
+# Daily Close
+ES1_dailyclose = 
+    ggplot(data = ES1.df, aes(x = date, y = PX_LAST)) +
+    geom_line() +
+    labs(x = "Date", y = "Price") +
+    labs(title = "ES1 Daily Close") +
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+
+# RSI Chart
+ES1_RSI =
+    ggplot(data = ES1.df) +
+    geom_line(aes(x=date,y=RSI),colour="red") +
+    geom_hline(aes(yintercept = 70),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    geom_hline(aes(yintercept = 30),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    scale_y_continuous(breaks= c(30,50,70)) +
+    labs(x = "Date", y = "RSI") +
+    labs(title = "ES1 RSI")
+
+# Stochastic
+ES1_stoc = 
+  ggplot(data = ES1.df) +
+  geom_line(aes(x=date,y=fastD),colour="red") +
+  geom_line(aes(x=date,y=slowD), colour="blue") +
+  geom_hline(aes(yintercept = 80),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  geom_hline(aes(yintercept = 20),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  scale_y_continuous(breaks= c(20,50,80)) +
+  labs(x = "Date", y = "Stochastic") +
+  labs(title = "ES1 Stochastic")
+
+# ATR
+ES1_ATR = 
+  ggplot(data = ES1.df) +
+  geom_line(aes(x=date,y=ATR),colour="black") +
+  labs(x = "Date", y = "ATR") +
+  labs(title = "ES1 ATR")
+
+# Price frequencies
+ES1_pricefrequencies = 
+  ggplot(data=ES1.df, aes(x=ES1.df$PX_LAST)) + 
+  geom_histogram(breaks=seq(2250, 3000, by=10), col="red", fill="green", alpha = 0.2) + 
+  labs(title="ES1 Price frequencies", x="Price", y="Density")
+
+# HistSQ
+
+ES1_dotsq0 = ES1.df$dotSQ
+ES1_dotsq0[ES1_dotsq0 == 1] = NA
+
+ES1_dotsq1 = ES1.df$dotSQ
+ES1_dotsq1[ES1_dotsq1 == 0] = NA 
+ES1_dotsq1[ES1_dotsq1 == 1] = 0 
+
+ES1_histSQ = 
+  ggplot(data=ES1.df) +
+  geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
+  geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
+  geom_point(aes(x=date, y=ES1_dotsq0),colour = "green", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=ES1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  labs(title = "ES1 HistSQ", x="Date", y= "HistSQ")
+
+# Interactive viewer using plotly
+ES1.df %>% 
+plot_ly(x = ~date, type = "ohlc", 
+        open = ~PX_OPEN, close = ~PX_LAST,
+        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+  layout(title="ES1 OHLC",
+         xaxis = list(rangeslider = list (visible = F)))
+
+#VG1 Comdty
+# Price chart
+VG1_pricechart = 
+    ggplot(data= VG1.df, aes(x=date, y = PX_LAST)) +
+    geom_linerange(aes(ymin=PX_LOW, ymax=PX_HIGH)) +
+    theme_bw() +
+    labs(title="VG1 Price Range") +
+    labs(x = "Date", y = "Price")+
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+  
+# Daily Close
+VG1_dailyclose = 
+    ggplot(data = VG1.df, aes(x = date, y = PX_LAST)) +
+    geom_line() +
+    labs(x = "Date", y = "Price") +
+    labs(title = "VG1 Daily Close") +
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+
+# RSI Chart
+VG1_RSI =
+    ggplot(data = VG1.df) +
+    geom_line(aes(x=date,y=RSI),colour="red") +
+    geom_hline(aes(yintercept = 70),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    geom_hline(aes(yintercept = 30),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    scale_y_continuous(breaks= c(30,50,70)) +
+    labs(x = "Date", y = "RSI") +
+    labs(title = "VG1 RSI")
+
+# Stochastic
+VG1_stoc = 
+  ggplot(data = VG1.df) +
+  geom_line(aes(x=date,y=fastD),colour="red") +
+  geom_line(aes(x=date,y=slowD), colour="blue") +
+  geom_hline(aes(yintercept = 80),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  geom_hline(aes(yintercept = 20),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  scale_y_continuous(breaks= c(20,50,80)) +
+  labs(x = "Date", y = "Stochastic") +
+  labs(title = "VG1 Stochastic")
+
+# ATR
+VG1_ATR = 
+  ggplot(data = VG1.df) +
+  geom_line(aes(x=date,y=ATR),colour="black") +
+  labs(x = "Date", y = "ATR") +
+  labs(title = "VG1 ATR")
+
+# Price frequencies
+VG1_pricefrequencies = 
+  ggplot(data=VG1.df, aes(x=VG1.df$PX_LAST)) + 
+  geom_histogram(breaks=seq(2900, 3600, by=10), col="red", fill="green", alpha = .2) + 
+  labs(title="VG1 Price frequencies", x="Price", y="Density")
+
+# HistSQ
+
+VG1_dotsq0 = VG1.df$dotSQ
+VG1_dotsq0[VG1_dotsq0 == 1] = NA
+
+VG1_dotsq1 = VG1.df$dotSQ
+VG1_dotsq1[VG1_dotsq1 == 0] = NA 
+VG1_dotsq1[VG1_dotsq1 == 1] = 0 
+
+VG1_histSQ = 
+  ggplot(data=VG1.df) +
+  geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
+  geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
+  geom_point(aes(x=date, y=VG1_dotsq0),colour = "green", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=VG1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  labs(title = "VG1 HistSQ", x="Date", y= "HistSQ")
+
+# Interactive viewer using plotly
+VG1.df %>% 
+plot_ly(x = ~date, type = "ohlc", 
+        open = ~PX_OPEN, close = ~PX_LAST,
+        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+  layout(title="VG1 OHLC",
+         xaxis = list(rangeslider = list (visible = F)))
+
+#Z1 Comdty
+# Price chart
+Z1_pricechart = 
+    ggplot(data= Z1.df, aes(x=date, y = PX_LAST)) +
+    geom_linerange(aes(ymin=PX_LOW, ymax=PX_HIGH)) +
+    theme_bw() +
+    labs(title="Z1 Price Range") +
+    labs(x = "Date", y = "Price")+
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+  
+# Daily Close
+Z1_dailyclose = 
+    ggplot(data = Z1.df, aes(x = date, y = PX_LAST)) +
+    geom_line() +
+    labs(x = "Date", y = "Price") +
+    labs(title = "Z1 Daily Close") +
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+
+# RSI Chart
+Z1_RSI =
+    ggplot(data = Z1.df) +
+    geom_line(aes(x=date,y=RSI),colour="red") +
+    geom_hline(aes(yintercept = 70),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    geom_hline(aes(yintercept = 30),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    scale_y_continuous(breaks= c(30,50,70)) +
+    labs(x = "Date", y = "RSI") +
+    labs(title = "Z1 RSI")
+
+# Stochastic
+Z1_stoc = 
+  ggplot(data = Z1.df) +
+  geom_line(aes(x=date,y=fastD),colour="red") +
+  geom_line(aes(x=date,y=slowD), colour="blue") +
+  geom_hline(aes(yintercept = 80),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  geom_hline(aes(yintercept = 20),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  scale_y_continuous(breaks= c(20,50,80)) +
+  labs(x = "Date", y = "Stochastic") +
+  labs(title = "Z1 Stochastic")
+
+# ATR
+Z1_ATR = 
+  ggplot(data = Z1.df) +
+  geom_line(aes(x=date,y=ATR),colour="black") +
+  labs(x = "Date", y = "ATR") +
+  labs(title = "Z1 ATR")
+
+# Price frequencies
+Z1_pricefrequencies = 
+  ggplot(data=Z1.df, aes(x=Z1.df$PX_LAST)) + 
+  geom_histogram(breaks=seq(6500, 8000, by=20), col="red", fill="green", alpha = .2) + 
+  labs(title="Z1 Price frequencies", x="Price", y="Density")
+
+# HistSQ
+
+Z1_dotsq0 = Z1.df$dotSQ
+Z1_dotsq0[Z1_dotsq0 == 1] = NA
+
+Z1_dotsq1 = Z1.df$dotSQ
+Z1_dotsq1[Z1_dotsq1 == 0] = NA 
+Z1_dotsq1[Z1_dotsq1 == 1] = 0 
+
+Z1_histSQ = 
+  ggplot(data=Z1.df) +
+  geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
+  geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
+  geom_point(aes(x=date, y=Z1_dotsq0),colour = "green", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=Z1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  labs(title = "Z1 HistSQ", x="Date", y= "HistSQ")
+
+# Interactive viewer using plotly
+Z1.df %>% 
+plot_ly(x = ~date, type = "ohlc", 
+        open = ~PX_OPEN, close = ~PX_LAST,
+        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+  layout(title="Z1 OHLC",
+         xaxis = list(rangeslider = list (visible = F)))
+
+#TY1 Comdty
+# Price chart
+TY1_pricechart = 
+    ggplot(data= TY1.df, aes(x=date, y = PX_LAST)) +
+    geom_linerange(aes(ymin=PX_LOW, ymax=PX_HIGH)) +
+    theme_bw() +
+    labs(title="TY1 Price Range") +
+    labs(x = "Date", y = "Price")+
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+  
+# Daily Close
+TY1_dailyclose = 
+    ggplot(data = TY1.df, aes(x = date, y = PX_LAST)) +
+    geom_line() +
+    labs(x = "Date", y = "Price") +
+    labs(title = "TY1 Daily Close") +
+    geom_line(aes(x=date, y=EMA10), colour = "red") +
+    geom_line(aes(x=date,y=EMA40), color = "blue") +
+    geom_line(aes(x=date,y=EMA144), color = "green")
+
+# RSI Chart
+TY1_RSI =
+    ggplot(data = TY1.df) +
+    geom_line(aes(x=date,y=RSI),colour="red") +
+    geom_hline(aes(yintercept = 70),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    geom_hline(aes(yintercept = 30),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+    scale_y_continuous(breaks= c(30,50,70)) +
+    labs(x = "Date", y = "RSI") +
+    labs(title = "TY1 RSI")
+
+# Stochastic
+TY1_stoc = 
+  ggplot(data = TY1.df) +
+  geom_line(aes(x=date,y=fastD),colour="red") +
+  geom_line(aes(x=date,y=slowD), colour="blue") +
+  geom_hline(aes(yintercept = 80),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  geom_hline(aes(yintercept = 20),colour ="black", linetype = "dashed", size = 0.5, alpha =0.5) +
+  scale_y_continuous(breaks= c(20,50,80)) +
+  labs(x = "Date", y = "Stochastic") +
+  labs(title = "TY1 Stochastic")
+
+# ATR
+TY1_ATR = 
+  ggplot(data = TY1.df) +
+  geom_line(aes(x=date,y=ATR),colour="black") +
+  labs(x = "Date", y = "ATR") +
+  labs(title = "TY1 ATR")
+
+# Price frequencies
+TY1_pricefrequencies = 
+  ggplot(data=TY1.df, aes(x=TY1.df$PX_LAST)) + 
+  geom_histogram(breaks=seq(115, 130, by=0.5), col="red", fill="green", alpha = .2) + 
+  labs(title="TY1 Price frequencies", x="Price", y="Density")
+
+# HistSQ
+
+TY1_dotsq0 = TY1.df$dotSQ
+TY1_dotsq0[TY1_dotsq0 == 1] = NA
+
+TY1_dotsq1 = TY1.df$dotSQ
+TY1_dotsq1[TY1_dotsq1 == 0] = NA 
+TY1_dotsq1[TY1_dotsq1 == 1] = 0 
+
+TY1_histSQ = 
+  ggplot(data=TY1.df) +
+  geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
+  geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
+  geom_point(aes(x=date, y=TY1_dotsq0),colour = "green", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=TY1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  labs(title = "TY1 HistSQ", x="Date", y= "HistSQ")
+
+# Interactive viewer using plotly
+TY1.df %>% 
+plot_ly(x = ~date, type = "ohlc", 
+        open = ~PX_OPEN, close = ~PX_LAST,
+        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+  layout(title="TY1 OHLC",
+         xaxis = list(rangeslider = list (visible = F)))
+
 ```
 
 ```{r arrange_grobs}
