@@ -1,17 +1,23 @@
 ---
 title: "Trading SWOT Notebook"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
 ---
 
-```{r setup}
+```{r setup, include=FALSE}
 library(tidyverse)
 library(Rblpapi)
 library(zoo)
+library(plotly)
+library(devtools)
 
 blpConnect()
 ```
 
-```{r load_sec}
+```{r load_sec, include=FALSE}
 # Downloads data from BBG - Yun Ching
 sec_list <- c("RX1 Comdty", "G 1 Comdty", "IK1 Comdty", "OAT1 Comdty", 
               "ES1 Index", "VG1 Index", "Z 1 Index",
@@ -25,7 +31,7 @@ bbg_data_raw %>%
   bbg_data
 ```
 
-```{r calc_analytics}
+```{r calc_analytics, include=FALSE}
 #Calculate analytics - Stanley Neo
 
 # bbg_data %>%
@@ -37,6 +43,8 @@ bbg_data_raw %>%
 #          )
 
 asset. = bbg_data %>% select(-Volume) %>% nest(-Ticker)
+
+source_url("https://raw.githubusercontent.com/yunching/tidymas/master/R/ttool.R")
 
 asset  = asset. %>% mutate(
   PIVOT = map(data, ~ select(tidy.ZOO(as.zoo(ta.PIVOT(tidy.ZOO(.x, tidy=TRUE))), zoo=TRUE), -date)),
@@ -51,7 +59,7 @@ asset  = asset. %>% mutate(
 
 ```
 
-```{r draw_grobs}
+```{r draw_grobs, include=FALSE}
 # Draw grobs for all data in step above - Jie Rong
 #Calling data
 RX1.df = asset %>% tidy.SELECT("RX1 Comdty") %>%  tidy.VIEW(type = "t", rows = 252)
@@ -137,12 +145,12 @@ RX1_histSQ =
   labs(title = "RX1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
-RX1.df %>% 
-plot_ly(x = ~date, type = "ohlc", 
-        open = ~PX_OPEN, close = ~PX_LAST,
-        high = ~PX_HIGH, low = ~PX_LOW) %>% 
-  layout(title="RX1 OHLC",
-         xaxis = list(rangeslider = list (visible = F)))
+##RX1.df %>% 
+##plot_ly(x = ~date, type = "ohlc", 
+##        open = ~PX_OPEN, close = ~PX_LAST,
+##        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+##  layout(title="RX1 OHLC",
+##         xaxis = list(rangeslider = list (visible = F)))
 
 #G1 Comdty
 # Price chart
@@ -218,12 +226,12 @@ G1_histSQ =
   labs(title = "G1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
-G1.df %>% 
-plot_ly(x = ~date, type = "ohlc", 
-        open = ~PX_OPEN, close = ~PX_LAST,
-        high = ~PX_HIGH, low = ~PX_LOW) %>% 
-  layout(title="G1 OHLC",
-         xaxis = list(rangeslider = list (visible = F)))
+##G1.df %>% 
+##plot_ly(x = ~date, type = "ohlc", 
+##        open = ~PX_OPEN, close = ~PX_LAST,
+##        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+##  layout(title="G1 OHLC",
+##         xaxis = list(rangeslider = list (visible = F)))
 
 #IK1 Comdty
 # Price chart
@@ -299,12 +307,12 @@ IK1_histSQ =
   labs(title = "IK1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
-IK1.df %>% 
-plot_ly(x = ~date, type = "ohlc", 
-        open = ~PX_OPEN, close = ~PX_LAST,
-        high = ~PX_HIGH, low = ~PX_LOW) %>% 
-  layout(title="IK1 OHLC",
-         xaxis = list(rangeslider = list (visible = F)))
+##IK1.df %>% 
+##plot_ly(x = ~date, type = "ohlc", 
+##        open = ~PX_OPEN, close = ~PX_LAST,
+##        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+##  layout(title="IK1 OHLC",
+##         xaxis = list(rangeslider = list (visible = F)))
 
 #OAT1 Comdty
 # Price chart
@@ -380,12 +388,12 @@ OAT1_histSQ =
   labs(title = "OAT1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
-OAT1.df %>% 
-plot_ly(x = ~date, type = "ohlc", 
-        open = ~PX_OPEN, close = ~PX_LAST,
-        high = ~PX_HIGH, low = ~PX_LOW) %>% 
-  layout(title="OAT1 OHLC",
-         xaxis = list(rangeslider = list (visible = F)))
+##OAT1.df %>% 
+##plot_ly(x = ~date, type = "ohlc", 
+##        open = ~PX_OPEN, close = ~PX_LAST,
+##        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+##  layout(title="OAT1 OHLC",
+##         xaxis = list(rangeslider = list (visible = F)))
 
 #ES1 Comdty
 # Price chart
@@ -461,12 +469,12 @@ ES1_histSQ =
   labs(title = "ES1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
-ES1.df %>% 
-plot_ly(x = ~date, type = "ohlc", 
-        open = ~PX_OPEN, close = ~PX_LAST,
-        high = ~PX_HIGH, low = ~PX_LOW) %>% 
-  layout(title="ES1 OHLC",
-         xaxis = list(rangeslider = list (visible = F)))
+##ES1.df %>% 
+##plot_ly(x = ~date, type = "ohlc", 
+##        open = ~PX_OPEN, close = ~PX_LAST,
+##        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+##  layout(title="ES1 OHLC",
+##         xaxis = list(rangeslider = list (visible = F)))
 
 #VG1 Comdty
 # Price chart
@@ -542,12 +550,12 @@ VG1_histSQ =
   labs(title = "VG1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
-VG1.df %>% 
-plot_ly(x = ~date, type = "ohlc", 
-        open = ~PX_OPEN, close = ~PX_LAST,
-        high = ~PX_HIGH, low = ~PX_LOW) %>% 
-  layout(title="VG1 OHLC",
-         xaxis = list(rangeslider = list (visible = F)))
+##VG1.df %>% 
+##plot_ly(x = ~date, type = "ohlc", 
+##        open = ~PX_OPEN, close = ~PX_LAST,
+##        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+##  layout(title="VG1 OHLC",
+##         xaxis = list(rangeslider = list (visible = F)))
 
 #Z1 Comdty
 # Price chart
@@ -623,12 +631,12 @@ Z1_histSQ =
   labs(title = "Z1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
-Z1.df %>% 
-plot_ly(x = ~date, type = "ohlc", 
-        open = ~PX_OPEN, close = ~PX_LAST,
-        high = ~PX_HIGH, low = ~PX_LOW) %>% 
-  layout(title="Z1 OHLC",
-         xaxis = list(rangeslider = list (visible = F)))
+##Z1.df %>% 
+##plot_ly(x = ~date, type = "ohlc", 
+##        open = ~PX_OPEN, close = ~PX_LAST,
+##        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+##  layout(title="Z1 OHLC",
+##         xaxis = list(rangeslider = list (visible = F)))
 
 #TY1 Comdty
 # Price chart
@@ -704,15 +712,23 @@ TY1_histSQ =
   labs(title = "TY1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
-TY1.df %>% 
-plot_ly(x = ~date, type = "ohlc", 
-        open = ~PX_OPEN, close = ~PX_LAST,
-        high = ~PX_HIGH, low = ~PX_LOW) %>% 
-  layout(title="TY1 OHLC",
-         xaxis = list(rangeslider = list (visible = F)))
+##TY1.df %>% 
+##plot_ly(x = ~date, type = "ohlc", 
+##        open = ~PX_OPEN, close = ~PX_LAST,
+##        high = ~PX_HIGH, low = ~PX_LOW) %>% 
+##  layout(title="TY1 OHLC",
+##         xaxis = list(rangeslider = list (visible = F)))
 
 ```
 
-```{r arrange_grobs}
+### RX1
+```{r RX1, echo=FALSE, warning=FALSE}
 # Arrange generated grobs for pretty printing and generate PDF - Ethel Ngiam
+tail(RX1.df)  
+RX1_pricechart 
+RX1_dailyclose
+RX1_ATR
+RX1_RSI
+RX1_stoc
+RX1_histSQ
 ```
