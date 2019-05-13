@@ -474,10 +474,10 @@ tidy.VIEW = function(tidydata, type='head', rows=10){
 tidy.ZOO = function(tseries, zoo=FALSE, tidy=FALSE, tname='Value'){
   if(zoo==FALSE && tidy==FALSE) stop('zoo or tidy must be defined as TRUE')
   if(zoo==TRUE && is.null(colnames(tseries))==FALSE) {
-    dseries = tseries %>% generics::tidy() %>%  spread(series, value) %>% rename(date = index) %>%
+    dseries = tseries %>% broom::tidy() %>%  spread(series, value) %>% rename(date = index) %>%
       select(date, colnames(tseries)) }
   if(zoo==TRUE && is.null(colnames(tseries))==TRUE) {
-    dseries = tseries %>% generics::tidy() %>%  spread(series, value) %>% rename(date = index) %>%
+    dseries = tseries %>% broom::tidy() %>%  spread(series, value) %>% rename(date = index) %>%
       select(date, 'x')
     tidy.name = colnames(dseries)
     colnames(dseries) = c(tidy.name[!tidy.name %in% "x"], tname)
