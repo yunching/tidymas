@@ -105,7 +105,7 @@ ta.PIVOT = function(tseries){
   pivot.m = t(cbind(c(6,4,2,1,-1,-2,-4), c(-3,-2,-1,1,2,4,5), c(0,1,2,1,2,1,2)))
   pivot   = round(core.pivot%*%pivot.m * 1/3, num.prettymas)
   pivot   = zoo(pivot[,7:1] ,order.by=date.pivot)
-  colnames(pivot) = c('PivotS3', 'PivotS2', 'PivotS1', 'PivotPt', 'PivotR1', 'PivotR2', 'PivotR3')
+  colnames(pivot) = c('S3', 'S2', 'S1', 'Pivot', 'R1', 'R2', 'R3')
   pivot
 }
 
