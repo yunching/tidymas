@@ -731,43 +731,43 @@ table1 <- function(tibbledata){
   kable(tail(tibbledata[,c(1:5, 13:18)]), col.names=colnames1, align=rep('c', 11))}
 table2 <- function(tibbledata) {
   kable(tail(tibbledata[,c(1, 6:12, 19:23)]), col.names=colnames2, align=rep('c', 13))}
-cat("## RX1")
+cat("RX1")
 table1(RX1.df)
 table2(RX1.df)
 grid.arrange(RX1_pricechart, RX1_dailyclose, RX1_ATR, RX1_RSI, RX1_stoc, RX1_histSQ, nrow=3)
 cat("\n\n\\pagebreak\n")
 
-cat("## OAT1")
+cat("OAT1")
 table1(OAT1.df)
 table2(OAT1.df)
 grid.arrange(OAT1_pricechart, OAT1_dailyclose, OAT1_ATR, OAT1_RSI, OAT1_stoc, OAT1_histSQ, nrow=3)
 cat("\n\n\\pagebreak\n")
 
-cat("## ES1")
+cat("ES1")
 table1(ES1.df)
 table2(ES1.df)
 grid.arrange(ES1_pricechart, ES1_dailyclose, ES1_ATR, ES1_RSI, ES1_stoc, ES1_histSQ, nrow=3)
 cat("\n\n\\pagebreak\n")
 
-cat("## IK1")
+cat("IK1")
 table1(IK1.df)
 table2(IK1.df)
 grid.arrange(IK1_pricechart, IK1_dailyclose, IK1_ATR, IK1_RSI, IK1_stoc, IK1_histSQ, nrow=3)
 cat("\n\n\\pagebreak\n")
 
-cat("## G 1")
+cat("G 1")
 table1(G1.df)
 table2(G1.df)
 grid.arrange(G1_pricechart, G1_dailyclose, G1_ATR, G1_RSI, G1_stoc, G1_histSQ, nrow=3)
 cat("\n\n\\pagebreak\n")
 
-cat("## VG1")
+cat("VG1")
 table1(VG1.df)
 table2(VG1.df)
 grid.arrange(VG1_pricechart, VG1_dailyclose, VG1_ATR, VG1_RSI, VG1_stoc, VG1_histSQ, nrow=3)
 cat("\n\n\\pagebreak\n")
 
-cat("## Z 1")
+cat("Z 1")
 table1(Z1.df)
 table2(Z1.df)
 grid.arrange(Z1_pricechart, Z1_dailyclose, Z1_ATR, Z1_RSI, Z1_stoc, Z1_histSQ, nrow=3)
