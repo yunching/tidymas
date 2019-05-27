@@ -142,8 +142,8 @@ RX1_histSQ =
   ggplot(data=RX1.df) +
   geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
   geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
-  geom_point(aes(x=date, y=RX1_dotsq0),colour = "green", size = 0.5, alpha =1) +
-  geom_point(aes(x=date, y=RX1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=RX1_dotsq0),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=RX1_dotsq1),colour = "green", size = 0.5, alpha =1) +
   labs(title = "RX1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
@@ -223,8 +223,8 @@ G1_histSQ =
   ggplot(data=G1.df) +
   geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
   geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
-  geom_point(aes(x=date, y=G1_dotsq0),colour = "green", size = 0.5, alpha =1) +
-  geom_point(aes(x=date, y=G1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=G1_dotsq0),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=G1_dotsq1),colour = "green", size = 0.5, alpha =1) +
   labs(title = "G1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
@@ -304,8 +304,8 @@ IK1_histSQ =
   ggplot(data=IK1.df) +
   geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
   geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
-  geom_point(aes(x=date, y=IK1_dotsq0),colour = "green", size = 0.5, alpha =1) +
-  geom_point(aes(x=date, y=IK1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=IK1_dotsq0),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=IK1_dotsq1),colour = "green", size = 0.5, alpha =1) +
   labs(title = "IK1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
@@ -385,8 +385,8 @@ OAT1_histSQ =
   ggplot(data=OAT1.df) +
   geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
   geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
-  geom_point(aes(x=date, y=OAT1_dotsq0),colour = "green", size = 0.5, alpha =1) +
-  geom_point(aes(x=date, y=OAT1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=OAT1_dotsq0),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=OAT1_dotsq1),colour = "green", size = 0.5, alpha =1) +
   labs(title = "OAT1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
@@ -466,8 +466,8 @@ ES1_histSQ =
   ggplot(data=ES1.df) +
   geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
   geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
-  geom_point(aes(x=date, y=ES1_dotsq0),colour = "green", size = 0.5, alpha =1) +
-  geom_point(aes(x=date, y=ES1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=ES1_dotsq0),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=ES1_dotsq1),colour = "green", size = 0.5, alpha =1) +
   labs(title = "ES1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
@@ -547,8 +547,8 @@ VG1_histSQ =
   ggplot(data=VG1.df) +
   geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
   geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
-  geom_point(aes(x=date, y=VG1_dotsq0),colour = "green", size = 0.5, alpha =1) +
-  geom_point(aes(x=date, y=VG1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=VG1_dotsq0),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=VG1_dotsq1),colour = "green", size = 0.5, alpha =1) +
   labs(title = "VG1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
@@ -628,8 +628,8 @@ Z1_histSQ =
   ggplot(data=Z1.df) +
   geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
   geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
-  geom_point(aes(x=date, y=Z1_dotsq0),colour = "green", size = 0.5, alpha =1) +
-  geom_point(aes(x=date, y=Z1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=Z1_dotsq0),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=Z1_dotsq1),colour = "green", size = 0.5, alpha =1) +
   labs(title = "Z1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
@@ -709,8 +709,8 @@ TY1_histSQ =
   ggplot(data=TY1.df) +
   geom_line(aes(x=date,y=histSQ), colour = "black", linetype = "solid", size = 0.5, alpha =1) +
   geom_hline(aes(yintercept = 0),colour ="black", linetype = "solid", size = 0.5, alpha =0.5)+
-  geom_point(aes(x=date, y=TY1_dotsq0),colour = "green", size = 0.5, alpha =1) +
-  geom_point(aes(x=date, y=TY1_dotsq1),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=TY1_dotsq0),colour = "red", size = 0.5, alpha =1) +
+  geom_point(aes(x=date, y=TY1_dotsq1),colour = "green", size = 0.5, alpha =1) +
   labs(title = "TY1 HistSQ", x="Date", y= "HistSQ")
 
 # Interactive viewer using plotly
