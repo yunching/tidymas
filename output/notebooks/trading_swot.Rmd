@@ -24,7 +24,7 @@ blpConnect()
 sec_list <- c("RX1 Comdty", "G 1 Comdty", "IK1 Comdty", "OAT1 Comdty", 
               "ES1 Index", "VG1 Index", "Z 1 Index",
               "TY1 Comdty")
-bbg_data_raw <- bdh(sec_list, c("PX_OPEN", "PX_HIGH", "PX_LOW", "PX_LAST", "Volume"), start.date = Sys.Date() - 365)
+bbg_data_raw <- bdh(sec_list, c("PX_OPEN", "PX_HIGH", "PX_LOW", "PX_LAST", "Volume"), start.date = Sys.Date() - 1095)
 
 bbg_data_raw %>% 
   bind_rows(.id = "Ticker") %>% 
