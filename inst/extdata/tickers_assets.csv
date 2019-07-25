@@ -187,3 +187,6 @@ ilb,france_ilb_all,BCIF1T Index,BCIF1T Index
 ilb,italy_ilb_all,BCII1T Index,BCII1T Index
 ilb,uk_ilb_all,BCIU1T Index,BCIU1T Index
 ilb,canada_ilb_all,BCIC1T Index,BCIC1T Index
+govt,china_govt_2y,I32562CN Index,I32562CN Index
+govt,china_govt_5y,I32563CN Index,I32563CN Index
+govt,china_govt_10y,I32565CN Index,I32565CN Index
