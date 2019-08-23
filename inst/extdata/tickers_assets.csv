@@ -18,6 +18,7 @@ fut,fut_ub1,UB1 Comdty,UB1 Comdty
 fut,fut_oat1,OAT1 Comdty,OAT1 Comdty
 fut,fut_ik1,IK1 Comdty,IK1 Comdty
 fut,fut_ty1,TY1 Comdty,TY1 Comdty
+fut,fut_us1,US1 Comdty,US1 Comdty
 fut,fut_tu1,TU1 Comdty,TU1 Comdty
 fut,fut_fv1,FV1 Comdty,FV1 Comdty
 fut,fut_ym1,YM1 Comdty,YM1 Comdty
@@ -187,3 +188,6 @@ ilb,france_ilb_all,BCIF1T Index,BCIF1T Index
 ilb,italy_ilb_all,BCII1T Index,BCII1T Index
 ilb,uk_ilb_all,BCIU1T Index,BCIU1T Index
 ilb,canada_ilb_all,BCIC1T Index,BCIC1T Index
+govt,china_govt_2y,I32562CN Index,I32562CN Index
+govt,china_govt_5y,I32563CN Index,I32563CN Index
+govt,china_govt_10y,I32565CN Index,I32565CN Index
