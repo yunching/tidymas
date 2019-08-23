@@ -1,6 +1,8 @@
 ---
 title: "SAT Active Risk Report"
 output:
+  html_document:
+    df_print: paged
   word_document:
     reference_docx: ref_format.docx
 ---
@@ -19,18 +21,22 @@ blpConnect()
 
 ```{r build_portfolios_and_get_return, message = FALSE}
 # Get strategies from file and their sizes (mix of month weighted and %)
-strategies_list <- build_strategies("../data2/strategies.csv")
+strategies_list <- build_strategies("../data2/strategies_jl.csv")
 
 # Get required instruments and portfolios (actual vs sim)
 instr_df <- strategies_list$summary
 portfolios_list <- strategies_list[names(strategies_list) != "summary"]
 
-# Get duration from Bloomberg
-dur_df <- get_dur_bbg(instr_df)
-
-# Calculate all weights in %
-clean_pf_list <- map(portfolios_list, 
-                  ~convert_dur_size(., instr_df, dur_df))
+if (nrow(filter(instr_df, size_type == "duration"))) {
+  # Get duration from Bloomberg
+  dur_df <- get_dur_bbg(instr_df)
+  
+  # Calculate all weights in %
+  clean_pf_list <- map(portfolios_list, 
+                    ~convert_dur_size(., instr_df, dur_df))
+} else {
+  clean_pf_list <- portfolios_list
+}
 
 # Get returns of assets from Bloomberg
 asset_return <- get_ret_bbg(instr_df)
@@ -73,9 +79,11 @@ curr_strat <- get_strat_size(strat_headline_size$actual, curr_date)
 prev_strat <- get_strat_size(strat_headline_size$actual, prev_date)
 
 # Calculate active risk of previous quarters strategies 
-active_risk_prev <- calc_active_risk(unwt_return, 
-                                prev_strat,
-                                start_date = prev_date - months(3), end_date = prev_date)
+active_risk_prev <- tryCatch({
+  calc_active_risk(unwt_return, 
+                   prev_strat,
+                   start_date = prev_date - months(3), end_date = prev_date)
+}, error = function(x) {data.frame(active_risk = 0)})
 
 # Calculate active risk of current strategies
 active_risk_curr <- apply(scenarios, 1, 
@@ -95,9 +103,9 @@ scenario_return <- apply(scenarios, 1,
 ```
 
 ```{r calc_team_correlation_analysis}
+tryCatch({
 ret_by_owner <- wt_return$actual %>%
   custom_grouping(instr_df, "owner")
-
 actual_corr <- calc_cor(ret_by_owner %>% spread(owner, wt_return),
                         start_date = curr_date - months(3),
                         end_date = curr_date)
@@ -112,6 +120,7 @@ exp_ret_by_owner <- exp_return %>%
 exp_corr <- calc_cor(exp_ret_by_owner %>% spread(owner, wt_return),
                         start_date = curr_date - months(3),
                         end_date = curr_date)
+}, error = function(e) "No team correlations")
 ```
 
 ```{r write_up}
@@ -157,12 +166,14 @@ ex_ed_risk <- strat_active_risk %>%
   .$active_risk %>%
   sum
 
-ex_ed_risk_prev <- active_risk_prev %>%
-  mutate(name = str_extract(strategy, "^.*(?=:::)"),
-         owner = str_extract(strategy, "(?<=:::).*$")) %>%
-  filter(owner != "ed") %>%
-  .$active_risk %>%
-  sum * 10000
+ex_ed_risk_prev <- tryCatch({
+  active_risk_prev %>%
+    mutate(name = str_extract(strategy, "^.*(?=:::)"),
+           owner = str_extract(strategy, "(?<=:::).*$")) %>%
+    filter(owner != "ed") %>%
+    .$active_risk %>%
+    sum * 10000
+}, error = function(x) data.frame(active_risk = 0))
 
 ```
 
@@ -433,12 +444,14 @@ results <- lapply(unique(actual_ret_cum$owner), function(i) {
 ### Team Correlations
 
 ```{r display_correlation}
+tryCatch({
 # Plot correlation of returns between teams
 actual_corr %>%
   plot_cor(title = "Last Quarter Realised Correlations")
 
 exp_corr %>%
   plot_cor(title = "Correlation based on current strategies")
+}, error = function(e) print("No team correlations available"))
 ```
 
 ### Strategy Correlations
