@@ -21,7 +21,7 @@ blpConnect()
 
 ```{r build_portfolios_and_get_return, message = FALSE}
 # Get strategies from file and their sizes (mix of month weighted and %)
-strategies_list <- build_strategies("../data2/strategies_jl.csv")
+strategies_list <- build_strategies("../data2/strategies.csv")
 
 # Get required instruments and portfolios (actual vs sim)
 instr_df <- strategies_list$summary
@@ -35,7 +35,8 @@ if (nrow(filter(instr_df, size_type == "duration"))) {
   clean_pf_list <- map(portfolios_list, 
                     ~convert_dur_size(., instr_df, dur_df))
 } else {
-  clean_pf_list <- portfolios_list
+  clean_pf_list <- map(portfolios_list,
+                       function(x) mutate(x, size = size / 100))
 }
 
 # Get returns of assets from Bloomberg
