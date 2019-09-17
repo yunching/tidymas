@@ -10,27 +10,40 @@ output:
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(tidymas)
 library(Rblpapi)
 library(zoo)
 library(devtools)
 library(gridExtra)
 library(knitr)
 
-blpConnect()
+# blpConnect()
 ```
 
 ```{r load_sec, include=FALSE}
 # Downloads data from BBG - Yun Ching
-sec_list <- c("RX1 Comdty", "G 1 Comdty", "IK1 Comdty", "OAT1 Comdty", 
-              "ES1 Index", "VG1 Index", "Z 1 Index",
-              "TY1 Comdty")
-bbg_data_raw <- bdh(sec_list, c("PX_OPEN", "PX_HIGH", "PX_LOW", "PX_LAST", "Volume"), start.date = Sys.Date() - 1095)
+# sec_list <- c("RX1 Comdty", "G 1 Comdty", "IK1 Comdty", "OAT1 Comdty", 
+#               "ES1 Index", "VG1 Index", "Z 1 Index",
+#               "TY1 Comdty")
+# bbg_data_raw <- bdh(sec_list, c("PX_OPEN", "PX_HIGH", "PX_LOW", "PX_LAST", "Volume"), start.date = Sys.Date() - 1095)
+# 
+# bbg_data_raw %>% 
+#   bind_rows(.id = "Ticker") %>% 
+#   as_tibble() %>%
+#   na.omit ->
+#   bbg_data
+load_bbg_data(dbname = "../../mydatabase.db")
 
-bbg_data_raw %>% 
-  bind_rows(.id = "Ticker") %>% 
+load_db(dbname = "../../mydatabase.db") %>% 
+  mutate(Date = lubridate::as_date(date)) %>% 
+  select(Ticker, Date, PX_OPEN, PX_HIGH, PX_LOW, PX_LAST, VOLUME) %>% 
+  filter(Ticker %in% c("RX1 Comdty", "G 1 Comdty", "IK1 Comdty", "OAT1 Comdty", "ES1 Index", "VG1 Index", "Z 1 Index", "TY1 Comdty")) %>% 
+  filter(Date >= Sys.Date() - 1095) %>% 
+  rename(date = Date, Volume = VOLUME) %>% 
+  # bind_rows(.id = "Ticker") %>% 
   as_tibble() %>%
   na.omit ->
-  bbg_data
+  bbg_data2
 ```
 
 ```{r calc_analytics, include=FALSE}
@@ -44,7 +57,7 @@ bbg_data_raw %>%
 #          ewma_30 = map(data, ~ ema(.x$PX_LAST, 30))
 #          )
 
-asset. = bbg_data %>% select(-Volume) %>% nest(-Ticker)
+asset. = bbg_data2 %>% select(-Volume) %>% nest(data = c(date, PX_OPEN, PX_HIGH, PX_LOW, PX_LAST))
 
 source_url("https://raw.githubusercontent.com/yunching/tidymas/master/R/ttool.R")
 
