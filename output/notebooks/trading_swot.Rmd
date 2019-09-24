@@ -32,7 +32,7 @@ library(knitr)
 #   as_tibble() %>%
 #   na.omit ->
 #   bbg_data
-load_bbg_data(dbname = "../../mydatabase.db")
+# load_bbg_data(dbname = "../../mydatabase.db")
 
 load_db(dbname = "../../mydatabase.db") %>% 
   mutate(Date = lubridate::as_date(date)) %>% 
