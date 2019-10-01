@@ -33,7 +33,8 @@ Imports:
     generics,
     DBI,
     RSQLite,
-    broom
+    broom,
+    gridExtra
 Suggests: knitr,rmarkdown, zoo, xts, TTR
 VignetteBuilder: knitr
 RoxygenNote: 6.1.1

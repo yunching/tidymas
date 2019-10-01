@@ -34,7 +34,7 @@ library(knitr)
 #   bbg_data
 # load_bbg_data(dbname = "../../inst/extdata/mydatabase.db")
 
-load_db(dbname = "../../data/mydatabase.db") %>% 
+load_db(dbname = "../../inst/extdata/mydatabase.db") %>% 
   mutate(Date = lubridate::as_date(date)) %>% 
   select(Ticker, Date, PX_OPEN, PX_HIGH, PX_LOW, PX_LAST, VOLUME) %>% 
   filter(Ticker %in% c("RX1 Comdty", "G 1 Comdty", "IK1 Comdty", "OAT1 Comdty", "ES1 Index", "VG1 Index", "Z 1 Index", "TY1 Comdty")) %>% 
@@ -57,9 +57,11 @@ load_db(dbname = "../../data/mydatabase.db") %>%
 #          ewma_30 = map(data, ~ ema(.x$PX_LAST, 30))
 #          )
 
-asset. = bbg_data2 %>% select(-Volume) %>% nest(data = c(date, PX_OPEN, PX_HIGH, PX_LOW, PX_LAST))
+asset. = bbg_data2 %>% select(-Volume) %>% group_by(Ticker) %>% nest() 
+# nest(data = c(date, PX_OPEN, PX_HIGH, PX_LOW, PX_LAST))
 
-source_url("https://raw.githubusercontent.com/yunching/tidymas/master/R/ttool.R")
+# Required as ttool functions not exported from tidymas yet
+source("../../R/ttool.R")
 
 asset  = asset. %>% mutate(
   PIVOT = map(data, ~ select(tidy.ZOO(as.zoo(ta.PIVOT(tidy.ZOO(.x, tidy=TRUE))), zoo=TRUE), -date)),
