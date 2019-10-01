@@ -4,7 +4,7 @@
 \alias{load_bbg_data}
 \title{Load BBG Data}
 \usage{
-load_bbg_data()
+load_bbg_data(dbname = "mydatabase.db")
 }
 \value{
 Loads sqlite data with data
