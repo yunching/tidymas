@@ -22,7 +22,7 @@ email_update <- function(){
   cmd <- paste(cmd, "-F from='Eurdiv bot <donotreply@eurdiv.ourlittlefam.net>'")
   cmd <- paste(cmd, paste0("-F subject='", subject, "'"))
   # cmd <- paste(cmd, "-F text='Hope you make some money today!'")
-  cmd <- paste(cmd, "-F to='Lim Yun Ching <yunching.lim@gmail.com>'")
+  cmd <- paste(cmd, "-F to='trading_updates@eurdiv.ourlittlefam.net'")
   cmd <- paste(cmd, paste0("-F text='", body, "'"))
   cmd <- paste(cmd, "-F attachment=@output/notebooks/trading_swot.pdf")
   system(cmd)
