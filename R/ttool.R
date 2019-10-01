@@ -19,6 +19,12 @@
 # TECHNICAL ANALYSIS TOOLBOX
 
 # Fibonacci Series
+#' Golden Ratio
+#'
+#' @return Golden ratio constant
+#' @export
+#'
+#' @examples ta.GRATIO()
 ta.GRATIO = function() { (1+sqrt(5))/2 } # also known as phi
 
 ta.FIB = function(count=20){
@@ -489,7 +495,15 @@ tidy.ZOO = function(tseries, zoo=FALSE, tidy=FALSE, tname='Value'){
 #--------------------------------------------------------------------------------------------------#
 # PORTFOLIO TOOLBOX
 
-# Sharpe
+#' Calculate Sharpe
+#'
+#' @param ret return
+#' @param annualize_factor Factor to use for annualise provided return
+#'
+#' @return Sharpe ratio
+#' @export
+#'
+#' @examples calc_sharpe(0.1)
 calc_sharpe <- function(ret, annualize_factor = 252) {
   mean_ret <- mean(ret, na.rm = T)
   sd_ret <- sd(ret, na.rm = T)
@@ -497,7 +511,15 @@ calc_sharpe <- function(ret, annualize_factor = 252) {
   (mean_ret * annualize_factor)/(sd_ret * sqrt(annualize_factor))
 }
 
-# Sortino
+#' Calculate Sortino ratio
+#'
+#' @param ret return to calculate Sortino ratio
+#' @param annualize_factor factor to annualise return provide
+#'
+#' @return Sortino ratio
+#' @export
+#'
+#' @examples calc_sortino(0.1)
 calc_sortino = function(ret, annualize_factor = 252) {
   mean_ret = mean(ret, na.rm = T)
   ret = ifelse(ret < 0, ret,0)

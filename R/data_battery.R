@@ -3,7 +3,7 @@
 #' @return Loads sqlite data with data
 #' @param dbname of database. Useful when kniting notebooks as required db path changes.
 #' @export
-#' @import rlang .data
+#' @importFrom rlang .data
 #'
 #' @examples \donttest{load_bbg_data()}
 load_bbg_data <- function(dbname = "inst/extdata/mydatabase.db"){
