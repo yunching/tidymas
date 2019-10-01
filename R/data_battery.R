@@ -1,10 +1,12 @@
 #' Load BBG Data
 #'
 #' @return Loads sqlite data with data
+#' @param dbname of database. Useful when kniting notebooks as required db path changes.
 #' @export
+#' @import rlang .data
 #'
-#' @examples load_bbg_data()
-load_bbg_data <- function(dbname = "mydatabase.db"){
+#' @examples \donttest{load_bbg_data()}
+load_bbg_data <- function(dbname = "inst/extdata/mydatabase.db"){
   # create a db of tickers
   con <- DBI::dbConnect(RSQLite::SQLite(), dbname)
   # summary(con)
@@ -14,7 +16,7 @@ load_bbg_data <- function(dbname = "mydatabase.db"){
   sec_db <- DBI::dbReadTable(con, 'sec_db')
 
   sec_db %>%
-    select(BBG_Ticker) -> sec_list
+    select(.data$BBG_Ticker) -> sec_list
 
   # str(sec_list)
   message(sec_list)
@@ -56,7 +58,7 @@ load_bbg_data <- function(dbname = "mydatabase.db"){
 #' @examples \donttest{add_bbg_ticker("AAPL US Equity")}
 add_bbg_ticker <- function(bbg_ticker){
   # create a db of tickers
-  con <- DBI::dbConnect(RSQLite::SQLite(), dbname = "mydatabase.db")
+  con <- DBI::dbConnect(RSQLite::SQLite(), dbname = "inst/extdata/mydatabase.db")
 
   query <- paste("INSERT INTO sec_db (BBG_Ticker) VALUES ('", bbg_ticker, "');", sep="")
   # message(query)
@@ -78,7 +80,7 @@ add_bbg_ticker <- function(bbg_ticker){
 #' @examples \donttest{rm_bbg_ticker("AAPL US Equity")}
 rm_bbg_ticker <- function(bbg_ticker){
   # create a db of tickers
-  con <- DBI::dbConnect(RSQLite::SQLite(), dbname = "mydatabase.db")
+  con <- DBI::dbConnect(RSQLite::SQLite(), dbname = "inst/extdata/mydatabase.db")
 
   query <- paste("DELETE FROM sec_db WHERE BBG_Ticker = '", bbg_ticker, "';", sep="")
   # message(query)
@@ -93,13 +95,13 @@ rm_bbg_ticker <- function(bbg_ticker){
 
 #' read BBG data stored in db
 #'
-#' @param db_path Path of sql
+#' @param dbname Path of sql
 #'
 #' @return Dataframe containing data in px_db
 #' @export
 #'
-#' @examples load_db()
-load_db <- function(dbname = "mydatabase.db"){
+#' @examples \donttest{load_db()}
+load_db <- function(dbname = "inst/extdata/mydatabase.db"){
   con <- DBI::dbConnect(RSQLite::SQLite(), dbname)
 
   # read data from px_db

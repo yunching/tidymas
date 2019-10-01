@@ -13,5 +13,5 @@ Side effect only: sends email to distribution list
 Distribute daily trading update
 }
 \examples{
-\\donottest{email_update()}
+\donttest{email_update()}
 }

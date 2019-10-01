@@ -4,10 +4,10 @@
 \alias{load_db}
 \title{read BBG data stored in db}
 \usage{
-load_db(dbname = "mydatabase.db")
+load_db(dbname = "inst/extdata/mydatabase.db")
 }
 \arguments{
-\item{db_path}{Path of sql}
+\item{dbname}{Path of sql}
 }
 \value{
 Dataframe containing data in px_db
@@ -16,5 +16,5 @@ Dataframe containing data in px_db
 read BBG data stored in db
 }
 \examples{
-load_db()
+\donttest{load_db()}
 }

@@ -11,7 +11,7 @@ output:
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(tidymas)
-library(Rblpapi)
+# library(Rblpapi)
 library(zoo)
 library(devtools)
 library(gridExtra)
@@ -32,9 +32,9 @@ library(knitr)
 #   as_tibble() %>%
 #   na.omit ->
 #   bbg_data
-# load_bbg_data(dbname = "../../mydatabase.db")
+# load_bbg_data(dbname = "../../inst/extdata/mydatabase.db")
 
-load_db(dbname = "../../mydatabase.db") %>% 
+load_db(dbname = "../../data/mydatabase.db") %>% 
   mutate(Date = lubridate::as_date(date)) %>% 
   select(Ticker, Date, PX_OPEN, PX_HIGH, PX_LOW, PX_LAST, VOLUME) %>% 
   filter(Ticker %in% c("RX1 Comdty", "G 1 Comdty", "IK1 Comdty", "OAT1 Comdty", "ES1 Index", "VG1 Index", "Z 1 Index", "TY1 Comdty")) %>% 

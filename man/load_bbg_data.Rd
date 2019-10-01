@@ -4,7 +4,10 @@
 \alias{load_bbg_data}
 \title{Load BBG Data}
 \usage{
-load_bbg_data(dbname = "mydatabase.db")
+load_bbg_data(dbname = "inst/extdata/mydatabase.db")
+}
+\arguments{
+\item{dbname}{of database. Useful when kniting notebooks as required db path changes.}
 }
 \value{
 Loads sqlite data with data
@@ -13,5 +16,5 @@ Loads sqlite data with data
 Load BBG Data
 }
 \examples{
-load_bbg_data()
+\donttest{load_bbg_data()}
 }

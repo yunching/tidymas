@@ -30,7 +30,10 @@ Imports:
     RcppRoll,
     scales,
     psych,
-    generics
+    generics,
+    DBI,
+    RSQLite,
+    broom
 Suggests: knitr,rmarkdown, zoo, xts, TTR
 VignetteBuilder: knitr
 RoxygenNote: 6.1.1

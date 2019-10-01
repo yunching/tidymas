@@ -9,21 +9,26 @@
 #' @return Side effect only: sends email to distribution list
 #' @export
 #'
-#' @examples \donottest{email_update()}
+#' @examples \donttest{email_update()}
 email_update <- function(){
 
   #get api key
   mg_api_key <- Sys.getenv("mg_api_key")
 
+  if (mg_api_key == ""){
+    stop("Mailgun API credentials are missing. Please ensure they are provided.")
+  }
+
   body <- paste(paste0("Generated @ ", Sys.time()), "- hope you make some money today!")
   subject <- paste("Daily Trading Update", Sys.Date())
 
-  cmd <- paste0("curl -s --user 'api:4d5a81d3200b431cd477455e203b219c-", mg_api_key, "' https://api.mailgun.net/v3/eurdiv.ourlittlefam.net/messages")
+  cmd <- paste0("curl -s --user 'api:", mg_api_key, "' https://api.mailgun.net/v3/eurdiv.ourlittlefam.net/messages")
   cmd <- paste(cmd, "-F from='Eurdiv bot <donotreply@eurdiv.ourlittlefam.net>'")
   cmd <- paste(cmd, paste0("-F subject='", subject, "'"))
   # cmd <- paste(cmd, "-F text='Hope you make some money today!'")
   cmd <- paste(cmd, "-F to='trading_updates@eurdiv.ourlittlefam.net'")
   cmd <- paste(cmd, paste0("-F text='", body, "'"))
   cmd <- paste(cmd, "-F attachment=@output/notebooks/trading_swot.pdf")
+  # message(cmd)
   system(cmd)
 }
