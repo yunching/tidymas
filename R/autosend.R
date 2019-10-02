@@ -32,3 +32,13 @@ email_update <- function(){
   # message(cmd)
   system(cmd)
 }
+
+#' Knit trading swot document
+#'
+#' @return Generates trading swot pdf
+#' @export
+#'
+#' @examples \donttest{knit_swot()}
+knit_swot <- function(){
+  rmarkdown::render("./output/notebooks/trading_swot.Rmd")
+}

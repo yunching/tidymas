@@ -13,3 +13,4 @@ output/*.docx
 output/*.pdf
 
 !inst/extdata/*.csv
+*.tex
