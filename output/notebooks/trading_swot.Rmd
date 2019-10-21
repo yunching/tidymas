@@ -743,9 +743,21 @@ TY1_histSQ =
 colnames1 <- c("Date", "Open", "High", "Low", "Close", "ATR", "sd.ATR", "EMA10", "EMA40", "EMA144", "RSI")
 colnames2 <- c("Date", "S3", "S2", "S1", "Pivot", "R1", "R2", "R3", "fastK", "fastD", "slowD", "SQ", "histSQ")
 table1 <- function(tibbledata){
-  kable(tail(tibbledata[,c(1:5, 13:18)],21), col.names=colnames1, align=rep('c', 11))}
+  tibbledata %>% 
+    ungroup() %>% 
+    select(date, PX_OPEN, PX_HIGH, PX_LOW, PX_LAST, ATR, sd.ATR, EMA10, EMA40, EMA144, RSI) %>% 
+    tail(21) -> tibbledata2
+  kable(tibbledata2,
+        col.names = colnames1,
+        align = rep('c', 11))}
 table2 <- function(tibbledata) {
-  kable(tail(tibbledata[,c(1, 6:12, 19:23)],21), col.names=colnames2, align=rep('c', 13))}
+  tibbledata %>% 
+    ungroup() %>% 
+    select(date, S3, S2, S1, Pivot, R1, R2, R3, fastK, fastD, slowD, dotSQ, histSQ) %>% 
+    tail(21) -> tibbledata2
+  kable(tibbledata2,
+        col.names = colnames2,
+        align = rep('c', 13))}
 cat("RX1")
 table1(RX1.df)
 table2(RX1.df)
