@@ -6,7 +6,7 @@
 #' @return Correlation plot
 #' @export
 #'
-#' @examples /dontrun{plot_asset_cors}
+#' @examples \dontrun{plot_asset_cors}
 plot_asset_cors <- function(){
   ticker_list <- c("AS51 Index",
                    "SPX Index",
