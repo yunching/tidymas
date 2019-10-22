@@ -34,7 +34,8 @@ Imports:
     DBI,
     RSQLite,
     broom,
-    gridExtra
+    gridExtra,
+    corrr
 Suggests: knitr,rmarkdown, zoo, xts, TTR
 VignetteBuilder: knitr
 RoxygenNote: 6.1.1

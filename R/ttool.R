@@ -463,7 +463,7 @@ math.LINREG = function(formula, data, width, ...){
 
 # Data Series Selection tidy Time Series
 tidy.SELECT = function(tidydata, fname=NULL){
-  tidydata %>% dplyr::filter(Ticker==fname) %>% unnest() %>% select(-Ticker)
+  tidydata %>% dplyr::filter(.data$Ticker==fname) %>% unnest() %>% select(-.data$Ticker)
 }
 
 # Data Series Display tidy Time Series

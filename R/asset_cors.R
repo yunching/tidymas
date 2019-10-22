@@ -6,7 +6,7 @@
 #' @return Correlation plot
 #' @export
 #'
-#' @examples \dontrun{plot_asset_cors}
+#' @examples \donttest{plot_asset_cors}
 plot_asset_cors <- function(){
   ticker_list <- c("AS51 Index",
                    "SPX Index",
@@ -56,11 +56,11 @@ plot_asset_cors <- function(){
     bbg_data
 
   bbg_data %>%
-    mutate(prev = lag(PX_LAST, 1), pct_ret = (PX_LAST - prev)/prev, chg = (PX_LAST - prev),
-           Ticker2 = stringr::str_split_fixed(Ticker, " ", n=2)[,1]) -> bbg_data2
+    mutate(prev = lag(.data$PX_LAST, 1), pct_ret = (.data$PX_LAST - .data$prev)/.data$prev, chg = (.data$PX_LAST - .data$prev),
+           Ticker2 = stringr::str_split_fixed(.data$Ticker, " ", n=2)[,1]) -> bbg_data2
 
   bbg_data2 %>%
-    filter(Ticker %in% c("AS51 Index",
+    filter(.data$Ticker %in% c("AS51 Index",
                          "SPX Index",
                          "INDU Index",
                          "CCMP Index",
@@ -86,11 +86,11 @@ plot_asset_cors <- function(){
                          "GBPUSD Curncy",
                          "USDCHF Curncy",
                          "CADUSD Curncy")) %>%
-    select(Ticker2, date, pct_ret) %>%
-    rename(data = pct_ret) -> bbg_data3.1
+    select(.data$Ticker2, .data$date, .data$pct_ret) %>%
+    rename(data = .data$pct_ret) -> bbg_data3.1
 
   bbg_data2 %>%
-    filter(Ticker %in% c("GTAUD10Y Govt",
+    filter(.data$Ticker %in% c("GTAUD10Y Govt",
                          "GTAUD3Y Govt",
                          "GTUSD30Y Govt",
                          "GTUSD10Y Govt",
@@ -103,12 +103,12 @@ plot_asset_cors <- function(){
                          "GTGBP10Y Govt",
                          "GTGBP2Y Govt",
                          "GTJPY10Y Govt")) %>%
-    select(Ticker2, date, pct_ret) %>%
-    rename(data = pct_ret) -> bbg_data3.2
+    select(.data$Ticker2, .data$date, .data$pct_ret) %>%
+    rename(data = .data$pct_ret) -> bbg_data3.2
 
   bbg_data3 <- bind_rows(bbg_data3.1, bbg_data3.2)
   bbg_data3 %>%
-    tidyr::pivot_wider(names_from = Ticker2, values_from = data) %>%
+    tidyr::pivot_wider(names_from = .data$Ticker2, values_from = .data$data) %>%
     na.omit() -> tmp
 
   # Shorten chart axes labels
@@ -116,7 +116,7 @@ plot_asset_cors <- function(){
 
   # Calculate date analysis ran
   bbg_data %>%
-    summarise(max_date = max(date)) -> run_date
+    summarise(max_date = max(.data$date)) -> run_date
 
   # stamp date formatting
   # sf <- lubridate::stamp("18 October 2019")
@@ -124,8 +124,8 @@ plot_asset_cors <- function(){
   tmp[,c(-1)] %>%
     corrr::correlate(diagonal = 1) %>%
     corrr::stretch() %>%
-    ggplot(aes(forcats::fct_relevel(x, ticker_list2), forcats::fct_rev(forcats::fct_relevel(y, ticker_list2)))) +
-    geom_raster(aes(fill=r)) +
+    ggplot(aes(forcats::fct_relevel(.data$x, ticker_list2), forcats::fct_rev(forcats::fct_relevel(.data$y, ticker_list2)))) +
+    geom_raster(aes(fill=.data$r)) +
     # geom_text(aes(label=round(r,2))) +
     scale_fill_gradient2(low="red3", mid="white", high = "green4", name = "Correlation") +
     labs(x="", y = "", title = paste("Rolling 1 month correlations as at", format(run_date$max_date[1], "%d %b %y"))) +

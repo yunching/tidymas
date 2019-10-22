@@ -13,5 +13,5 @@ Correlation plot
 Downloads data from Bloomberg on major asset classes and plots their correlation
 }
 \examples{
-/dontrun{plot_asset_cors}
+\donttest{plot_asset_cors}
 }
