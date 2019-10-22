@@ -21,10 +21,25 @@ fut,fut_ty1,TY1 Comdty,TY1 Comdty
 fut,fut_us1,US1 Comdty,US1 Comdty
 fut,fut_tu1,TU1 Comdty,TU1 Comdty
 fut,fut_fv1,FV1 Comdty,FV1 Comdty
+fut,fut_wn1,WN1 Comdty,WN1 Comdty
 fut,fut_ym1,YM1 Comdty,YM1 Comdty
 fut,fut_xm1,XM1 Comdty,XM1 Comdty
 fut,fut_lty1,LTY1 Comdty,LTY1 Comdty
 fut,fut_jb1,JB1 Comdty,JB1 Comdty
+fut,fut_ke1,KE1 Comdty,KE1 Comdty
+fut,fut_kaa1,KAA1 Comdty,KAA1 Comdty
+fut,fut_cv1,CV1 Comdty,CV1 Comdty
+fut,fut_xq1,XQ1 Comdty,XQ1 Comdty
+fut,fut_cn1,CN1 Comdty,CN1 Comdty
+fut,fut_es1,ES1 Index,
+fut,fut_vg1,VG1 Index,
+fut,fut_jpw1,JPW1 Index,
+fut,fut_jvi1,JVI1 Index,
+fut,fut_z1,Z 1 Index,
+fut,fut_xfd1,XFD1 Index,
+fut,fut_dfw1,DFW1 Index,
+fut,fut_gx1,GX1 Index,
+fut,fut_xp1,XP1 Index,
 equity,spx500,SPX Index,
 equity,eurostoxx50,SX5E Index,
 equity,ftse100,UKX Index,
