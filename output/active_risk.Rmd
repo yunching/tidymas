@@ -27,7 +27,7 @@ strategies_list <- build_strategies("../data2/strategies.csv")
 instr_df <- strategies_list$summary
 portfolios_list <- strategies_list[names(strategies_list) != "summary"]
 
-if (nrow(filter(instr_df, size_type == "duration"))) {
+if (nrow(filter(instr_df, size_type == "months"))) {
   # Get duration from Bloomberg
   dur_df <- get_dur_bbg(instr_df)
   
