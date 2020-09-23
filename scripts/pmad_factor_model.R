@@ -3,7 +3,7 @@ library(broom)
 library(Rblpapi)
 
 
-blpConnect()
+blpConnect()s
 
 # Global settings & definitions --------------------------------------------
 
