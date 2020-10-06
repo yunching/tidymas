@@ -108,8 +108,11 @@ trades_final <- trades_w_returns %>%
   left_join(trades_scaled) %>%
   mutate(scaled_ret = daily_return / sd,
          winsorised_ret = case_when(
-           scaled_ret <= 2 ~ scaled_ret,
-           scaled_ret > 2 ~ 2)
+           scaled_ret > 2 ~ 2,
+           scaled_ret < -2 ~ -2,
+           scaled_ret <= 2 ~ scaled_ret
+           )
+# TODO - check if negative cases are handled correct
   )
 
 trades_final
