@@ -1,4 +1,5 @@
 library(tidyverse)
+
 library(broom)
 library(Rblpapi)
 
@@ -217,10 +218,7 @@ factors_transformed <- factors_data %>%
 factors_final <- add_returns(factors_transformed, factor_return_type)
 factors_final
 
-
 # Model estimation --------------------------------------------------------
-
-
 trades_ts <- trades_final %>%
   pivot_wider(date, names_from = "BBG_Ticker", values_from = "winsorised_ret")
 
