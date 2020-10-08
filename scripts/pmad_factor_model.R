@@ -3,7 +3,7 @@ library(broom)
 library(Rblpapi)
 
 
-blpConnect()s
+blpConnect()
 
 # Global settings & definitions --------------------------------------------
 
@@ -320,3 +320,13 @@ tmp <- trades_final %>%
 
 cor.test(tmp$`USYC1030 Index`, tmp$`CNYUSD Curncy`) %>% tidy()
 cor.test(tmp$`USYC1030 Index`, tmp$`USYC5Y30 Index`)
+
+#adding two variables
+add <- function(x,y) {
+  z <- x+y
+  return(z)
+}
+
+add(5,6)
+
+}
