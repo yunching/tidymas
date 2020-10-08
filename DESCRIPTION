@@ -14,6 +14,8 @@ Encoding: UTF-8
 LazyData: true
 Imports:
     stats,
+    dplyr,
+    readr,
     stringr,
     Rblpapi,
     tidyverse,
@@ -21,7 +23,6 @@ Imports:
     magrittr,
     purrr,
     testthat,
-    dplyr,
     rlang,
     tidyr,
     ggplot2,
