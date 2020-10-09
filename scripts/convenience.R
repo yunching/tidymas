@@ -9,6 +9,7 @@ library(forecast)
 library(ggfortify)
 
 #Establish connection with Bloomberg
+opt <- c("CDR"="5D")
 blpConnect()
 
 #' Get data from Bloomberg using the Rblpapi package, with sensible defaults
@@ -49,6 +50,13 @@ getData_xts <- function(ticker, start_date = Sys.Date()-365, end_date = today())
   my_ts <- xts(cbind(bbg_data$PX_OPEN, bbg_data$PX_HIGH, bbg_data$PX_LOW, bbg_data$PX_LAST), order.by = bbg_data$date)
   colnames(my_ts) <- c("Open", "High", "Low", "Close")
   my_ts
+}
+
+fetch_bbg_data <- function(trades_ticker_list, start_date, end_date, opt) {
+  bdh(trades_ticker_list, c("PX_OPEN", "PX_HIGH","PX_LOW","PX_LAST"), start_date, end_date, options = opt) %>%
+    bind_rows(.id = "BBG_Ticker" ) %>%
+    as_tibble() %>%
+    rename(Close = PX_LAST)
 }
 
 #' Draws a simple time series plot

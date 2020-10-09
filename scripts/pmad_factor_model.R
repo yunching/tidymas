@@ -1,7 +1,8 @@
 library(tidyverse)
-
 library(broom)
+library(lubridate)
 library(Rblpapi)
+
 
 blpConnect()
 
