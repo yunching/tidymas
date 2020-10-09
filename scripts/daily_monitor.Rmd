@@ -48,7 +48,7 @@ ticker_list <- c("RX1 Comdty", "G 1 Comdty", "IK1 Comdty", "OAT1 Comdty",
                  "BIDU US Equity", "TCEHY US Equity", "BZUN US Equity", "CAPL SP Equity", 
                  "GENS SP Equity")
 
-dailymon_db <- fetch_bbg_data(ticker_list, Sys.Date()-365, Sys.Date(), opt)
+dailymon_db <- fetch_daily_bbg_data(ticker_list, Sys.Date()-365, Sys.Date(), opt)
 ```
 
 # Futures

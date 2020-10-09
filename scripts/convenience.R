@@ -52,11 +52,10 @@ getData_xts <- function(ticker, start_date = Sys.Date()-365, end_date = today())
   my_ts
 }
 
-fetch_bbg_data <- function(trades_ticker_list, start_date, end_date, opt) {
-  bdh(trades_ticker_list, c("PX_OPEN", "PX_HIGH","PX_LOW","PX_LAST"), start_date, end_date, options = opt) %>%
+fetch_daily_bbg_data <- function(trades_ticker_list, start_date, end_date, opt) {
+  bdh(trades_ticker_list, c("PX_OPEN", "PX_HIGH","PX_LOW","PX_LAST", "VOLUME"), start_date, end_date, options = opt) %>%
     bind_rows(.id = "BBG_Ticker" ) %>%
-    as_tibble() %>%
-    rename(Close = PX_LAST)
+    as_tibble
 }
 
 #' Draws a simple time series plot
