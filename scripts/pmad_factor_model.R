@@ -52,7 +52,8 @@ add_returns <- function(trades_data_transformed, trades_return_type) {
              scaled_ret < -2 ~ -2,
              scaled_ret <= 2 ~ scaled_ret
            )
-    )
+    ) %>%
+    arrange(BBG_Ticker, date)
 
   return(trades_final)
 }
@@ -130,6 +131,7 @@ trades_data_transformed <- trades_data %>%
 
 trades_final <- add_returns(trades_data_transformed, trades_return_type)
 trades_final
+# trades_final %>%  filter(BBG_Ticker == "SPX Index") %>% write_csv("tmp.csv")
 
 
 # Factor model calculations -----------------------------------------------
