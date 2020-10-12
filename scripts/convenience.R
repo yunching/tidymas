@@ -9,6 +9,7 @@ library(forecast)
 library(ggfortify)
 
 #Establish connection with Bloomberg
+opt <- c("CDR"="5D")
 blpConnect()
 
 #' Get data from Bloomberg using the Rblpapi package, with sensible defaults
@@ -24,7 +25,12 @@ blpConnect()
 #' @examples
 #' getData("AAPL US Equity")
 getData <- function(ticker, start_date = Sys.Date()-365, end_date = today(), fields = c("PX_LAST")){
-  bdh(ticker, fields, start.date = start_date, end.date = end_date)
+  dailymon_db %>%
+    filter(BBG_Ticker %in% ticker) %>%
+    filter(start_date >= start_date) %>%
+    filter(end_date <=end_date) %>%
+    rename(PX_LAST=Close)
+
   #bbg_data <- bdh(ticker, fields, start.date = start_date, end.date = end_date)
   #colnames(bbg_data) <- c("Date", "Close")
   #as_tibble(bbg_data)
@@ -46,6 +52,12 @@ getData_xts <- function(ticker, start_date = Sys.Date()-365, end_date = today())
   my_ts
 }
 
+fetch_daily_bbg_data <- function(trades_ticker_list, start_date, end_date, opt) {
+  bdh(trades_ticker_list, c("PX_OPEN", "PX_HIGH","PX_LOW","PX_LAST", "VOLUME"), start_date, end_date, options = opt) %>%
+    bind_rows(.id = "BBG_Ticker" ) %>%
+    as_tibble
+}
+
 #' Draws a simple time series plot
 #'
 #' @param ticker Character string containing Bloomberg ticker
@@ -58,11 +70,9 @@ getData_xts <- function(ticker, start_date = Sys.Date()-365, end_date = today())
 #' @examples
 #' ggTS("AAPL US Equity")
 ggTS <- function(ticker, title = ticker, yield_mode = FALSE, start_date = Sys.Date()-365){
-  require(dplyr)
-  ticker <- rlang::enquo(ticker)
-  data <- read_csv("./BBG_snapshot.csv", col_types = cols()) %>%
-    filter(Ticker == !!ticker)
-  # data <- getData(ticker = ticker, start_date = start_date)
+  # data <- read_csv("./BBG_snapshot.csv", col_types = cols()) %>%
+  #   filter(Ticker == !!ticker)
+  data <- getData(ticker = {{ ticker }}, start_date = start_date)
   if (yield_mode == FALSE){
     my_subtitle <- paste("Last:", format(round(data$PX_LAST[length(data$PX_LAST)], digits = 2), big.mark = ","),
                          "1D ret:", paste0(format(round((data$PX_LAST[length(data$PX_LAST)] / data$PX_LAST[length(data$PX_LAST) - 1] - 1) * 100, 2), nsmall = 2), "%"),

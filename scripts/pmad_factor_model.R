@@ -1,5 +1,6 @@
 library(tidyverse)
 library(broom)
+library(lubridate)
 library(Rblpapi)
 
 
@@ -11,6 +12,7 @@ opt <- c("CDR"="5D")
 start_date <- "20200123"
 end_date <- "20200724"
 
+# TODO add inflation return type?
 asset_return <- function(current_obs, prev_obs, calc_type) {
   ret <- NA
 
@@ -25,52 +27,60 @@ asset_return <- function(current_obs, prev_obs, calc_type) {
   ret
 }
 
+# Pull and tidy data from Bloomberg
+fetch_bbg_data <- function(trades_ticker_list, start_date, end_date, opt) {
+  bdh(trades_ticker_list, "PX_LAST", start_date, end_date, options = opt) %>%
+    bind_rows(.id = "BBG_Ticker" ) %>%
+    as_tibble() %>%
+    rename(Close = PX_LAST)
+}
+
+# Calculate returns
+add_returns <- function(trades_data_transformed, trades_return_type) {
+  trades_w_returns <- trades_data_transformed %>%
+    left_join(trades_return_type, by="BBG_Ticker") %>%
+    group_by(`BBG_Ticker`) %>%
+    mutate(daily_return = asset_return(Close, lag(Close, 1), calc_type=Return_type))
+
+  trades_scaled <- trades_w_returns %>%
+    group_by(BBG_Ticker) %>%
+    summarise(mean = mean(daily_return, na.rm = TRUE), sd = sd(daily_return, na.rm = TRUE), .groups = "keep")
+
+  trades_final <- trades_w_returns %>%
+    na.omit() %>%
+    left_join(trades_scaled) %>%
+    mutate(scaled_ret = daily_return / sd,
+           winsorised_ret = case_when(
+             scaled_ret > 2 ~ 2,
+             scaled_ret < -2 ~ -2,
+             scaled_ret <= 2 ~ scaled_ret
+           )
+    )
+
+  return(trades_final)
+}
+
+# Helper function for linear regression
+add_factors_data <- function(df){
+  inner_join(df, factors_ts, by="date")
+}
+
+# Helper function for linear regression
+mod_fun <- function(df){
+  lm(winsorised_ret ~ . -date, data = df)
+}
+
 # Trade calculations ------------------------------------------------------
-trades_raw_data <- bdh(c("SPX Index", "UKX Index", "USYC1030 Index", "AUDEUR Curncy", "AUDJPY Curncy", "NZDEUR Curncy",
-                         "NZDJPY Curncy", "GTESP10Y Govt", "GTFRF10Y Govt", "GTBEF10Y Govt",
-                         "CNYUSD Curncy", "EURUSD Curncy", "GTCNY10YR Corp", "USYC5Y30 Index",
-                         "USGG10YR Index", "UKYC2Y10 Index", "GTDEM10Y Govt", "DEYC5Y30 Index",
-                         "GTITL5Y Govt", "GTESP5Y Govt"
-),
-"PX_LAST", start_date, end_date, options = opt)
 
-
-trades_processed_data <- trades_raw_data %>%
-  bind_rows(.id = "BBG_Ticker" ) %>%
-  as_tibble() %>%
-  rename(Close = PX_LAST)
-
-# check data downloaded (by alphabetical order)
-trades_processed_data$BBG_Ticker %>% unique() %>% sort() %>% as_tibble()
-
-
-trades_transformed <- trades_processed_data %>%
-  select(BBG_Ticker, date, Close) %>%
-  pivot_wider(names_from = BBG_Ticker, values_from = Close) %>%
-  transmute(date,
-            `USYC1030 Index`,
-            `CNYUSD Curncy`,
-            `AUDEUR Curncy`,
-            `NZDJPY Curncy`,
-            `AUDJPY Curncy`, `NZDEUR Curncy`,
-            AUDNZDvEURJPY = 0.5 * `AUDEUR Curncy` + 0.5 * `NZDJPY Curncy`,
-            # AUDNZDvEURJPY = 0.5 * `AUDEUR Curncy` + 0.5 * bdp("AUDNZD Curncy", "PX_LAST")[, 1] * `NZDJPY Curncy`,
-            `5Y_IT_vs_ES` = `GTITL5Y Govt` -  `GTESP5Y Govt`,
-            `SPX Index`,
-            "UK_2S10_flattener" = -`UKYC2Y10 Index`,
-            "10Y_FR_vs_DE" = `GTFRF10Y Govt` - `GTDEM10Y Govt`,
-            "DE_5S30_flattener" = -`DEYC5Y30 Index`,
-            `EURUSD Curncy`,
-            `10Y_SP_vs_FR_BE` = 0.5 * (`GTESP10Y Govt` - `GTFRF10Y Govt`) + 0.5 * (`GTESP10Y Govt` - `GTBEF10Y Govt`),
-            `GTCNY10YR Corp`,
-            `USYC5Y30 Index`,
-            `USGG10YR Index`
-  ) %>%
-  pivot_longer(-date, names_to = "BBG_Ticker", values_to = "Close") %>%
-  group_by(BBG_Ticker)
+# Process trades
+trades_ticker_list <- c("SPX Index", "UKX Index", "USYC1030 Index", "AUDEUR Curncy", "AUDJPY Curncy", "NZDEUR Curncy",
+                        "NZDJPY Curncy", "GTESP10Y Govt", "GTFRF10Y Govt", "GTBEF10Y Govt",
+                        "CNYUSD Curncy", "EURUSD Curncy", "GTCNY10YR Corp", "USYC5Y30 Index",
+                        "USGG10YR Index", "UKYC2Y10 Index", "GTDEM10Y Govt", "DEYC5Y30 Index",
+                        "GTITL5Y Govt", "GTESP5Y Govt")
 
 # lookup table controlling return calculations
-return_type <- tribble(
+trades_return_type <- tribble(
   ~BBG_Ticker, ~Return_type,
   "USYC1030 Index", "Yield",
   "CNYUSD Curncy", "Price",
@@ -91,31 +101,42 @@ return_type <- tribble(
   "5Y_IT_vs_ES", "Yield"
 )
 
+trades_data <- fetch_bbg_data(trades_ticker_list, start_date, end_date, opt)
 
-trades_w_returns <- trades_transformed %>%
-  left_join(return_type, by="BBG_Ticker") %>%
-  group_by(`BBG_Ticker`) %>%
-  mutate(daily_return = asset_return(Close, lag(Close, 1), calc_type=Return_type))
+# check data downloaded (by alphabetical order)
+trades_data$BBG_Ticker %>% unique() %>% sort() %>% as_tibble()
 
-# scale and winsorise
+# transform trades which are composite tickers
+trades_data_transformed <- trades_data %>%
+  select(BBG_Ticker, date, Close) %>%
+  pivot_wider(names_from = BBG_Ticker, values_from = Close) %>%
+  transmute(date,
+            `USYC1030 Index`,
+            `CNYUSD Curncy`,
+            `AUDEUR Curncy`,
+            `NZDJPY Curncy`,
+            `AUDJPY Curncy`, `NZDEUR Curncy`,
+            AUDNZDvEURJPY = 0.5 * `AUDEUR Curncy` + 0.5 * `NZDJPY Curncy`,
+            `5Y_IT_vs_ES` = `GTITL5Y Govt` -  `GTESP5Y Govt`,
+            `SPX Index`,
+            "UK_2S10_flattener" = -`UKYC2Y10 Index`,
+            "10Y_FR_vs_DE" = `GTFRF10Y Govt` - `GTDEM10Y Govt`,
+            "DE_5S30_flattener" = -`DEYC5Y30 Index`,
+            `EURUSD Curncy`,
+            `10Y_SP_vs_FR_BE` = 0.5 * (`GTESP10Y Govt` - `GTFRF10Y Govt`) + 0.5 * (`GTESP10Y Govt` - `GTBEF10Y Govt`),
+            `GTCNY10YR Corp`,
+            `USYC5Y30 Index`,
+            `USGG10YR Index`
+  ) %>%
+  pivot_longer(-date, names_to = "BBG_Ticker", values_to = "Close") %>%
+  group_by(BBG_Ticker)
 
-trades_scaled <- trades_w_returns %>%
-  group_by(BBG_Ticker) %>%
-  summarise(mean = mean(daily_return, na.rm = TRUE), sd = sd(daily_return, na.rm = TRUE), .groups = "keep")
-
-trades_final <- trades_w_returns %>%
-  na.omit() %>%
-  left_join(trades_scaled) %>%
-  mutate(scaled_ret = daily_return / sd,
-         winsorised_ret = case_when(
-           scaled_ret <= 2 ~ scaled_ret,
-           scaled_ret > 2 ~ 2)
-  )
-
+trades_final <- add_returns(trades_data_transformed, trades_return_type)
 trades_final
 
+
 # Factor model calculations -----------------------------------------------
-factors_raw_data <- bdh(c("TACUSAU Index", #FTSE US All Cap TR
+factor_ticker_list <- c("TACUSAU Index", #FTSE US All Cap TR
                           "ASX Index",   #FTSE UK All Share
                           "FTR4EXUK Index", #FTSE Europe ex UK
                           "WIJPN Index", #FTSE Japan
@@ -136,14 +157,12 @@ factors_raw_data <- bdh(c("TACUSAU Index", #FTSE US All Cap TR
                           "BCOMXE Index", #Bloomberg Commodities ex energy subindex
                           "EURUSD Curncy",
                           "JPYUSD Curncy"
-), "PX_LAST", start_date, end_date, options = opt)
+)
 
-factors_raw_data_processed <- factors_raw_data %>%
-  bind_rows(.id = "BBG_Ticker" ) %>%
-  rename(Close = PX_LAST)
+factors_data <- fetch_bbg_data(factor_ticker_list, start_date, end_date, opt)
 
 factor_return_type <- tribble(
-  ~factors, ~Return_type,
+  ~BBG_Ticker, ~Return_type,
   "econ_growth_us", "Price",
   "econ_growth_uk", "Price",
   "econ_growth_eu", "Price",
@@ -167,7 +186,7 @@ factor_return_type <- tribble(
   "fx_jpy", "Price"
 )
 
-factors_transformed <- factors_raw_data_processed %>%
+factors_transformed <- factors_data %>%
   pivot_wider(names_from = BBG_Ticker, values_from = Close) %>%
   transmute(
     date = date,
@@ -193,46 +212,22 @@ factors_transformed <- factors_raw_data_processed %>%
     fx_eur = `EURUSD Curncy`,
     fx_jpy = `JPYUSD Curncy`
   ) %>%
-  pivot_longer(-date, names_to = "factors", values_to = "Close") %>%
-  left_join(factor_return_type, by="factors") %>%
-  group_by(factors) %>%
-  mutate(daily_return = asset_return(Close, lag(Close, 1), calc_type=Return_type))
+  pivot_longer(-date, names_to = "BBG_Ticker", values_to = "Close") %>%
+  # left_join(factor_return_type, by="BBG_Ticker") %>%
+  group_by(BBG_Ticker)
 
-factors_scaling_factors <- factors_transformed %>%
-  group_by(factors) %>%
-  summarise(mean = mean(daily_return, na.rm = TRUE), sd = sd(daily_return, na.rm = TRUE), .groups = "keep")
-
-factors_final <- factors_transformed %>%
-  na.omit() %>%
-  left_join(factors_scaling_factors) %>%
-  mutate(scaled_ret = daily_return / sd,
-         winsorised_ret = case_when(
-           scaled_ret <= 2 ~ scaled_ret,
-           scaled_ret > 2 ~ 2)
-  )
-
+factors_final <- add_returns(factors_transformed, factor_return_type)
 factors_final
 
-
 # Model estimation --------------------------------------------------------
-
 trades_ts <- trades_final %>%
   pivot_wider(date, names_from = "BBG_Ticker", values_from = "winsorised_ret")
 
 factors_ts <- factors_final %>%
-  pivot_wider(date, names_from = "factors", values_from = "winsorised_ret")
-
+  pivot_wider(date, names_from = "BBG_Ticker", values_from = "winsorised_ret")
 
 full_data <- trades_ts %>%
   inner_join(factors_ts)
-
-add_factors_data <- function(df){
-  inner_join(df, factors_ts, by="date")
-}
-
-mod_fun <- function(df){
-  lm(winsorised_ret ~ . -date, data = df)
-}
 
 regressions <- trades_final %>%
   select(BBG_Ticker, date, winsorised_ret) %>%
@@ -262,8 +257,9 @@ factor_estimates <- regressions %>%
 results <- factor_estimates %>%
   bind_rows(r_squared)
 
-results
 write_csv(results, "factor_exposure_w_rsquared.csv")
+return(results)
+
 
 
 # Correlation analysis ----------------------------------------------------
@@ -273,8 +269,7 @@ write_csv(results, "factor_exposure_w_rsquared.csv")
 # - For FI spread trades, assumes leg with smaller duration is scaled up to ma
 
 hist_cor_trades <- trades_final %>%
-  # ungroup() %>%
-  select(date, BBG_Ticker, daily_return) %>%
+  select(date, BBG_Ticker, winsorised_ret) %>%
   filter(!BBG_Ticker %in% c("AUDEUR Curncy", "NZDJPY Curncy", "AUDJPY Curncy",
                             "NZDEUR Curncy")) %>%
   pivot_wider(names_from = BBG_Ticker, values_from = winsorised_ret) %>%
@@ -286,9 +281,8 @@ hist_cor_trades
 write_csv(hist_cor_trades, "hist_corr_trades.csv")
 
 hist_cor_factors <- factors_final %>%
-  # ungroup() %>%
-  select(date, factors, daily_return) %>%
-  pivot_wider(names_from = factors, values_from = winsorised_ret) %>%
+  select(date, BBG_Ticker, winsorised_ret) %>%
+  pivot_wider(names_from = BBG_Ticker, values_from = winsorised_ret) %>%
   select(-date) %>%
   cor() %>%
   as_tibble()
@@ -321,14 +315,6 @@ tmp <- trades_final %>%
 cor.test(tmp$`USYC1030 Index`, tmp$`CNYUSD Curncy`) %>% tidy()
 cor.test(tmp$`USYC1030 Index`, tmp$`USYC5Y30 Index`)
 
-#adding two variables
-add <- function(x,y) {
-  z <- x+y
-  return(z)
-}
-
-add(5,6)
-
 #calculating volatility of trades
 
 trade_size_conversion_factor <- tribble(
@@ -356,4 +342,3 @@ trades_semiannual_SD <- trades_scaled %>%
   left_join(trade_size_conversion_factor, by="BBG_Ticker") %>%
   mutate(semiannual_SD = sd*size*conversion*sqrt(nrow(tmp)-1)
          )
-
