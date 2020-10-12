@@ -9,8 +9,8 @@ blpConnect()
 # Global settings & definitions --------------------------------------------
 
 opt <- c("CDR"="5D")
-start_date <- "20200115"
-end_date <- "20200715"
+start_date <- "20200123"
+end_date <- "20200724"
 
 # TODO add inflation return type?
 asset_return <- function(current_obs, prev_obs, calc_type) {
@@ -313,6 +313,35 @@ tmp <- trades_final %>%
   pivot_wider(names_from = BBG_Ticker, values_from = daily_return)
 
 cor.test(tmp$`USYC1030 Index`, tmp$`CNYUSD Curncy`) %>% tidy()
+cor.test(tmp$`USYC1030 Index`, tmp$`USYC5Y30 Index`)
+
+#calculating volatility of trades
+
+trade_size_conversion_factor <- tribble(
+  ~BBG_Ticker, ~size, ~conversion,
+  "USYC1030 Index", 0.04, 0.0001,
+  "CNYUSD Curncy", 0.003, 1,
+  "AUDNZDvEURJPY", 0.003, 1,
+  "SPX Index", 0.006, 1,
+  "EURUSD Curncy", 0.003, 1,
+  "10Y_SP_vs_FR_BE", 0.04, 0.01,
+  "GTCNY10YR Corp", 0.04, 0.01,
+  "USYC5Y30 Index", 0.04, 0.0001,
+  "USGG10YR Index", 0.04, 0.01,
+  "AUDEUR Curncy", 0.003, 1,
+  "NZDJPY Curncy", 0.003, 1,
+  "AUDJPY Curncy", 0.003, 1,
+  "NZDEUR Curncy", 0.003, 1,
+  "UK_2S10_flattener", 0.04, 0.01,
+  "10Y_FR_vs_DE", 0.04, 0.01,
+  "DE_5S30_flattener", 0.04, 0.0001,
+  "5Y_IT_vs_ES", 0.04, 0.01
+)
+
+trades_semiannual_SD <- trades_scaled %>%
+  left_join(trade_size_conversion_factor, by="BBG_Ticker") %>%
+  mutate(semiannual_SD = sd*size*conversion*sqrt(nrow(tmp)-1))
+
 
 
 # Statistical properties --------------------------------------------------
