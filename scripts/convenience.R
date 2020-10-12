@@ -28,8 +28,7 @@ getData <- function(ticker, start_date = Sys.Date()-365, end_date = today(), fie
   dailymon_db %>%
     filter(BBG_Ticker %in% ticker) %>%
     filter(start_date >= start_date) %>%
-    filter(end_date <=end_date) %>%
-    rename(PX_LAST=Close)
+    filter(end_date <=end_date)
 
   #bbg_data <- bdh(ticker, fields, start.date = start_date, end.date = end_date)
   #colnames(bbg_data) <- c("Date", "Close")
