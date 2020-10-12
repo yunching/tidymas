@@ -316,7 +316,7 @@ cor.test(tmp$`USYC1030 Index`, tmp$`CNYUSD Curncy`) %>% tidy()
 cor.test(tmp$`USYC1030 Index`, tmp$`USYC5Y30 Index`)
 
 #calculating volatility of trades
-
+# TODO document how the conversion factors are obtained
 trade_size_conversion_factor <- read_csv("./scripts/trade_size_conversion_factor.csv")
 
 trades_semiannual_SD <- trades_scaled %>%
