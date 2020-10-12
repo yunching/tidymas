@@ -317,26 +317,7 @@ cor.test(tmp$`USYC1030 Index`, tmp$`USYC5Y30 Index`)
 
 #calculating volatility of trades
 
-trade_size_conversion_factor <- tribble(
-  ~BBG_Ticker, ~size, ~conversion,
-  "USYC1030 Index", 0.04, 0.0001,
-  "CNYUSD Curncy", 0.003, 1,
-  "AUDNZDvEURJPY", 0.003, 1,
-  "SPX Index", 0.006, 1,
-  "EURUSD Curncy", 0.003, 1,
-  "10Y_SP_vs_FR_BE", 0.04, 0.01,
-  "GTCNY10YR Corp", 0.04, 0.01,
-  "USYC5Y30 Index", 0.04, 0.0001,
-  "USGG10YR Index", 0.04, 0.01,
-  "AUDEUR Curncy", 0.003, 1,
-  "NZDJPY Curncy", 0.003, 1,
-  "AUDJPY Curncy", 0.003, 1,
-  "NZDEUR Curncy", 0.003, 1,
-  "UK_2S10_flattener", 0.04, 0.01,
-  "10Y_FR_vs_DE", 0.04, 0.01,
-  "DE_5S30_flattener", 0.04, 0.0001,
-  "5Y_IT_vs_ES", 0.04, 0.01
-)
+trade_size_conversion_factor <- read_csv("./scripts/trade_size_conversion_factor.csv")
 
 trades_semiannual_SD <- trades_scaled %>%
   left_join(trade_size_conversion_factor, by="BBG_Ticker") %>%
