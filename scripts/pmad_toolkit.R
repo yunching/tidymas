@@ -3,4 +3,5 @@
 library(tidyverse)
 library(broom)
 library(lubridate)
+library(RiskPortfolios)
 library(Rblpapi)

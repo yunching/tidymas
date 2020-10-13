@@ -68,6 +68,17 @@ mod_fun <- function(df){
   lm(winsorised_ret ~ . -date, data = df)
 }
 
+# Estimates covariance matrix using Ledoit and Wolf's shrinkage methdology
+est_cov_matrix <- function(returns_df){
+  returns_df %>%
+    select(date, BBG_Ticker, daily_return) %>%
+    pivot_wider(names_from = BBG_Ticker, values_from = daily_return) %>%
+    column_to_rownames(var = "date") %>%
+    as.matrix() %>%
+    covEstimation(control = list(type = 'large'))
+
+}
+
 # Trade calculations ------------------------------------------------------
 
 # Process trades
@@ -132,6 +143,10 @@ trades_data_transformed <- trades_data %>%
 trades_final <- add_returns(trades_data_transformed, trades_return_type)
 trades_final
 # trades_final %>%  filter(BBG_Ticker == "SPX Index") %>% write_csv("tmp.csv")
+
+
+trades_cov <- trades_final %>%
+  est_cov_matrix()
 
 
 # Factor model calculations -----------------------------------------------
@@ -217,6 +232,9 @@ factors_transformed <- factors_data %>%
 
 factors_final <- add_returns(factors_transformed, factor_return_type)
 factors_final
+
+factors_cov <- factors_final %>%
+  est_cov_matrix()
 
 # Model estimation --------------------------------------------------------
 trades_ts <- trades_final %>%
