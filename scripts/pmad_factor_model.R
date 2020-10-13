@@ -34,14 +34,14 @@ mod_fun <- function(df){
   lm(winsorised_ret ~ . -date, data = df)
 }
 
-# Estimates covariance matrix using Ledoit and Wolf's shrinkage methdology
-est_cov_matrix <- function(returns_df){
+# Estimates covariance matrix using RiskPortfolios package
+est_cov_matrix <- function(returns_df, type = "large"){
   returns_df %>%
     select(date, BBG_Ticker, daily_return) %>%
     pivot_wider(names_from = BBG_Ticker, values_from = daily_return) %>%
     column_to_rownames(var = "date") %>%
     as.matrix() %>%
-    covEstimation(control = list(type = 'large'))
+    covEstimation(control = list(type = type))
 
 }
 
