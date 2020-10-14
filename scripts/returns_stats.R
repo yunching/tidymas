@@ -1,4 +1,8 @@
 source("scripts/pmad_toolkit.R")
+blpConnect()
+
+start_date <- ymd(20100930)
+end_date <- ymd(20200930)
 
 # Statistical properties --------------------------------------------------
 stats_property <- function(ticker_list, returns_db, start_date, end_date){
@@ -10,21 +14,21 @@ stats_property <- function(ticker_list, returns_db, start_date, end_date){
     mutate(quarter = paste(lubridate::year(date), "Q", lubridate::quarter(date), sep="")) %>%
     ungroup %>%
     group_by(BBG_Ticker, quarter) %>%
-    mutate(ret_index = cumprod(1 + daily_return),
+    mutate(ret_index = cumprod(1 + period_return),
            prev_peak = cummax(ret_index),
            draw_down = (ret_index - prev_peak)/prev_peak
            ) %>%
-    # select(BBG_Ticker, quarter, daily_return, Close, ret_index) %>%
+    # select(BBG_Ticker, quarter, period_return, Close, ret_index) %>%
     summarise(last = last(Close),
-              last_ret = last(daily_return),
-              min = min(daily_return),
-              max = max(daily_return),
+              last_ret = last(period_return),
+              min = min(period_return),
+              max = max(period_return),
               max_min_ratio = abs(max / min),
-              mean = mean(daily_return),
-              median = median(daily_return),
-              sd = sd(daily_return),
-              skew = moments::skewness(daily_return),
-              kurtosis = moments::kurtosis(daily_return),
+              mean = mean(period_return),
+              median = median(period_return),
+              sd = sd(period_return),
+              skew = moments::skewness(period_return),
+              kurtosis = moments::kurtosis(period_return),
               sd1_move = last * sd,
               sd2_move = last * sd * 2,
               max_dd = min(draw_down),
@@ -32,7 +36,22 @@ stats_property <- function(ticker_list, returns_db, start_date, end_date){
 
 }
 
-stats_property(c("SPX Index"), trades_final, start_date = ymd(20200401), end_date = ymd(20200930)) %>% view()
+stats_data <- fetch_bbg_data(c("SPX Index", "UKX Index", "SX5E Index", "NKY Index"),
+                             start_date = start_date,
+                             end_date = end_date,
+                             opt = c("CDR"="5D"))
+stats_return_type <- tribble(
+  ~BBG_Ticker, ~Return_type,
+  "SPX Index", "Price",
+  "UKX Index", "Price",
+  "SX5E Index", "Price",
+  "NKY Index", "Price"
+)
+
+stats_returns <- add_returns(stats_data, stats_return_type)
+stats <- stats_property(c("SPX Index", "UKX Index", "SX5E Index", "NKY Index"), stats_returns, start_date = start_date, end_date = end_date)
+stats %>% write_csv("return_stats.csv")
+
 
 
 returns_hist <- function(ticker_list, returns_db){
@@ -42,13 +61,20 @@ returns_hist <- function(ticker_list, returns_db){
     mutate(quarter = paste(lubridate::year(date), "Q", lubridate::quarter(date), sep="")) %>%
     ungroup %>%
     group_by(BBG_Ticker, quarter) %>%
-    select(BBG_Ticker, quarter, daily_return)
+    select(BBG_Ticker, quarter, period_return)
 }
 
-trades_final %>%
+tmp <- trades_final %>%
   filter(BBG_Ticker == "SPX Index") %>%
-  ggplot(aes(x=daily_return)) +
-  geom_histogram(aes(y = ..density..)) + stat_function(fun=dnorm, args = with(mtcars, c(mean = mean(mpg), sd = sd(mpg))))
+  ungroup %>%
+  select(period_return)
+
+ggplot(tmp, aes(x=period_return)) +
+  # ggplot(aes(x=period_return)) +
+  geom_histogram(aes(y=..density..), binwidth = 0.02, colour="black", fill="white")
+
+# +
+#   geom_density()
 
 
 # ggplot(mtcars, aes(x = mpg)) +

@@ -20,16 +20,16 @@ add_returns <- function(trades_data_transformed, trades_return_type) {
   trades_w_returns <- trades_data_transformed %>%
     left_join(trades_return_type, by="BBG_Ticker") %>%
     group_by(`BBG_Ticker`) %>%
-    mutate(daily_return = asset_return(Close, lag(Close, 1), calc_type=Return_type))
+    mutate(period_return = asset_return(Close, lag(Close, 1), calc_type=Return_type))
 
   trades_scaled <- trades_w_returns %>%
     group_by(BBG_Ticker) %>%
-    summarise(mean = mean(daily_return, na.rm = TRUE), sd = sd(daily_return, na.rm = TRUE), .groups = "keep")
+    summarise(mean = mean(period_return, na.rm = TRUE), sd = sd(period_return, na.rm = TRUE), .groups = "keep")
 
   trades_final <- trades_w_returns %>%
     na.omit() %>%
     left_join(trades_scaled) %>%
-    mutate(scaled_ret = daily_return / sd,
+    mutate(scaled_ret = period_return / sd,
            winsorised_ret = case_when(
              scaled_ret > 2 ~ 2,
              scaled_ret < -2 ~ -2,
