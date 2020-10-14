@@ -35,8 +35,9 @@ add_returns <- function(trades_data_transformed, trades_return_type) {
              scaled_ret < -2 ~ -2,
              scaled_ret <= 2 ~ scaled_ret
            )
-    ) %>%
-    arrange(BBG_Ticker, date)
+    )
+    # Do not arrange in generic functions - leave it to user to decide manually
+    # arrange(BBG_Ticker, date)
 
   return(trades_final)
 }
