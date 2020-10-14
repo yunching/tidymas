@@ -40,3 +40,26 @@ add_returns <- function(trades_data_transformed, trades_return_type) {
 
   return(trades_final)
 }
+
+# Estimates covariance matrix using RiskPortfolios package
+est_cov_matrix <- function(returns_df, type = "large"){
+  returns_df %>%
+    select(date, BBG_Ticker, period_return) %>%
+    # Scale it to percent
+    # mutate(period_return = period_return * 100) %>%
+    pivot_wider(names_from = BBG_Ticker, values_from = period_return) %>%
+    column_to_rownames(var = "date") %>%
+    as.matrix() %>%
+    covEstimation(control = list(type = type))
+}
+
+get_risk_from_cov <- function(covar_mat){
+  covar_mat %>%
+    diag() %>%
+    sqrt
+}
+
+get_cor_from_cov <- function(covar_mat){
+  std_dev <- covar_mat %>% get_risk_from_cov()
+  covar_mat / (std_dev %*% t(std_dev))
+}
