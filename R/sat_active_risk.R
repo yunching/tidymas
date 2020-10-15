@@ -462,7 +462,7 @@ get_dur_cds_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), 
 #' }
 get_dur_bbg <- function(instruments_df, start_date = as.Date("1994-01-01"), end_date = today(), fill = TRUE) {
   sec_df <- instruments_df %>%
-    filter(size_type == "months") %>%
+    filter(.data$size_type == "months") %>%
     group_by(.data$identifier, .data$asset_class) %>%
     summarise() %>%
     ungroup
