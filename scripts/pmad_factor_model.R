@@ -203,7 +203,7 @@ full_data <- trades_ts %>%
 
 regressions <- trades_final %>%
   select(BBG_Ticker, date, winsorised_ret) %>%
-  group_by(BBG_Ticker) %>%
+  group_by(BBG_Ticker, year(date), month(date)) %>%
   nest() %>%
   #take each trade data and combine with factor data
   mutate(regression_data = map(data, add_factors_data)) %>%
@@ -295,4 +295,6 @@ trades_semiannual_SD <- trades_scaled %>%
   left_join(trade_size_conversion_factor, by="BBG_Ticker") %>%
   mutate(semiannual_SD = sd*size*conversion*sqrt(nrow(tmp)-1))
 
+#HW's homework – z-score
+mutate(trades_final, zscore = (winsorised_ret - mean)/sd)
 
