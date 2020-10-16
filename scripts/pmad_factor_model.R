@@ -296,3 +296,10 @@ trades_semiannual_SD <- trades_scaled %>%
   mutate(semiannual_SD = sd*size*conversion*sqrt(nrow(tmp)-1))
 
 
+# Calculate mahalanobis distance
+# Mahalanobis distance
+# distance squared
+shock <- c(20, 20, 20)
+d_sq <- shock %*% covar[1:3, 1:3] %*% shock
+vars <- length(shock)
+1-pchisq(d_sq, df=vars)
