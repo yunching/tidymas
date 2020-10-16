@@ -103,3 +103,17 @@ optimal_weights <- function(rets, covar, rfr){
 }
 
 optimal_weights(rets, covar, rfr)
+
+bl_adjusted_rets <- function(base_rets, delta_rets, covar){
+  # Calculate tracking matrix
+  tracking_denom <- diag(covar) %>% rep(length(.)) %>% matrix(nrow=sqrt(length(.)))
+  tracking_mat <- covar / tracking_denom
+
+  return(base_rets + tracking_mat %*% delta_rets)
+}
+
+delta_rets <-c(0.0014,	-0.0005,	0,	0, 0,	0,	0,	0,	0,	0)
+tmp_rets <- bl_adjusted_rets(rets, delta_rets, covar)
+
+tmp_rets %>% round(4)
+optimal_weights(tmp_rets, covar, rfr) %>% round(4)
