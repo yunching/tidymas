@@ -295,6 +295,28 @@ trades_semiannual_SD <- trades_scaled %>%
   left_join(trade_size_conversion_factor, by="BBG_Ticker") %>%
   mutate(semiannual_SD = sd*size*conversion*sqrt(nrow(tmp)-1))
 
+install.packages("FRAPO")
+library(FRAPO)
+
+
+write_csv(trades_cov, "trades_cov.csv")
+weights <- read_csv("./scripts/weights.csv") %>%
+  column_to_rownames(var = "Trade") %>%
+  as.matrix()
+
+marginal_contribution <- mrc(weights, trades_cov, percentage = TRUE) %>%
+  as.matrix()
+
+crossprod(marginal_contribution,weights)
+
+trades_returns_date <- trades_final %>%
+  select(1,5) %>%
+
+  write_csv(trades_returns_date, "trial.csv")
+
+returns <- read_csv("./scripts/test volatility.csv")
+sd(returns)
+
 
 # Calculate mahalanobis distance
 # Mahalanobis distance
