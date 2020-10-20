@@ -309,9 +309,9 @@ marginal_contribution <- mrc(weights, trades_cov, percentage = TRUE) %>%
 crossprod(marginal_contribution,weights)
 
 trades_returns_date <- trades_final %>%
-  select(1,5) %>%
+  select(1,5)
 
-  write_csv(trades_returns_date, "trial.csv")
+write_csv(trades_returns_date, "trial.csv")
 
 returns <- read_csv("./scripts/test volatility.csv")
 sd(returns)
