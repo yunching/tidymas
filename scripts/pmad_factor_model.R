@@ -6,7 +6,7 @@ blpConnect()
 # Global settings & definitions --------------------------------------------
 
 opt <- c("CDR"="5D")
-start_date <- "20200123"
+start_date <- "202001201"
 end_date <- "20200724"
 
 # TODO add inflation return type?
@@ -202,8 +202,9 @@ full_data <- trades_ts %>%
   inner_join(factors_ts)
 
 regressions <- trades_final %>%
-  select(BBG_Ticker, date, winsorised_ret) %>%
-  group_by(BBG_Ticker, year(date), month(date)) %>%
+  mutate(year=year(date), qtr=quarter(date)) %>%
+  select(BBG_Ticker, date, year, qtr, winsorised_ret) %>%
+  group_by(BBG_Ticker, year, qtr) %>%
   nest() %>%
   #take each trade data and combine with factor data
   mutate(regression_data = map(data, add_factors_data)) %>%
@@ -218,7 +219,7 @@ r_squared <- regressions %>%
   unnest(top_results) %>%
   select(`BBG_Ticker`, r.squared, adj.r.squared) %>%
   pivot_longer(-BBG_Ticker, names_to = 'term', values_to = "value") %>%
-  pivot_wider(names_from = BBG_Ticker, values_from = value)
+  pivot_wider(names_from = BBG_Ticker, valuwarnes_from = value)
 
 factor_estimates <- regressions %>%
   select(`BBG_Ticker`, tidied_model) %>%
