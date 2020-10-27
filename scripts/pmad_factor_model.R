@@ -187,7 +187,8 @@ factors_transformed <- factors_data %>%
   group_by(BBG_Ticker)
 
 factors_final <- add_returns(factors_transformed, factor_return_type) %>%
-  factors_final
+  mutate(year=year(date), qtr=quarter(date))
+#factors_final
 
 factors_cov <- factors_final %>%
   est_cov_matrix()
@@ -197,7 +198,7 @@ trades_ts <- trades_final %>%
   pivot_wider(date, names_from = "BBG_Ticker", values_from = "winsorised_ret")
 
 factors_ts <- factors_final %>%
-  pivot_wider(date, names_from = "BBG_Ticker", values_from = "winsorised_ret")
+  pivot_wider(date, names_from = "BBG_Ticker", values_from = "winsorised_ret") %>%
 
 full_data <- trades_ts %>%
   inner_join(factors_ts)
@@ -223,7 +224,7 @@ r_squared <- regressions %>%
   pivot_wider(names_from = BBG_Ticker, values_from = value)
 
 factor_estimates <- regressions %>%
-  select(`BBG_Ticker`, date, year, qtr, tidied_model) %>%
+  select(`BBG_Ticker`, year, qtr, tidied_model) %>%
   unnest(tidied_model) %>%
   select(BBG_Ticker, year, qtr, term, estimate) %>%
   pivot_wider(names_from = "BBG_Ticker", values_from = "estimate")
@@ -234,13 +235,12 @@ results <- factor_estimates %>%
 write_csv(results, "factor_exposure_w_rsquared.csv")
 return(results)
 
-#systematic returns and risk---------------------------------------------
+#Systematic returns and risk---------------------------------------------
 systematic_ret <- factor_estimates %>%
-  pivot_longer(cols = year:term, names_to = trade, values_to = beta) %>%
-  pivot_wider(names_from = term, values_from = beta) %>%
-  bind_rows(factors_final) %>% #combine betas from factor_est with actual returns in trades_final
-  group_by(year, qtr, trade) %>%
-  mutate(sys_ret= sum(beta*winsorised_ret)) #multiply actual returns with betas to get systematic_ret.
+  pivot_longer(cols = "USYC1030 Index":"USGG10YR Index", names_to = "trade", values_to = "beta") %>%
+  inner_join(factors_final, by = c("term" = "BBG_Ticker", "year", "qtr")) %>% #combine betas from factor_est with actual factor returns in factors_final
+  group_by(trade) %>%
+  #WIP mutate(sys_ret = sum(intercept+beta*winsorised_ret) ) #multiply actual returns with betas and add intercept to get systematic_ret.
 
 sys_risk <- sys_ret %>%
 

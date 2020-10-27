@@ -20,7 +20,7 @@ add_returns <- function(trades_data_transformed, trades_return_type) {
   trades_w_returns <- trades_data_transformed %>%
     left_join(trades_return_type, by="BBG_Ticker") %>%
     group_by(`BBG_Ticker`) %>%
-    mutate(period_return = asset_return(Close, lag(Close, 1), calc_type=Return_type))
+    mutate(period_return = asset_return(Close, lag(Close, 1), calc_type = Return_type))
 
   trades_scaled <- trades_w_returns %>%
     group_by(BBG_Ticker) %>%
