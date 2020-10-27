@@ -198,7 +198,7 @@ trades_ts <- trades_final %>%
   pivot_wider(date, names_from = "BBG_Ticker", values_from = "winsorised_ret")
 
 factors_ts <- factors_final %>%
-  pivot_wider(date, names_from = "BBG_Ticker", values_from = "winsorised_ret") %>%
+  pivot_wider(date, names_from = "BBG_Ticker", values_from = "winsorised_ret")
 
 full_data <- trades_ts %>%
   inner_join(factors_ts)
@@ -233,14 +233,40 @@ results <- factor_estimates %>%
   bind_rows(r_squared)
 
 write_csv(results, "factor_exposure_w_rsquared.csv")
-return(results)
 
 #Systematic returns and risk---------------------------------------------
+intercepts <- factor_estimates %>%
+  filter(term=="(Intercept)") %>%
+  pivot_longer(cols = -term, names_to="trade", values_to="beta") %>%
+  select(trade, beta) %>%
+  left_join(trades_final, by = c("trade" = "BBG_Ticker")) %>%
+  mutate(term="(Intercept)", winsorised_ret = 1) %>% #Give winsorised_ret value of 1 to faciliate calculation of systematic ret further down
+  select(trade, date, term, beta, winsorised_ret) %>%
+  na.omit()
+intercepts
+
 systematic_ret <- factor_estimates %>%
   pivot_longer(cols = "USYC1030 Index":"USGG10YR Index", names_to = "trade", values_to = "beta") %>%
-  inner_join(factors_final, by = c("term" = "BBG_Ticker", "year", "qtr")) %>% #combine betas from factor_est with actual factor returns in factors_final
-  group_by(trade) %>%
+  left_join(factors_final, by = c("term" = "BBG_Ticker")) %>% #combine betas from factor_est with actual factor returns in factors_final
+  select(trade, date, term, beta, winsorised_ret) %>%
+  na.omit() %>% #clear na on joins as intercept terms do not have corresponding entries in factor_estimates
+  bind_rows(intercepts) %>%
+  arrange(trade, date, term) %>%
+  mutate(term_contrib = beta * winsorised_ret) %>%
+  group_by(trade, date) %>%
+  summarise(sys_ret = sum(term_contrib), .groups = "keep")
   #WIP mutate(sys_ret = sum(intercept+beta*winsorised_ret) ) #multiply actual returns with betas and add intercept to get systematic_ret.
+systematic_ret %>% filter(sys_ret > 200)
+
+## Haven't shown HW and ZY how to plot yet
+# Plot forecasted returns to check
+systematic_ret %>%
+  ggplot(aes(x=date, y = sys_ret)) + geom_line(aes(color=trade)) #CNY 10Y trade looks weird, should probably look better when sizes are included
+
+
+trades_final %>%
+  filter(BBG_Ticker == "GTCNY10YR Corp") %>%
+  ggplot(aes(x=date, y= winsorised_ret)) + geom_line()
 
 sys_risk <- sys_ret %>%
 
