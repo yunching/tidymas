@@ -255,8 +255,11 @@ systematic_ret <- factor_estimates %>%
   mutate(term_contrib = beta * winsorised_ret) %>%
   group_by(trade, date) %>%
   summarise(sys_ret = sum(term_contrib), .groups = "keep")
-  #WIP mutate(sys_ret = sum(intercept+beta*winsorised_ret) ) #multiply actual returns with betas and add intercept to get systematic_ret.
 systematic_ret %>% filter(sys_ret > 200)
+
+systematic_risk <- systematic_ret %>%
+  group_by(trade) %>%
+  summarise(sys_risk = sd(sys_ret))
 
 ## Haven't shown HW and ZY how to plot yet
 # Plot forecasted returns to check
@@ -268,7 +271,51 @@ trades_final %>%
   filter(BBG_Ticker == "GTCNY10YR Corp") %>%
   ggplot(aes(x=date, y= winsorised_ret)) + geom_line()
 
-sys_risk <- sys_ret %>%
+#Stress test----------------------------------------------------------------
+#Strong growth and inflation
+factors_pos_stress <- factors_final %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_us"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_uk"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_eu"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_jp"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_us"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_uk"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_de"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_jp"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_au"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_ca"),3*sd,winsorised_ret))
+pos_stress_ret <- factor_estimates %>%
+  pivot_longer(cols = "USYC1030 Index":"USGG10YR Index", names_to = "trade", values_to = "beta") %>%
+  left_join(factors_pos_stress, by = c("term" = "BBG_Ticker")) %>% #combine betas from factor_est with actual factor returns in factors_final
+  select(trade, date, term, beta, winsorised_ret) %>%
+  na.omit() %>% #clear na on joins as intercept terms do not have corresponding entries in factor_estimates
+  bind_rows(intercepts) %>%
+  arrange(trade, date, term) %>%
+  mutate(term_contrib = beta * winsorised_ret) %>%
+  group_by(trade, date) %>%
+  summarise(sys_ret = sum(term_contrib), .groups = "keep")
+#Poor growth and inflation
+factors_neg_stress <- factors_final %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_us"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_uk"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_eu"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_jp"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_us"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_uk"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_de"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_jp"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_au"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_ca"),-3*sd,winsorised_ret))
+neg_stress_ret <- factor_estimates %>%
+  pivot_longer(cols = "USYC1030 Index":"USGG10YR Index", names_to = "trade", values_to = "beta") %>%
+  left_join(factors_neg_stress, by = c("term" = "BBG_Ticker")) %>% #combine betas from factor_est with actual factor returns in factors_final
+  select(trade, date, term, beta, winsorised_ret) %>%
+  na.omit() %>% #clear na on joins as intercept terms do not have corresponding entries in factor_estimates
+  bind_rows(intercepts) %>%
+  arrange(trade, date, term) %>%
+  mutate(term_contrib = beta * winsorised_ret) %>%
+  group_by(trade, date) %>%
+  summarise(sys_ret = sum(term_contrib), .groups = "keep")
 
   # Correlation analysis ----------------------------------------------------
 
