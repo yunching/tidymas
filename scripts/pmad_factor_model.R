@@ -378,6 +378,16 @@ trades_semiannual_SD <- trades_scaled %>%
   left_join(trade_size_conversion_factor, by="BBG_Ticker") %>%
   mutate(semiannual_SD = sd*size*conversion*sqrt(nrow(tmp)-1))
 
-#HW's homework – z-score
-mutate(trades_final, zscore = (winsorised_ret - mean)/sd)
+#mrc calculation
+# for FX, weight = proportion of R2
+# for bond trades, weights is weighted years to R2. for tickers in bp, also multiplied by 0.0001. for bond tickers in %, multiplied by 0.01.
 
+weight <- read.csv("./scripts/trade_size_conversion_factor.csv",header=T,row.names=1)
+weight_m  <- as.matrix(weight)
+
+trades_cov_m <- as.matrix(trades_cov)
+
+sdev <- as.numeric(sqrt(t(weight_m) %*% trades_cov_m %*% weight_m))
+covarweight <- trades_cov_m %*% weight_m
+marginal_contribution <- covarweight/sdev
+total_contribution <- weight_m* covarweight/sdev
