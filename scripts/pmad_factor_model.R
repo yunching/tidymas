@@ -6,8 +6,8 @@ blpConnect()
 # Global settings & definitions --------------------------------------------
 
 opt <- c("CDR"="5D")
-start_date <- "20200123"
-end_date <- "20200724"
+start_date <- "20200101"
+end_date <- "20200801"
 
 # TODO add inflation return type?
 asset_return <- function(current_obs, prev_obs, calc_type) {
@@ -95,7 +95,8 @@ trades_data_transformed <- trades_data %>%
   pivot_longer(-date, names_to = "BBG_Ticker", values_to = "Close") %>%
   group_by(BBG_Ticker)
 
-trades_final <- add_returns(trades_data_transformed, trades_return_type)
+trades_final <- add_returns(trades_data_transformed, trades_return_type) %>%
+  mutate(year=year(date), qtr=quarter(date))
 trades_final
 # trades_final %>%  filter(BBG_Ticker == "SPX Index") %>% write_csv("tmp.csv")
 
@@ -106,26 +107,26 @@ trades_cov <- trades_final %>%
 
 # Factor model calculations -----------------------------------------------
 factor_ticker_list <- c("TACUSAU Index", #FTSE US All Cap TR
-                          "ASX Index",   #FTSE UK All Share
-                          "FTR4EXUK Index", #FTSE Europe ex UK
-                          "WIJPN Index", #FTSE Japan
-                          "GTII10 Govt", #US 10Y real rates
-                          "GTGBPII10Y Govt", #UK 10Y real rates
-                          "RR10HDE Index", #German 10Y real rates
-                          "RR10HIT Index", #Italy 10Y real rates
-                          "GTJPYII10Y Govt", #Japan 10Y real rates
-                          "GTAUDII10Y Govt", #Australia 10Y real rates
-                          "GTCADII10Y Govt", #Canada 10Y real rates
-                          "USGGBE10 Index", #US 10Y inflation
-                          "UKGGBE10 Index", #UK 10Y inflation
-                          "DEGGBE10 Index", #German 10Y inflation
-                          "JYGGBE10 Index", #Japan 10Y inflation
-                          "ADGGBE10 Index", #Australia 10Y inflation
-                          "CDGGBE10 Index", #Canada 10Y inflation
-                          "BCOMEN Index", #Bloomberg Energy subindex
-                          "BCOMXE Index", #Bloomberg Commodities ex energy subindex
-                          "EURUSD Curncy",
-                          "JPYUSD Curncy"
+                        "ASX Index",   #FTSE UK All Share
+                        "FTR4EXUK Index", #FTSE Europe ex UK
+                        "WIJPN Index", #FTSE Japan
+                        "GTII10 Govt", #US 10Y real rates
+                        "GTGBPII10Y Govt", #UK 10Y real rates
+                        "RR10HDE Index", #German 10Y real rates
+                        "RR10HIT Index", #Italy 10Y real rates
+                        "GTJPYII10Y Govt", #Japan 10Y real rates
+                        "GTAUDII10Y Govt", #Australia 10Y real rates
+                        "GTCADII10Y Govt", #Canada 10Y real rates
+                        "USGGBE10 Index", #US 10Y inflation
+                        "UKGGBE10 Index", #UK 10Y inflation
+                        "DEGGBE10 Index", #German 10Y inflation
+                        "JYGGBE10 Index", #Japan 10Y inflation
+                        "ADGGBE10 Index", #Australia 10Y inflation
+                        "CDGGBE10 Index", #Canada 10Y inflation
+                        "BCOMEN Index", #Bloomberg Energy subindex
+                        "BCOMXE Index", #Bloomberg Commodities ex energy subindex
+                        "EURUSD Curncy",
+                        "JPYUSD Curncy"
 )
 
 factors_data <- fetch_bbg_data(factor_ticker_list, start_date, end_date, opt)
@@ -185,8 +186,9 @@ factors_transformed <- factors_data %>%
   # left_join(factor_return_type, by="BBG_Ticker") %>%
   group_by(BBG_Ticker)
 
-factors_final <- add_returns(factors_transformed, factor_return_type)
-factors_final
+factors_final <- add_returns(factors_transformed, factor_return_type) %>%
+  mutate(year=year(date), qtr=quarter(date))
+#factors_final
 
 factors_cov <- factors_final %>%
   est_cov_matrix()
@@ -202,8 +204,9 @@ full_data <- trades_ts %>%
   inner_join(factors_ts)
 
 regressions <- trades_final %>%
-  select(BBG_Ticker, date, winsorised_ret) %>%
-  group_by(BBG_Ticker) %>%
+  mutate(year=year(date), qtr=quarter(date)) %>%
+  select(BBG_Ticker, date, year, qtr, winsorised_ret) %>%
+  group_by(BBG_Ticker, year, qtr) %>%
   nest() %>%
   #take each trade data and combine with factor data
   mutate(regression_data = map(data, add_factors_data)) %>%
@@ -214,27 +217,107 @@ regressions <- trades_final %>%
   )
 
 r_squared <- regressions %>%
-  select(`BBG_Ticker`, top_results) %>%
+  select(`BBG_Ticker`, year, qtr, top_results) %>%
   unnest(top_results) %>%
-  select(`BBG_Ticker`, r.squared, adj.r.squared) %>%
+  select(`BBG_Ticker`,year, qtr, r.squared, adj.r.squared) %>%
   pivot_longer(-BBG_Ticker, names_to = 'term', values_to = "value") %>%
   pivot_wider(names_from = BBG_Ticker, values_from = value)
 
 factor_estimates <- regressions %>%
-  select(`BBG_Ticker`, tidied_model) %>%
+  select(`BBG_Ticker`, year, qtr, tidied_model) %>%
   unnest(tidied_model) %>%
-  select(BBG_Ticker, term, estimate) %>%
+  select(BBG_Ticker, year, qtr, term, estimate) %>%
   pivot_wider(names_from = "BBG_Ticker", values_from = "estimate")
 
 results <- factor_estimates %>%
   bind_rows(r_squared)
 
 write_csv(results, "factor_exposure_w_rsquared.csv")
-return(results)
+
+#Systematic returns and risk---------------------------------------------
+intercepts <- factor_estimates %>%
+  filter(term=="(Intercept)") %>%
+  pivot_longer(cols = -term, names_to="trade", values_to="beta") %>%
+  select(trade, beta) %>%
+  left_join(trades_final, by = c("trade" = "BBG_Ticker")) %>%
+  mutate(term="(Intercept)", winsorised_ret = 1) %>% #Give winsorised_ret value of 1 to faciliate calculation of systematic ret further down
+  select(trade, date, term, beta, winsorised_ret) %>%
+  na.omit()
+intercepts
+
+systematic_ret <- factor_estimates %>%
+  pivot_longer(cols = "USYC1030 Index":"USGG10YR Index", names_to = "trade", values_to = "beta") %>%
+  left_join(factors_final, by = c("term" = "BBG_Ticker")) %>% #combine betas from factor_est with actual factor returns in factors_final
+  select(trade, date, term, beta, winsorised_ret) %>%
+  na.omit() %>% #clear na on joins as intercept terms do not have corresponding entries in factor_estimates
+  bind_rows(intercepts) %>%
+  arrange(trade, date, term) %>%
+  mutate(term_contrib = beta * winsorised_ret) %>%
+  group_by(trade, date) %>%
+  summarise(sys_ret = sum(term_contrib), .groups = "keep")
+systematic_ret %>% filter(sys_ret > 200)
+
+systematic_risk <- systematic_ret %>%
+  group_by(trade) %>%
+  summarise(sys_risk = sd(sys_ret))
+
+## Haven't shown HW and ZY how to plot yet
+# Plot forecasted returns to check
+systematic_ret %>%
+  ggplot(aes(x=date, y = sys_ret)) + geom_line(aes(color=trade)) #CNY 10Y trade looks weird, should probably look better when sizes are included
 
 
+trades_final %>%
+  filter(BBG_Ticker == "GTCNY10YR Corp") %>%
+  ggplot(aes(x=date, y= winsorised_ret)) + geom_line()
 
-# Correlation analysis ----------------------------------------------------
+#Stress test----------------------------------------------------------------
+#Strong growth and inflation
+factors_pos_stress <- factors_final %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_us"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_uk"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_eu"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_jp"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_us"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_uk"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_de"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_jp"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_au"),3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_ca"),3*sd,winsorised_ret))
+pos_stress_ret <- factor_estimates %>%
+  pivot_longer(cols = "USYC1030 Index":"USGG10YR Index", names_to = "trade", values_to = "beta") %>%
+  left_join(factors_pos_stress, by = c("term" = "BBG_Ticker")) %>% #combine betas from factor_est with actual factor returns in factors_final
+  select(trade, date, term, beta, winsorised_ret) %>%
+  na.omit() %>% #clear na on joins as intercept terms do not have corresponding entries in factor_estimates
+  bind_rows(intercepts) %>%
+  arrange(trade, date, term) %>%
+  mutate(term_contrib = beta * winsorised_ret) %>%
+  group_by(trade, date) %>%
+  summarise(sys_ret = sum(term_contrib), .groups = "keep")
+#Poor growth and inflation
+factors_neg_stress <- factors_final %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_us"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_uk"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_eu"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("econ_growth_jp"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_us"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_uk"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_de"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_jp"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_au"),-3*sd,winsorised_ret)) %>%
+  mutate(winsorised_ret=ifelse(BBG_Ticker==c("cpi_ca"),-3*sd,winsorised_ret))
+neg_stress_ret <- factor_estimates %>%
+  pivot_longer(cols = "USYC1030 Index":"USGG10YR Index", names_to = "trade", values_to = "beta") %>%
+  left_join(factors_neg_stress, by = c("term" = "BBG_Ticker")) %>% #combine betas from factor_est with actual factor returns in factors_final
+  select(trade, date, term, beta, winsorised_ret) %>%
+  na.omit() %>% #clear na on joins as intercept terms do not have corresponding entries in factor_estimates
+  bind_rows(intercepts) %>%
+  arrange(trade, date, term) %>%
+  mutate(term_contrib = beta * winsorised_ret) %>%
+  group_by(trade, date) %>%
+  summarise(sys_ret = sum(term_contrib), .groups = "keep")
+
+  # Correlation analysis ----------------------------------------------------
 
 # Assumptions
 # - Based on past 6 month's daily returns
@@ -308,12 +391,3 @@ sdev <- as.numeric(sqrt(t(weight_m) %*% trades_cov_m %*% weight_m))
 covarweight <- trades_cov_m %*% weight_m
 marginal_contribution <- covarweight/sdev
 total_contribution <- weight_m* covarweight/sdev
-
-
-# Calculate mahalanobis distance
-# Mahalanobis distance
-# distance squared
-shock <- c(20, 20, 20)
-d_sq <- shock %*% covar[1:3, 1:3] %*% shock
-vars <- length(shock)
-1-pchisq(d_sq, df=vars)
