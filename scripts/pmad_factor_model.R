@@ -37,32 +37,23 @@ mod_fun <- function(df){
 # Trade calculations ------------------------------------------------------
 
 # Process trades
-trades_ticker_list <- c("SPX Index", "UKX Index", "USYC1030 Index", "AUDEUR Curncy", "AUDJPY Curncy", "NZDEUR Curncy",
-                        "NZDJPY Curncy", "GTESP10Y Govt", "GTFRF10Y Govt", "GTBEF10Y Govt",
-                        "CNYUSD Curncy", "EURUSD Curncy", "GTCNY10YR Corp", "USYC5Y30 Index",
-                        "USGG10YR Index", "UKYC2Y10 Index", "GTDEM10Y Govt", "DEYC5Y30 Index",
-                        "GTITL5Y Govt", "GTESP5Y Govt")
+trades_ticker_list <- c("USGG5YR Index", "USGG30YR Index","GDBR5Y Govt","GDBR30Y Govt","NKA Index", "VGA Index","NZDEUR Curncy","GBPUSD Curncy", "GBPJPY Curncy", "AUDUSD Curncy","NZDJPY Curncy", "USDJPY Curncy")
 
 # lookup table controlling return calculations
 trades_return_type <- tribble(
   ~BBG_Ticker, ~Return_type,
-  "USYC1030 Index", "Yield",
-  "CNYUSD Curncy", "Price",
-  "AUDNZDvEURJPY", "Price",
-  "SPX Index", "Price",
-  "EURUSD Curncy", "Price",
-  "10Y_SP_vs_FR_BE", "Yield",
-  "GTCNY10YR Corp", "Yield",
-  "USYC5Y30 Index", "Yield",
-  "USGG10YR Index", "Yield",
-  "AUDEUR Curncy", "Price",
-  "NZDJPY Curncy", "Price",
-  "AUDJPY Curncy", "Price",
-  "NZDEUR Curncy", "Price",
-  "UK_2S10_flattener", "Yield",
-  "10Y_FR_vs_DE", "Yield",
-  "DE_5S30_flattener", "Yield",
-  "5Y_IT_vs_ES", "Yield"
+  "USGG5YR Index", "Yield",
+  "USGG30YR Index", "Yield",
+  "GDBR5Y Govt", "Yield",
+  "GDBR30Y Govt", "Yield",
+  "NKA Index","Price",
+  "VGA Index","Price",
+  "NZDEUR Curncy","Price",
+  "GBPUSD Curncy","Price",
+  "GBPJPY Curncy","Price",
+  "AUDUSD Curncy","Price",
+  "NZDJPY Curncy","Price",
+  "USDJPY Curncy","Price"
 )
 
 trades_data <- fetch_bbg_data(trades_ticker_list, start_date, end_date, opt)
@@ -73,36 +64,24 @@ trades_data$BBG_Ticker %>% unique() %>% sort() %>% as_tibble()
 # transform trades which are composite tickers
 trades_data_transformed <- trades_data %>%
   select(BBG_Ticker, date, Close) %>%
-  pivot_wider(names_from = BBG_Ticker, values_from = Close) %>%
-  transmute(date,
-            `USYC1030 Index`,
-            `CNYUSD Curncy`,
-            `AUDEUR Curncy`,
-            `NZDJPY Curncy`,
-            `AUDJPY Curncy`, `NZDEUR Curncy`,
-            AUDNZDvEURJPY = 0.5 * `AUDEUR Curncy` + 0.5 * `NZDJPY Curncy`,
-            `5Y_IT_vs_ES` = `GTITL5Y Govt` -  `GTESP5Y Govt`,
-            `SPX Index`,
-            "UK_2S10_flattener" = -`UKYC2Y10 Index`,
-            "10Y_FR_vs_DE" = `GTFRF10Y Govt` - `GTDEM10Y Govt`,
-            "DE_5S30_flattener" = -`DEYC5Y30 Index`,
-            `EURUSD Curncy`,
-            `10Y_SP_vs_FR_BE` = 0.5 * (`GTESP10Y Govt` - `GTFRF10Y Govt`) + 0.5 * (`GTESP10Y Govt` - `GTBEF10Y Govt`),
-            `GTCNY10YR Corp`,
-            `USYC5Y30 Index`,
-            `USGG10YR Index`
-  ) %>%
-  pivot_longer(-date, names_to = "BBG_Ticker", values_to = "Close") %>%
   group_by(BBG_Ticker)
 
 trades_final <- add_returns(trades_data_transformed, trades_return_type)
 trades_final
 # trades_final %>%  filter(BBG_Ticker == "SPX Index") %>% write_csv("tmp.csv")
 
+#mrc calculation v2
+duration <- bdp(trades_ticker_list,"YAS_MOD_DUR") %>%
+  rownames_to_column("BBG_Ticker")
+
+trades_duration_added <- trades_final %>%
+  left_join(duration, by="BBG_Ticker")
+
+trades_duration_added$adjusted_returns <-ifelse(trades_duration_added$YAS_MOD_DUR <-NA, period_return, period_return*YAS_MOD_DUR)
+
 
 trades_cov <- trades_final %>%
   est_cov_matrix()
-
 
 # Factor model calculations -----------------------------------------------
 factor_ticker_list <- c("TACUSAU Index", #FTSE US All Cap TR
@@ -317,3 +296,8 @@ shock <- c(20, 20, 20)
 d_sq <- shock %*% covar[1:3, 1:3] %*% shock
 vars <- length(shock)
 1-pchisq(d_sq, df=vars)
+
+# Calculate mahalanobis distance
+m_dist = mahalanobis(df, colMeans(df), cov(df))
+
+
