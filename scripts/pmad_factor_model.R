@@ -6,8 +6,8 @@ blpConnect()
 # Global settings & definitions --------------------------------------------
 
 opt <- c("CDR"="5D")
-start_date <- "20200330"
-end_date <- "20200930"
+start_date <- "20200630"
+end_date <- "20201231"
 
 # TODO add inflation return type?
 asset_return <- function(current_obs, prev_obs, calc_type) {
@@ -37,25 +37,14 @@ mod_fun <- function(df){
 # Trade calculations ------------------------------------------------------
 
 # Process trades
-trades_ticker_list <- c("AUDEUR Curncy",
-                        "CNYUSD Curncy",
-                        "DEYC5Y30 Index",
-                        "DXY Curncy",
-                        "EURAUD Curncy",
-                        "GBTPGR5 Index",
-                        "GSPG5YR Index",
-                        "JPYGBP Curncy",
-                        "JPYNZD Curncy",
-                        "JPYUSD Curncy",
-                        "NKY Index",
-                        "NZDJPY Curncy",
-                        "SPX Index",
-                        "SX5E Index",
-                        "USDAUD Curncy",
-                        "USDGBP Curncy",
-                        "USGG10YR Index",
+trades_ticker_list <- c("SPX Index",
                         "USYC1030 Index",
-                        "USYC5Y30 Index"
+                        "USYC5Y30 Index",
+                        "GTITL5Y Govt",
+                        "GTESP5Y Govt",
+                        "USDEUR Curncy",
+                        "USDGBP Curncy",
+                        "USDAUD Curncy"
                       ) %>% unique()
 
 trades_data <- fetch_bbg_data(trades_ticker_list, start_date, end_date, opt)
@@ -64,57 +53,30 @@ trades_data <- fetch_bbg_data(trades_ticker_list, start_date, end_date, opt)
 trades_data$BBG_Ticker %>% unique() %>% sort() %>% as_tibble()
 
 # transform trades which are composite tickers
-trades_data_transformed <- trades_data %>%
-  select(BBG_Ticker, date, Close) %>%
-  pivot_wider(names_from = BBG_Ticker, values_from = Close) %>%
-  transmute(date,
-            `USYC1030 Index`,
-            `USGG10YR Index`,
-            `CNYUSD Curncy`,
-            `5Y_IT_vs_SP` = `GTITL5Y Govt` - `GTESP5Y Govt`,
-            AUDNZDvEURJPY = 0.5 * `AUDEUR Curncy` + 0.5 * `NZDJPY Curncy`,
-            `DXY Curncy`,
-            `SPX Index`,
-            "DE_5S30_flattener" = -`DEYC5Y30 Index`,
-            `USYC5Y30 Index`,
-            `NKY Index`,
-            `SX5E Index`,
-            `10Y_SP_vs_FR_BE` = 0.5 * (`GTESP10Y Govt` - `GTFRF10Y Govt`) + 0.5 * (`GTESP10Y Govt` - `GTBEF10Y Govt`),
-            # `AUDEUR Curncy`,
-            # `NZDJPY Curncy`,
-            # `AUDJPY Curncy`, `NZDEUR Curncy`,
-            `5Y_IT_vs_ES` = `GTITL5Y Govt` -  `GTESP5Y Govt`,
-            "UK_2S10_flattener" = -`UKYC2Y10 Index`,
-            "10Y_FR_vs_DE" = `GTFRF10Y Govt` - `GTDEM10Y Govt`,
-            `EURUSD Curncy`,
-            `GTCNY10YR Corp`,
-            `USGG10YR Index`
-  ) %>%
-  pivot_longer(-date, names_to = "BBG_Ticker", values_to = "Close") %>%
-  group_by(BBG_Ticker)
+# trades_data_transformed <- trades_data %>%
+#   select(BBG_Ticker, date, Close) %>%
+#   pivot_wider(names_from = BBG_Ticker, values_from = Close) %>%
+#   transmute(date,
+#             `USYC1030 Index`,
+#             `USYC5Y30 Index`,
+#             `SPX Index`,
+#             `5Y_IT_vs_ES` = `GTITL5Y Govt` - `GTESP5Y Govt`
+#             `Long_USD` = 1/3 * `USDEUR Curncy` + 1/3 * `USDGBP Curncy` + 1/3 * `USDAUD Curncy`
+#   ) %>%
+#   pivot_longer(-date, names_to = "BBG_Ticker", values_to = "Close") %>%
+#   group_by(BBG_Ticker)
 
 # lookup table controlling return calculations
 trades_return_type <- tribble(
   ~BBG_Ticker, ~Return_type,
-  "AUDEUR Curncy", "Price",
-  "CNYUSD Curncy", "Price",
-  "DEYC5Y30 Index", "Yield",
-  "DXY Curncy", "Price",
-  "EURAUD Curncy", "Price",
-  "GBTPGR5 Index", "Yield",
-  "GSPG5YR Index", "Yield",
-  "JPYGBP Curncy", "Price",
-  "JPYNZD Curncy", "Price",
-  "JPYUSD Curncy", "Price",
-  "NKY Index", "Price",
-  "NZDJPY Curncy", "Price",
   "SPX Index", "Price",
-  "SX5E Index", "Price",
-  "USDAUD Curncy", "Price",
-  "USDGBP Curncy", "Price",
-  "USGG10YR Index", "Yield",
   "USYC1030 Index", "Yield",
-  "USYC5Y30 Index", "Yield"
+  "USYC5Y30 Index", "Yield",
+  "GTITL5Y Govt", "Yield",
+  "GTESP5Y Govt", "Yield",
+  "USDEUR Curncy", "Price",
+  "USDGBP Curncy", "Price",
+  "USDAUD Curncy", "Price"
 )
 
 trades_data_w_ret <- add_returns(trades_data, trades_return_type)
@@ -122,25 +84,19 @@ trades_data_w_ret <- add_returns(trades_data, trades_return_type)
 # Multiply position size directly in transformation
 # for fixed income, assume return = yield curve chg * duration contribution size in years
 # which will only be correct to first order
+# steepeners need to have a negative sign in front of the size,
+## because it actually becomes profitable when yield increases!
 # when no sizes are provided, assume 0.1% R2 (FX + EQ) or 0.5 months (FI)
 trades_transformed <- trades_data_w_ret %>%
   select(BBG_Ticker, date, period_return) %>%
   pivot_wider(names_from = BBG_Ticker, values_from = period_return) %>%
   transmute(date,
-            `USYC1030 Index` = `USYC1030 Index` * 0.5/12,
-            `USGG10YR Index` = `USGG10YR Index` * 0.5/12,
-            `CNYUSD Curncy` = `CNYUSD Curncy` * 0.5/12,
-            `5Y_IT_vs_SP` = (`GBTPGR5 Index` - `GSPG5YR Index`) * 0.5/12,
-            AUDNZDvEURJPY = (0.5 * `AUDEUR Curncy` + 0.5 * `NZDJPY Curncy`) * 0.01,
-            `DXY Curncy` = `DXY Curncy` * 0.01,
+            `USYC1030 Index` = `USYC1030 Index` * -1/12,
             `SPX Index` = `SPX Index` * 0.01,
-            "DE_5S30_flattener" = (-`DEYC5Y30 Index`) * 0.5/12,
-            `USYC5Y30 Index` = (`USYC5Y30 Index`) * 0.5/12,
-            "NKY_vs_SX5E" = (`NKY Index` - `SX5E Index`) * 0.03,
-            "S_GBP_vs_USD_JPY" = (0.6 * `USDGBP Curncy` + 0.4 * `JPYGBP Curncy`) * 0.01,
-            "S_AUD_vs_USD_EUR" = (0.5 * `USDAUD Curncy` + 0.5 * `EURAUD Curncy`) * 0.005,
-            "S_NZD_vs_JPY" = `JPYNZD Curncy` * 0.005,
-            "S_USD_vsJPY" = `JPYUSD Curncy` * 0.01
+            `USYC5Y30 Index` = (`USYC5Y30 Index`) * -1/12,
+            `5Y_IT_vs_ES` = (`GTITL5Y Govt` - `GTESP5Y Govt`) * 0.01,
+            `Long_USD` = (1/3 * `USDEUR Curncy` + 1/3 * `USDGBP Curncy` + 1/3 * `USDAUD Curncy`) * 0.01
+
   ) %>%
   pivot_longer(-date, names_to = "BBG_Ticker", values_to = "period_return") %>%
   group_by(BBG_Ticker)
