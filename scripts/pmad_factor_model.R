@@ -37,15 +37,18 @@ mod_fun <- function(df){
 # Trade calculations ------------------------------------------------------
 
 # Process trades
-trades_ticker_list <- c("SPX Index",
-                        "USYC1030 Index",
+trades_ticker_list <- c("GCNY10YR Index",
+                        "USGG10YR Index",
+                        "USGGT30Y Index",
                         "USYC5Y30 Index",
+                        "AUDNZD Curncy",
                         "GTITL5Y Govt",
                         "GTESP5Y Govt",
                         "USDEUR Curncy",
                         "USDGBP Curncy",
-                        "USDAUD Curncy"
-                      ) %>% unique()
+                        "USDAUD Curncy",
+                        "SPX Index"
+) %>% unique()
 
 trades_data <- fetch_bbg_data(trades_ticker_list, start_date, end_date, opt)
 
@@ -69,14 +72,17 @@ trades_data$BBG_Ticker %>% unique() %>% sort() %>% as_tibble()
 # lookup table controlling return calculations
 trades_return_type <- tribble(
   ~BBG_Ticker, ~Return_type,
-  "SPX Index", "Price",
-  "USYC1030 Index", "Yield",
+  "GCNY10YR Index","Yield",
+  "USGG10YR Index","Yield",
+  "USGGT30Y Index","Yield",
   "USYC5Y30 Index", "Yield",
+  "AUDNZD Curncy","Price",
   "GTITL5Y Govt", "Yield",
   "GTESP5Y Govt", "Yield",
   "USDEUR Curncy", "Price",
   "USDGBP Curncy", "Price",
-  "USDAUD Curncy", "Price"
+  "USDAUD Curncy", "Price",
+  "SPX Index", "Price"
 )
 
 trades_data_w_ret <- add_returns(trades_data, trades_return_type)
@@ -91,11 +97,14 @@ trades_transformed <- trades_data_w_ret %>%
   select(BBG_Ticker, date, period_return) %>%
   pivot_wider(names_from = BBG_Ticker, values_from = period_return) %>%
   transmute(date,
-            `USYC1030 Index` = `USYC1030 Index` * -1/12,
-            `SPX Index` = `SPX Index` * 0.01,
+            `GCNY10YR Index` = `GCNY10YR Index` * -1/12,
+            `USGG10YR Index` = `USGG10YR Index` * -1/12,
+            `USGGT30Y Index` = `USGGT30Y Index` * -1/12,
             `USYC5Y30 Index` = (`USYC5Y30 Index`) * -1/12,
+            `AUDNZD Curncy` = `AUDNZD Curncy` * 0.01,
             `5Y_IT_vs_ES` = (`GTITL5Y Govt` - `GTESP5Y Govt`) * 0.01,
-            `Long_USD` = (1/3 * `USDEUR Curncy` + 1/3 * `USDGBP Curncy` + 1/3 * `USDAUD Curncy`) * 0.01
+            `Long_USD` = (1/3 * `USDEUR Curncy` + 1/3 * `USDGBP Curncy` + 1/3 * `USDAUD Curncy`) * 0.01,
+            `SPX Index` = `SPX Index` * 0.01
 
   ) %>%
   pivot_longer(-date, names_to = "BBG_Ticker", values_to = "period_return") %>%
@@ -108,7 +117,7 @@ trades_final
 trades_final %>%
   # filter(period_return>0.3)
   # filter(BBG_Ticker == "USYC5Y30 Index") %>%
-ggplot(aes(x=date, y=period_return)) + geom_line(aes(color=BBG_Ticker))
+  ggplot(aes(x=date, y=period_return)) + geom_line(aes(color=BBG_Ticker))
 
 
 trades_cov <- trades_final %>%
@@ -282,7 +291,7 @@ pct_tcar_fun <- function(df){
                 "commod_ex_oil",
                 "fx_eur",
                 "fx_jpy"
-        ), ans)
+  ), ans)
 
 }
 
@@ -401,7 +410,7 @@ neg_stress_ret <- factor_estimates %>%
   group_by(trade, date) %>%
   summarise(sys_ret = sum(term_contrib), .groups = "keep")
 
-  # Correlation analysis ----------------------------------------------------
+# Correlation analysis ----------------------------------------------------
 
 # Assumptions
 # - Based on past 6 month's daily returns
