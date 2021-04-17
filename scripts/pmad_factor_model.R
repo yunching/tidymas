@@ -6,8 +6,8 @@ blpConnect()
 # Global settings & definitions --------------------------------------------
 
 opt <- c("CDR"="5D")
-start_date <- "20200630"
-end_date <- "20201231"
+start_date <- "20200930"
+end_date <- "20210331"
 
 # TODO add inflation return type?
 asset_return <- function(current_obs, prev_obs, calc_type) {
@@ -42,11 +42,11 @@ trades_ticker_list <- c("GCNY10YR Index",
                         "USGGT30Y Index",
                         "USYC5Y30 Index",
                         "AUDNZD Curncy",
-                        "GTITL5Y Govt",
-                        "GTESP5Y Govt",
-                        "USDEUR Curncy",
-                        "USDGBP Curncy",
-                        "USDAUD Curncy",
+                        "USDJPY Curncy",
+                        "EURAUD Curncy",
+                        "NZDJPY Curncy",
+                        "AUDCAD Curncy",
+                        "EURGBP Curncy",
                         "SPX Index"
 ) %>% unique()
 
@@ -72,16 +72,16 @@ trades_data$BBG_Ticker %>% unique() %>% sort() %>% as_tibble()
 # lookup table controlling return calculations
 trades_return_type <- tribble(
   ~BBG_Ticker, ~Return_type,
-  "GCNY10YR Index","Yield",
-  "USGG10YR Index","Yield",
-  "USGGT30Y Index","Yield",
+  "GCNY10YR Index", "Yield",
+  "USGG10YR Index", "Yield",
+  "USGGT30Y Index", "Yield",
   "USYC5Y30 Index", "Yield",
-  "AUDNZD Curncy","Price",
-  "GTITL5Y Govt", "Yield",
-  "GTESP5Y Govt", "Yield",
-  "USDEUR Curncy", "Price",
-  "USDGBP Curncy", "Price",
-  "USDAUD Curncy", "Price",
+  "AUDNZD Curncy", "Price",
+  "USDJPY Curncy", "Price",
+  "EURAUD Curncy", "Price",
+  "NZDJPY Curncy", "Price",
+  "AUDCAD Curncy","Price",
+  "EURGBP Curncy","Price",
   "SPX Index", "Price"
 )
 
@@ -100,10 +100,12 @@ trades_transformed <- trades_data_w_ret %>%
             `GCNY10YR Index` = `GCNY10YR Index` * -1/12,
             `USGG10YR Index` = `USGG10YR Index` * -1/12,
             `USGGT30Y Index` = `USGGT30Y Index` * -1/12,
-            `USYC5Y30 Index` = (`USYC5Y30 Index`) * -1/12,
+            `USYC5Y30 Index` = (`USYC5Y30 Index`) * -1/12*0.01,
             `AUDNZD Curncy` = `AUDNZD Curncy` * 0.01,
-            `5Y_IT_vs_ES` = (`GTITL5Y Govt` - `GTESP5Y Govt`) * 0.01,
-            `Long_USD` = (1/3 * `USDEUR Curncy` + 1/3 * `USDGBP Curncy` + 1/3 * `USDAUD Curncy`) * 0.01,
+            `USDJPY Curncy` = `USDJPY Curncy` * 0.01,
+            `Long_Carry` = 1/3 * `USDJPY Curncy` - 1/3 * `EURAUD Curncy` * 0.01 + 1/3 * `NZDJPY Curncy` * 0.01,
+            `AUDCAD Curncy` = `AUDCAD Curncy` * 0.01,
+            `EURGBP Curncy` = `EURGBP Curncy` * 0.01,
             `SPX Index` = `SPX Index` * 0.01
 
   ) %>%
