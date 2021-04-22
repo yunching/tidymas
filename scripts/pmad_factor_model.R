@@ -42,6 +42,7 @@ trades_ticker_list <- c("GCNY10YR Index",
                         "USGGT30Y Index",
                         "USYC5Y30 Index",
                         "AUDNZD Curncy",
+                        "EURUSD Curncy",
                         "USDJPY Curncy",
                         "EURAUD Curncy",
                         "NZDJPY Curncy",
@@ -77,6 +78,7 @@ trades_return_type <- tribble(
   "USGGT30Y Index", "Yield",
   "USYC5Y30 Index", "Yield",
   "AUDNZD Curncy", "Price",
+  "EURUSD Curncy", "Price",
   "USDJPY Curncy", "Price",
   "EURAUD Curncy", "Price",
   "NZDJPY Curncy", "Price",
@@ -92,17 +94,18 @@ trades_data_w_ret <- add_returns(trades_data, trades_return_type)
 # which will only be correct to first order
 # steepeners need to have a negative sign in front of the size,
 ## because it actually becomes profitable when yield increases!
-# when no sizes are provided, assume 0.1% R2 (FX + EQ) or 0.5 months (FI)
+# when no sizes are provided, assume 1% R2 (FX + EQ) or 1 months (FI)
 trades_transformed <- trades_data_w_ret %>%
   select(BBG_Ticker, date, period_return) %>%
   pivot_wider(names_from = BBG_Ticker, values_from = period_return) %>%
   transmute(date,
-            `GCNY10YR Index` = `GCNY10YR Index` * -1/12,
+            `GCNY10YR Index` = `GCNY10YR Index` * -0.3/12,
             `USGG10YR Index` = `USGG10YR Index` * -1/12,
-            `USGGT30Y Index` = `USGGT30Y Index` * -1/12,
+            `USGGT30Y Index` = `USGGT30Y Index` * -0.3/12,
             `USYC5Y30 Index` = (`USYC5Y30 Index`) * -1/12*0.01,
-            `AUDNZD Curncy` = `AUDNZD Curncy` * 0.01,
-            `USDJPY Curncy` = `USDJPY Curncy` * 0.01,
+            `AUDNZD Curncy` = `AUDNZD Curncy` * -0.001,
+            `EURUSD Curncy` = `EURUSD Curncy` * -0.001,
+            `USDJPY Curncy` = `USDJPY Curncy` * 0.001,
             `Long_Carry` = 1/3 * `USDJPY Curncy` - 1/3 * `EURAUD Curncy` * 0.01 + 1/3 * `NZDJPY Curncy` * 0.01,
             `AUDCAD Curncy` = `AUDCAD Curncy` * 0.01,
             `EURGBP Curncy` = `EURGBP Curncy` * 0.01,
