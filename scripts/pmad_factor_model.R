@@ -99,10 +99,10 @@ trades_transformed <- trades_data_w_ret %>%
   select(BBG_Ticker, date, period_return) %>%
   pivot_wider(names_from = BBG_Ticker, values_from = period_return) %>%
   transmute(date,
-            `GCNY10YR Index` = `GCNY10YR Index` * -0.3/12,
-            `USGG10YR Index` = `USGG10YR Index` * -1/12,
-            `USGGT30Y Index` = `USGGT30Y Index` * -0.3/12,
-            `USYC5Y30 Index` = (`USYC5Y30 Index`) * -1/12*0.01,
+            `GCNY10YR Index` = `GCNY10YR Index` * -0.3/12*0.01,
+            `USGG10YR Index` = `USGG10YR Index` * -1/12*0.01,
+            `USGGT30Y Index` = `USGGT30Y Index` * -0.3/12*0.01,
+            `USYC5Y30 Index` = (`USYC5Y30 Index`) * -1/12*0.01*0.01,
             `AUDNZD Curncy` = `AUDNZD Curncy` * -0.001,
             `EURUSD Curncy` = `EURUSD Curncy` * -0.001,
             `USDJPY Curncy` = `USDJPY Curncy` * 0.001,
@@ -118,6 +118,8 @@ trades_transformed <- trades_data_w_ret %>%
 trades_final <- scale_and_winsorise(trades_transformed)
 
 trades_final
+
+write_csv(trades_final, "trades_final.csv")
 
 trades_final %>%
   # filter(period_return>0.3)
