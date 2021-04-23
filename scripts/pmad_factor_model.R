@@ -100,7 +100,7 @@ trades_transformed <- trades_data_w_ret %>%
   pivot_wider(names_from = BBG_Ticker, values_from = period_return) %>%
   transmute(date,
             `GCNY10YR Index` = `GCNY10YR Index` * -0.3/12*0.01,
-            `USGG10YR Index` = `USGG10YR Index` * -1/12*0.01,
+            `USGG10YR Index` = `USGG10YR Index` * 1/12*0.01,
             `USGGT30Y Index` = `USGGT30Y Index` * -0.3/12*0.01,
             `USYC5Y30 Index` = (`USYC5Y30 Index`) * -1/12*0.01*0.01,
             `AUDNZD Curncy` = `AUDNZD Curncy` * -0.001,
