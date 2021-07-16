@@ -491,3 +491,5 @@ sdev <- as.numeric(sqrt(t(weight_m) %*% trades_cov_m %*% weight_m))
 covarweight <- trades_cov_m %*% weight_m
 marginal_contribution <- covarweight/sdev
 total_contribution <- weight_m* covarweight/sdev
+
+#testing v3
