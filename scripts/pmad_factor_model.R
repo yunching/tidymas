@@ -6,8 +6,8 @@ blpConnect()
 # Global settings & definitions --------------------------------------------
 
 opt <- c("CDR"="5D")
-start_date <- "20200930"
-end_date <- "20210331"
+start_date <- "20201231"
+end_date <- "20210630"
 
 # TODO add inflation return type?
 asset_return <- function(current_obs, prev_obs, calc_type) {
@@ -37,18 +37,23 @@ mod_fun <- function(df){
 # Trade calculations ------------------------------------------------------
 
 # Process trades
-trades_ticker_list <- c("GCNY10YR Index",
+trades_ticker_list <- c("USYC5Y30 Index",
+                        "USGG2YR Index",
+                        "USGG5YR Index",
                         "USGG10YR Index",
+                        "USGG30YR Index",
+                        "USGGT05Y Index",
+                        "USGGT10Y Index",
                         "USGGT30Y Index",
-                        "USYC5Y30 Index",
-                        "AUDNZD Curncy",
-                        "EURUSD Curncy",
+                        "GCNY10YR Index",
                         "USDJPY Curncy",
-                        "EURAUD Curncy",
-                        "NZDJPY Curncy",
+                        "EURUSD Curncy",
+                        "GBPUSD Curncy",
+                        "AUDUSD Curncy",
                         "AUDCAD Curncy",
-                        "EURGBP Curncy",
-                        "SPX Index"
+                        "SPX Index",
+                        "VGA Index",
+                        "NKY Index"
 ) %>% unique()
 
 trades_data <- fetch_bbg_data(trades_ticker_list, start_date, end_date, opt)
@@ -99,10 +104,16 @@ trades_transformed <- trades_data_w_ret %>%
   select(BBG_Ticker, date, period_return) %>%
   pivot_wider(names_from = BBG_Ticker, values_from = period_return) %>%
   transmute(date,
-            `GCNY10YR Index` = `GCNY10YR Index` * -0.3/12*0.01,
+            `GCNY10YR Index` = `GCNY10YR Index` * 0.2/12*0.01,
+            `USGG5YR Index` = `USGG5YR Index` * 1/12*0.01,
             `USGG10YR Index` = `USGG10YR Index` * 1/12*0.01,
-            `USGGT30Y Index` = `USGGT30Y Index` * -0.3/12*0.01,
-            `USYC5Y30 Index` = (`USYC5Y30 Index`) * -1/12*0.01*0.01,
+            `USGG30YR Index` = `USGG30YR Index` * 1/12*0.01,
+            `USGGT05Y Index` = `USGGT05Y Index` * 1/12*0.01,
+            `USGGT10Y Index` = `USGGT10Y Index` * 1/12*0.01,
+            `USGGT30Y Index` = `USGGT30Y Index` * 1/12*0.01,
+            `Long_dollar`    = 0.002 * (-`EURUSD Curncy` + `USDJPY Curncy` - `GBPUSD Curncy`),
+            `Long_Eurostoxx_short_SPX` = 0.002 * (`VGA Index` - `SPX Index`),
+            `USYC5Y30 Index` = `USYC5Y30 Index` * -1/12*0.01*0.01,
             `AUDNZD Curncy` = `AUDNZD Curncy` * -0.001,
             `EURUSD Curncy` = `EURUSD Curncy` * -0.001,
             `USDJPY Curncy` = `USDJPY Curncy` * 0.001,
@@ -492,4 +503,3 @@ covarweight <- trades_cov_m %*% weight_m
 marginal_contribution <- covarweight/sdev
 total_contribution <- weight_m* covarweight/sdev
 
-#testing v3
