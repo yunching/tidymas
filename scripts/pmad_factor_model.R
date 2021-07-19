@@ -50,6 +50,7 @@ trades_ticker_list <- c("USYC5Y30 Index",
                         "EURUSD Curncy",
                         "GBPUSD Curncy",
                         "AUDUSD Curncy",
+                        "AUDJPY Curncy",
                         "AUDCAD Curncy",
                         "SPX Index",
                         "VGA Index",
@@ -78,19 +79,26 @@ trades_data$BBG_Ticker %>% unique() %>% sort() %>% as_tibble()
 # lookup table controlling return calculations
 trades_return_type <- tribble(
   ~BBG_Ticker, ~Return_type,
-  "GCNY10YR Index", "Yield",
-  "USGG10YR Index", "Yield",
-  "USGGT30Y Index", "Yield",
   "USYC5Y30 Index", "Yield",
-  "AUDNZD Curncy", "Price",
-  "EURUSD Curncy", "Price",
+  "USGG2YR Index", "Yield",
+  "USGG5YR Index", "Yield",
+  "USGG10YR Index", "Yield",
+  "USGG30YR Index", "Yield",
+  "USGGT05Y Index", "Yield",
+  "USGGT10Y Index", "Yield",
+  "USGGT30Y Index", "Yield",
+  "GCNY10YR Index", "Yield",
   "USDJPY Curncy", "Price",
-  "EURAUD Curncy", "Price",
-  "NZDJPY Curncy", "Price",
-  "AUDCAD Curncy","Price",
-  "EURGBP Curncy","Price",
-  "SPX Index", "Price"
+  "EURUSD Curncy", "Price",
+  "GBPUSD Curncy", "Price",
+  "AUDUSD Curncy", "Price",
+  "AUDJPY Curncy", "Price",
+  "AUDCAD Curncy", "Price",
+  "SPX Index", "Price",
+  "VGA Index", "Price",
+  "NKY Index", "Price"
 )
+
 
 trades_data_w_ret <- add_returns(trades_data, trades_return_type)
 
@@ -114,13 +122,10 @@ trades_transformed <- trades_data_w_ret %>%
             `Long_dollar`    = 0.002 * (-`EURUSD Curncy` + `USDJPY Curncy` - `GBPUSD Curncy`),
             `Long_Eurostoxx_short_SPX` = 0.002 * (`VGA Index` - `SPX Index`),
             `USYC5Y30 Index` = `USYC5Y30 Index` * -1/12*0.01*0.01,
-            `AUDNZD Curncy` = `AUDNZD Curncy` * -0.001,
-            `EURUSD Curncy` = `EURUSD Curncy` * -0.001,
-            `USDJPY Curncy` = `USDJPY Curncy` * 0.001,
-            `Long_Carry` = 1/3 * `USDJPY Curncy` - 1/3 * `EURAUD Curncy` * 0.01 + 1/3 * `NZDJPY Curncy` * 0.01,
-            `AUDCAD Curncy` = `AUDCAD Curncy` * 0.01,
-            `EURGBP Curncy` = `EURGBP Curncy` * 0.01,
-            `SPX Index` = `SPX Index` * 0.01
+            `USGG2YR Index` = `USGG2YR Index` * 1/12*0.01,
+            `Long_carry` = 0.01 * 0.5 * (`AUDJPY Curncy` - `EURUSD Curncy`),
+            `AUDCAD Curncy` = 0.01 * `AUDCAD Curncy`,
+            `SPX Index` = 0.01 * (`SPX Index`+ `NKY Index`)
 
   ) %>%
   pivot_longer(-date, names_to = "BBG_Ticker", values_to = "period_return") %>%
