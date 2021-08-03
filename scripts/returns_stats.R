@@ -2,7 +2,7 @@ source("scripts/pmad_toolkit.R")
 blpConnect()
 
 start_date <- ymd(20101231)
-end_date <- ymd(20210331)
+end_date <- ymd(20210630)
 
 # Statistical properties --------------------------------------------------
 stats_property <- function(ticker_list, returns_db, start_date, end_date){
@@ -84,7 +84,7 @@ stats_return_type <- tribble(
 
 stats_returns <- add_returns(stats_data, stats_return_type)
 stats <- stats_property(c("SPX Index", "UKX Index", "SX5E Index", "NKY Index", "MXWO Index", "LEGATRUU Index"), stats_returns, start_date = start_date, end_date = end_date)
-stats_full <- stats_property_full(c("SPX Index", "UKX Index", "SX5E Index", "NKY Index", "MXWO Index", "LEGATRUU Index"), stats_returns, start_date = ymd(20160331), end_date = end_date)
+stats_full <- stats_property_full(c("SPX Index", "UKX Index", "SX5E Index", "NKY Index", "MXWO Index", "LEGATRUU Index"), stats_returns, start_date = ymd(20160630), end_date = end_date)
 
 stats %>% write_csv("return_stats.csv")
 

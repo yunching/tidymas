@@ -113,19 +113,21 @@ trades_transformed <- trades_data_w_ret %>%
   pivot_wider(names_from = BBG_Ticker, values_from = period_return) %>%
   transmute(date,
             `GCNY10YR Index` = `GCNY10YR Index` * 0.2/12*0.01,
-            `USGG5YR Index` = `USGG5YR Index` * 1/12*0.01,
-            `USGG10YR Index` = `USGG10YR Index` * 1/12*0.01,
-            `USGG30YR Index` = `USGG30YR Index` * 1/12*0.01,
-            `USGGT05Y Index` = `USGGT05Y Index` * 1/12*0.01,
-            `USGGT10Y Index` = `USGGT10Y Index` * 1/12*0.01,
-            `USGGT30Y Index` = `USGGT30Y Index` * 1/12*0.01,
-            `Long_dollar`    = 0.002 * (-`EURUSD Curncy` + `USDJPY Curncy` - `GBPUSD Curncy`),
+            `USGG5YR Index` = `USGG5YR Index` * -1/12*0.01/3,
+            `USGG10YR Index` = `USGG10YR Index` * -1/12*0.01/3,
+            `USGG30YR Index` = `USGG30YR Index` * -1/12*0.01/3,
+            `USGGT05Y Index` = `USGGT05Y Index` * -1/12*0.01/6,
+            `USGGT10Y Index` = `USGGT10Y Index` * -1/12*0.01/6,
+            `USGGT30Y Index` = `USGGT30Y Index` * -1/12*0.01/6,
+            `Long_dollar`    = 0.01 * (-`EURUSD Curncy` + `USDJPY Curncy`)/2,
             `Long_Eurostoxx_short_SPX` = 0.002 * (`VGA Index` - `SPX Index`),
-            `USYC5Y30 Index` = `USYC5Y30 Index` * -1/12*0.01*0.01,
-            `USGG2YR Index` = `USGG2YR Index` * 1/12*0.01,
+            `USYC5Y30 Index` = `USYC5Y30 Index` * 1/12*0.01*0.01,
+            `USGG2YR Index` = `USGG2YR Index` * -1/12*0.01/3,
+            `USGG5YR Index_Pmad` = `USGG5YR Index` * 1/12*0.01*2,
+            `USGG10YR Index_Pmad` = `USGG10YR Index` * 1/12*0.01*2,
             `Long_carry` = 0.01 * 0.5 * (`AUDJPY Curncy` - `EURUSD Curncy`),
             `AUDCAD Curncy` = 0.01 * `AUDCAD Curncy`,
-            `SPX Index` = 0.01 * (`SPX Index`+ `NKY Index`)
+            `Long_SPX_VGA_Nikkei` = 0.005 * (`SPX Index`+ `NKY Index` + 'VGA Index')/3
 
   ) %>%
   pivot_longer(-date, names_to = "BBG_Ticker", values_to = "period_return") %>%
