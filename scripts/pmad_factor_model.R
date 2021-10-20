@@ -6,8 +6,8 @@ blpConnect()
 # Global settings & definitions --------------------------------------------
 
 opt <- c("CDR"="5D")
-start_date <- "20201231"
-end_date <- "20210630"
+start_date <- "20210331"
+end_date <- "20210930"
 
 # TODO add inflation return type?
 asset_return <- function(current_obs, prev_obs, calc_type) {
