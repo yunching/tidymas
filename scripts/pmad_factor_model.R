@@ -49,6 +49,7 @@ trades_ticker_list <- c("USYC5Y30 Index",
                         "GBPUSD Curncy",
                         "AUDUSD Curncy",
                         "AUDJPY Curncy",
+                        "AUDNZD Curncy",
                         "AUDCAD Curncy",
                         "SPX Index",
                         "VGA Index",
@@ -89,6 +90,7 @@ trades_return_type <- tribble(
   "GBPUSD Curncy", "Price",
   "AUDUSD Curncy", "Price",
   "AUDJPY Curncy", "Price",
+  "AUDNZD Curncy", "Price",
   "AUDCAD Curncy", "Price",
   "SPX Index", "Price",
   "VGA Index", "Price",
@@ -121,6 +123,7 @@ trades_transformed <- trades_data_w_ret %>%
             `USGG10YR Index_Pmad` = `USGG10YR Index` -1/12*0.01/3,
             `Long_carry` = 0.01 * 0.5 * (`AUDJPY Curncy` - `EURUSD Curncy`),
             `AUDCAD Curncy` = 0.01 * `AUDCAD Curncy`,
+            `AUDNZD Curncy` = 0.01 * `AUDNZD Curncy`,
             `Long_SPX_Nikkei` = 0.01 * (`SPX Index`+ `NKY Index`)/2
 
   ) %>%
