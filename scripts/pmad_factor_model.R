@@ -120,7 +120,7 @@ trades_transformed <- trades_data_w_ret %>%
             `USYC5Y30 Index` = `USYC5Y30 Index` * 1/12*0.01*0.01,
             `USGG2YR Index` = `USGG2YR Index` * -1/12*0.01/3,
             `USGG5YR Index_Pmad` = `USGG5YR Index` * -1/12*0.01/3,
-            `USGG10YR Index_Pmad` = `USGG10YR Index` -1/12*0.01/3,
+            `USGG10YR Index_Pmad` = `USGG10YR Index` * -1/12*0.01/3,
             `Long_carry` = 0.01 * 0.5 * (`AUDJPY Curncy` - `EURUSD Curncy`),
             `AUDCAD Curncy` = 0.01 * `AUDCAD Curncy`,
             `AUDNZD Curncy` = 0.01 * `AUDNZD Curncy`,
