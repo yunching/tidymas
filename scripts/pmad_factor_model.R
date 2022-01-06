@@ -49,7 +49,7 @@ trades_ticker_list <- c("USYC5Y30 Index",
                         "AUDNZD Curncy",
                         "AUDCAD Curncy",
                         "SPX Index",
-                        "VGA Index",
+                        "VGA Index"
 ) %>% unique()
 
 trades_data <- fetch_bbg_data(trades_ticker_list, start_date, end_date, opt)
@@ -89,7 +89,6 @@ trades_return_type <- tribble(
   "VGA Index", "Price",
 )
 
-
 trades_data_w_ret <- add_returns(trades_data, trades_return_type)
 
 # Multiply position size directly in transformation
@@ -104,7 +103,7 @@ trades_transformed <- trades_data_w_ret %>%
   transmute(date,
             `GCNY10YR Index` = `GCNY10YR Index` * 0.2/12*0.01,
             `USGG2YR Index` = `USGG2YR Index` * -1/12*0.01/4,
-            `USGG5YR Index` = `USGG5YR Index` * -1/12*0.01/4,
+            `USGG5YR Index_IRSD` = `USGG5YR Index` * -1/12*0.01/4,
             `USGGT02Y Index` = `USGGT02Y Index` * -1/12*0.01/4,
             `USGGT05Y Index` = `USGGT05Y Index` * -1/12*0.01/4,
             `Long_dollar`    = 0.001 * (-`EURUSD Curncy` + `USDJPY Curncy` - `AUDUSD Curncy`),
