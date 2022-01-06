@@ -111,7 +111,7 @@ trades_transformed <- trades_data_w_ret %>%
             `USYC5Y30 Index` = `USYC5Y30 Index` * 1/12*0.01*0.01,
             `USGG5YR Index_Pmad` = `USGG5YR Index` * 1/12*0.01,
             `Short_USD` = 0.01 * 0.5 * (`EURUSD Curncy` - `USDJPY Curncy`),
-            `Long_AUD Curncy` = 0.01 * 0.5 * (`AUDCAD Curncy` + `AUDNZD Curncy`),
+            `Long_AUD` = 0.01 * 0.5 * (`AUDCAD Curncy` + `AUDNZD Curncy`),
             `Long_SPX` = 0.01 * (`SPX Index`)
 
   ) %>%
