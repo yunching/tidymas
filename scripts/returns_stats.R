@@ -2,7 +2,7 @@ source("scripts/pmad_toolkit.R")
 blpConnect()
 
 start_date <- ymd(20101231)
-end_date <- ymd(20210930)
+end_date <- ymd(20211231)
 
 # Statistical properties --------------------------------------------------
 stats_property <- function(ticker_list, returns_db, start_date, end_date){

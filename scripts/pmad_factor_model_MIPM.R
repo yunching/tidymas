@@ -6,8 +6,8 @@ blpConnect()
 # Global settings & definitions --------------------------------------------
 
 opt <- c("CDR"="5D")
-start_date <- "20210930"
-end_date <- "20220331"
+start_date <- "20210630"
+end_date <- "20211231"
 
 # TODO add inflation return type?
 asset_return <- function(current_obs, prev_obs, calc_type) {
@@ -37,19 +37,11 @@ mod_fun <- function(df){
 # Trade calculations ------------------------------------------------------
 
 # Process trades
-trades_ticker_list <- c("USGGT02Y Index",
-                        "USGGT05Y Index",
-                        "USGG10YR Index",
-                        "USGG30YR Index",
-                        "USYC2Y5Y Index",
-                        "USYC2Y10 Index",
-                        "USDJPY Curncy",
-                        "EURUSD Curncy",
-                        "AUDJPY Curncy",
-                        "AUDUSD Curncy",
-                        "AUDNZD Curncy",
-                        "AUDCAD Curncy",
-                        "SPX Index"
+trades_ticker_list <- c("USYC5Y30 Index",
+                        "USDCNY Curncy",
+                        "SPX Index",
+                        "VGA Index",
+                        "NKY Index"
 ) %>% unique()
 
 trades_data <- fetch_bbg_data(trades_ticker_list, start_date, end_date, opt)
@@ -74,19 +66,11 @@ trades_data$BBG_Ticker %>% unique() %>% sort() %>% as_tibble()
 # lookup table controlling return calculations
 trades_return_type <- tribble(
   ~BBG_Ticker, ~Return_type,
-  "USGGT02Y Index", "Yield",
-  "USGGT05Y Index", "Yield",
-  "USGG10YR Index", "Yield",
-  "USGG30YR Index", "Yield",
-  "USYC2Y5Y Index", "Yield",
-  "USYC2Y10 Index", "Yield",
-  "USDJPY Curncy", "Price",
-  "EURUSD Curncy", "Price",
-  "AUDJPY Curncy","Price",
-  "AUDUSD Curncy", "Price",
-  "AUDNZD Curncy", "Price",
-  "AUDCAD Curncy", "Price",
+  "USYC5Y30 Index", "Yield",
+  "USDCNY Curncy", "Price",
   "SPX Index", "Price",
+  "VGA Index", "Price",
+  "NKY Index", "Price"
 )
 
 trades_data_w_ret <- add_returns(trades_data, trades_return_type)
@@ -97,25 +81,18 @@ trades_data_w_ret <- add_returns(trades_data, trades_return_type)
 # steepeners need to have a negative sign in front of the size,
 ## because it actually becomes profitable when yield increases!
 # when no sizes are provided, assume 1% R2 (FX + EQ) or 1 months (FI)
-trades_transformed <- trades_data_w_ret %>%
+trades_total <- trades_data_w_ret %>%
   select(BBG_Ticker, date, period_return) %>%
   pivot_wider(names_from = BBG_Ticker, values_from = period_return) %>%
   transmute(date,
-            `USGGT02Y Index` = `USGGT02Y Index` * -0.5/12*0.01/2,
-            `USGGT05Y Index` = `USGGT05Y Index` * -0.5/12*0.01/2,
-            `USGG30YR Index` = `USGG30YR Index` * 1/12*0.01/2,
-            `Long_dollar`    = 0.001 * (-`EURUSD Curncy` + `USDJPY Curncy`),
-            `Long_EQ` = 0.002 * `SPX Index`,
-            `USYC2Y10 Index` = `USYC2Y10 Index` * 0.5/12*0.01*0.01,
-            `USYC2Y5Y Index` = `USYC2Y5Y Index` * 1/12*0.1*0.1,
-            `USGG10YR Index` = `USGG10YR Index` * 1/12*0.01,
-            `Short_USD` = 0.01 * 0.5 * (`EURUSD Curncy` - `USDJPY Curncy`),
-            `AUDJPY put` = 0.01 * (`AUDJPY Curncy`),
-            `Long_AUD` = 0.01 * 0.5 * (`AUDCAD Curncy` + `AUDNZD Curncy`),
-            `Long_SPX_IRSD` = 0.002 * (`SPX Index`),
-            `Long_SPX_PMAD` = 0.01 * (`SPX Index`)
+            `Long_EQ` = 0.005 * (`SPX Index`+`VGA Index`+`NKY Index`)/3,
+            `USYC5Y30 Index` = `USYC5Y30 Index` * 0.5/12*0.01*0.01,
+            `Long_USDCNY` = 0.03 * (`USDCNY Curncy`)
+  )
 
-  ) %>%
+write_csv(trades_total,"trades_total.csv")
+
+trades_transformed <- trades_total %>%
   pivot_longer(-date, names_to = "BBG_Ticker", values_to = "period_return") %>%
   group_by(BBG_Ticker)
 
@@ -495,5 +472,4 @@ sdev <- as.numeric(sqrt(t(weight_m) %*% trades_cov_m %*% weight_m))
 covarweight <- trades_cov_m %*% weight_m
 marginal_contribution <- covarweight/sdev
 total_contribution <- weight_m* covarweight/sdev
-
 
