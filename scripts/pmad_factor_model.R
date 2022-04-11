@@ -97,25 +97,32 @@ trades_data_w_ret <- add_returns(trades_data, trades_return_type)
 # steepeners need to have a negative sign in front of the size,
 ## because it actually becomes profitable when yield increases!
 # when no sizes are provided, assume 1% R2 (FX + EQ) or 1 months (FI)
-trades_transformed <- trades_data_w_ret %>%
+trades_total <- trades_data_w_ret %>%
   select(BBG_Ticker, date, period_return) %>%
   pivot_wider(names_from = BBG_Ticker, values_from = period_return) %>%
   transmute(date,
-            `USGGT02Y Index` = `USGGT02Y Index` * -0.5/12*0.01/2,
-            `USGGT05Y Index` = `USGGT05Y Index` * -0.5/12*0.01/2,
+            `Short_duration` = (`USGGT02Y Index` * -0.5/12*0.01/2) + (`USGGT05Y Index` * -0.5/12*0.01/2),
             `USGG30YR Index` = `USGG30YR Index` * 1/12*0.01/2,
             `Long_dollar`    = 0.001 * (-`EURUSD Curncy` + `USDJPY Curncy`),
-            `Long_EQ` = 0.002 * `SPX Index`,
             `USYC2Y10 Index` = `USYC2Y10 Index` * 0.5/12*0.01*0.01,
-            `USYC2Y5Y Index` = `USYC2Y5Y Index` * 1/12*0.1*0.1,
-            `USGG10YR Index` = `USGG10YR Index` * 1/12*0.01,
+            `USYC2Y5Y Index` = `USYC2Y5Y Index` * 1/12*0.01*0.01,
             `Short_USD` = 0.01 * 0.5 * (`EURUSD Curncy` - `USDJPY Curncy`),
             `AUDJPY put` = 0.01 * (`AUDJPY Curncy`),
             `Long_AUD` = 0.01 * 0.5 * (`AUDCAD Curncy` + `AUDNZD Curncy`),
-            `Long_SPX_IRSD` = 0.002 * (`SPX Index`),
+            `Short_SPX_IRSD` = - 0.002 * (`SPX Index`),
             `Long_SPX_PMAD` = 0.01 * (`SPX Index`)
+  )
 
-  ) %>%
+write_csv(trades_total,"trades_total.csv")
+
+total_returns <- trades_total %>% transmute(total = rowSums(across(where(is.numeric))))
+total_returns_numeric <- as.numeric(unlist(total_returns))
+
+total_annualised_vol = sd(total_returns_numeric)*sqrt(252)*10000
+
+write_csv(total_returns,"total_returns.csv")
+
+trades_transformed <- trades_total %>%
   pivot_longer(-date, names_to = "BBG_Ticker", values_to = "period_return") %>%
   group_by(BBG_Ticker)
 

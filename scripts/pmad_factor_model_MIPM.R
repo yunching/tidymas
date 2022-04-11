@@ -92,6 +92,13 @@ trades_total <- trades_data_w_ret %>%
 
 write_csv(trades_total,"trades_total.csv")
 
+total_returns <- trades_total %>% transmute(total = rowSums(across(where(is.numeric))))
+total_returns_numeric <- as.numeric(unlist(total_returns))
+
+total_annualised_vol = sd(total_returns_numeric)*sqrt(252)*10000
+
+write_csv(total_returns,"total_returns.csv")
+
 trades_transformed <- trades_total %>%
   pivot_longer(-date, names_to = "BBG_Ticker", values_to = "period_return") %>%
   group_by(BBG_Ticker)
