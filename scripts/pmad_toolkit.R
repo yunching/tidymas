@@ -1,6 +1,7 @@
 # Common functions used by PMAD
 
 library(tidyverse)
+library(plotly)
 library(broom)
 library(lubridate)
 library(RiskPortfolios)
