@@ -112,8 +112,9 @@ trades_data_w_ret <- add_returns(trades_data, trades_return_type)
 # which will only be correct to first order for long positions
 # Bloomberg prints some yield tickers in % [typically for outright] and others in bps (%%) [typically for spreads]
 
-# Flatteners need to have a negative sign in front of the size,
+# Flatteners/outright longs need to have a negative sign in front of the size,
 # because it actually becomes unprofitable when yield increases!
+# Don't need negative sign for steepeners and outright shorts
 
 # when no sizes are provided, assume 1% R2 (FX + EQ) or 1 months (FI)
 
@@ -144,7 +145,8 @@ write_csv(trades_total,"trades_total.csv")
 total_returns <- trades_total %>% transmute(total = rowSums(across(where(is.numeric))))
 total_returns_numeric <- as.numeric(unlist(total_returns))
 
-total_annualised_vol = sd(total_returns_numeric)*sqrt(252)*10000
+total_annualised_vol <- sd(total_returns_numeric)*sqrt(252)*10000
+message(paste("TE of all trades: ", total_annualised_vol))
 
 write_csv(total_returns,"total_returns.csv")
 
@@ -364,7 +366,7 @@ tmp <- regressions %>%
 
 results <- factor_estimates %>%
   bind_rows(r_squared) %>%
-  bind_rows(get_risk_from_cov(trades_cov) * sqrt(252) * 100)
+  bind_rows(get_risk_from_cov(trades_cov) * sqrt(252) * 10000)
 
 write_csv(results, "factor_exposure_w_rsquared2.csv")
 
