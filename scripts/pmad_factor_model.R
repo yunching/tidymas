@@ -47,6 +47,8 @@ trades_ticker_list <- c("USGGT02Y Index",
                         "USGG30YR Index",
                         "USYC2Y5Y Index",
                         "USYC2Y10 Index",
+                        "USYC5Y30 Index",
+                        "BF020530 Index",
                         "DEYC2Y10 Index",
                         "GJGB10 Index",
                         ".1Y2S10S Index",
@@ -57,6 +59,7 @@ trades_ticker_list <- c("USGGT02Y Index",
                         "AUDJPY Curncy",
                         "AUDUSD Curncy",
                         "AUDNZD Curncy",
+                        "EURGBP Curncy",
                         "AUDCAD Curncy",
                         "SPX Index"
 ) %>% unique()
@@ -91,6 +94,8 @@ trades_return_type <- tribble(
   "USGG30YR Index", "Yield",
   "USYC2Y5Y Index", "Yield",
   "USYC2Y10 Index", "Yield",
+  "USYC5Y30 Index", "Yield",
+  "BF020530 Index", "Yield",
   "DEYC2Y10 Index", "Yield",
   "GJGB10 Index", "Yield",
   ".1Y2S10S Index","Yield",
@@ -101,6 +106,7 @@ trades_return_type <- tribble(
   "AUDJPY Curncy","Price",
   "AUDUSD Curncy", "Price",
   "AUDNZD Curncy", "Price",
+  "EURGBP Curncy", "Price",
   "AUDCAD Curncy", "Price",
   "SPX Index", "Price",
 )
@@ -135,10 +141,12 @@ trades_total <- trades_data_w_ret %>%
             `IRSD_short_SPX` = - 0.005 * `SPX Index`,
 
             #PMAD trades
-            `PMAD_short_jp_10Y` = `GJGB10 Index` * 1/12 * 0.01,
-            `PMAD_US_2S5_flattener` = -`USYC2Y5Y Index` * 1/12 * 0.01 * 0.01,
+            `PMAD_US_5S30_steepener` = `USYC5Y30 Index` * 1/12 * 0.01 * 0.01,
+            `PMAD_US_2S5S30_butterfly` = -`BF020530 Index` * 1/12 * 0.01 * 0.01,
             `PMAD_long_US_30Y` = -`USGG30YR Index` * 1/12 * 0.01,
             `PMAD_long_dollar`    = 0.001 * (-`EURUSD Curncy` + `USDJPY Curncy`),
+            `PMAD_short_AUDNZD`    = 0.001 * (-`AUDNZD Curncy`),
+            `PMAD_short_EURGBP`    = 0.001 * (-`EURGBP Curncy`),
             `PMAD_long_SPX` = 0.01 * (`SPX Index`),
 
   )
