@@ -49,6 +49,7 @@ trades_ticker_list <- c("USGGT02Y Index",
                         "USYC2Y10 Index",
                         "DEYC2Y10 Index",
                         "GJGB10 Index",
+                        ".1Y2S10S Index",
                         "USDJPY Curncy",
                         "USDCNY Curncy",
                         "EURUSD Curncy",
@@ -92,6 +93,7 @@ trades_return_type <- tribble(
   "USYC2Y10 Index", "Yield",
   "DEYC2Y10 Index", "Yield",
   "GJGB10 Index", "Yield",
+  ".1Y2S10S Index","Yield",
   "USDJPY Curncy", "Price",
   "USDCNY Curncy", "Price",
   "EURUSD Curncy", "Price",
@@ -125,11 +127,12 @@ trades_total <- trades_data_w_ret %>%
             #IRSD trades
             #Short 5y real yield
             `IRSD_short_us_5Y_real` = `USGGT05Y Index` * 0.5/12 * 0.01,
-            `IRSD_US_2S10_flattener` = -`USYC2Y10 Index` * 1/12 * 0.01 * 0.01,
-            `IRSD_DE_2S10_flattener` = -`DEYC2Y10 Index` * 1/12 * 0.01 * 0.01,
+            `IRSD_US_2S10_flattener` = -`USYC2Y10 Index` * 0.5/12 * 0.01 * 0.01,
+            `IRSD_DE_2S10_flattener` = -`DEYC2Y10 Index` * 0.5/12 * 0.01 * 0.01,
+            `IRSD_1Y2S10S_steepener` = `.1Y2S10S Index` * 0.5/12 * 0.01,
             `IRSD_long_dollar`    = 0.002 * (-`EURUSD Curncy` + `USDJPY Curncy` - `GBPUSD Curncy`),
             `IRSD_long_USDCNY` = 0.0025 * `USDCNY Curncy`,
-            `IRSD_short_SPX` = - 0.002 * `SPX Index`,
+            `IRSD_short_SPX` = - 0.005 * `SPX Index`,
 
             #PMAD trades
             `PMAD_short_jp_10Y` = `GJGB10 Index` * 1/12 * 0.01,
