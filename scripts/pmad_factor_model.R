@@ -8,8 +8,8 @@ blpConnect()
 opt <- c("CDR"="5D")
 # opt <- c("periodicitySelection"= "DAILY", "nonTradingDayFillMethod"="PREVIOUS_VALUE")
 # We use 6 months' worth of daily data (6*20 = 120 data points)
-start_date <- "20211231"
-end_date <- "20220630"
+start_date <- "20220331"
+end_date <- "20220930"
 
 # TODO add inflation return type?
 asset_return <- function(current_obs, prev_obs, calc_type) {
@@ -125,8 +125,8 @@ trades_total <- trades_data_w_ret %>%
             #IRSD trades
             #Short 5y real yield
             `IRSD_short_us_5Y_real` = `USGGT05Y Index` * 0.5/12 * 0.01,
-            `IRSD_US_2S10_flattener` = -`USYC2Y10 Index` * 0.5/12 * 0.01 * 0.01,
-            `IRSD_DE_2S10_flattener` = -`DEYC2Y10 Index` * 0.5/12 * 0.01 * 0.01,
+            `IRSD_US_2S10_flattener` = -`USYC2Y10 Index` * 1/12 * 0.01 * 0.01,
+            `IRSD_DE_2S10_flattener` = -`DEYC2Y10 Index` * 1/12 * 0.01 * 0.01,
             `IRSD_long_dollar`    = 0.002 * (-`EURUSD Curncy` + `USDJPY Curncy` - `GBPUSD Curncy`),
             `IRSD_long_USDCNY` = 0.0025 * `USDCNY Curncy`,
             `IRSD_short_SPX` = - 0.002 * `SPX Index`,
