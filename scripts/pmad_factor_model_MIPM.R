@@ -131,21 +131,11 @@ trades_total <- trades_data_w_ret %>%
   select(BBG_Ticker, date, period_return) %>%
   pivot_wider(names_from = BBG_Ticker, values_from = period_return) %>%
   transmute(date,
-            #IRSD trades
-            #Short 5y real yield
-            `IRSD_US_2S10_flattener` = -`USYC2Y10 Index` * 0.5/12 * 0.01 * 0.01,
-            `IRSD_DE_2S10_flattener` = -`DEYC2Y10 Index` * 0.5/12 * 0.01 * 0.01,
-            `IRSD_US_1Y2S10S_steepener` = `.1Y2S10S Index` * 0.5/12 * 0.01,
-            `IRSD_long_dollar`    = 0.002 * (-`EURUSD Curncy` + `USDJPY Curncy` - `GBPUSD Curncy`),
-            `IRSD_long_USDCNY` = 0.0025 * `USDCNY Curncy`,
-            `IRSD_short_SPX` = - 0.005 * `SPX Index`,
-
-            #PMAD trades
-            `PMAD_US_2S5S30_butterfly` = -`BF020530 Index` * 1/12 * 0.01 * 0.01,
-            `PMAD_long_US_30Y` = -`USGG30YR Index` * 1/12 * 0.01,
-            `PMAD_long_dollar`    = 0.001 * (-`EURUSD Curncy` + `USDJPY Curncy`),
-            `PMAD_short_AUDNZD`    = 0.001 * (-`AUDNZD Curncy`),
-            `PMAD_long_SPX` = 0.01 * (`SPX Index`),
+            `IRSD_US_2S10_flattener` = -`USYC2Y10 Index` * 0.25/12 * 0.01 * 0.01,
+            `IRSD_DE_2S10_flattener` = -`DEYC2Y10 Index` * 0.25/12 * 0.01 * 0.01,
+            `IRSD_long_dollar`    = 0.002 * (-`EURUSD Curncy`) + 0.002*`USDJPY Curncy` + 0.001*`USDCNY Curncy`,
+            `IRSD_short_SPX` = - 0.0025 * `SPX Index`,
+            `IRSD_short_VGA` = - 0.0025 * `VGA Index`
 
   )
 
