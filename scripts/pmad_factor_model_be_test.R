@@ -50,6 +50,7 @@ trades_ticker_list <- c("USGGT02Y Index",
                         "USYC5Y30 Index",
                         "BF020530 Index",
                         "DEYC2Y10 Index",
+                        "USGGBE10 Index",
                         "GJGB10 Index",
                         ".1Y2S10S Index",
                         "USDJPY Curncy",
@@ -61,8 +62,7 @@ trades_ticker_list <- c("USGGT02Y Index",
                         "AUDNZD Curncy",
                         "EURGBP Curncy",
                         "AUDCAD Curncy",
-                        "SPX Index",
-                        "VGA Index"
+                        "SPX Index"
 ) %>% unique()
 
 trades_data <- fetch_bbg_data(trades_ticker_list, start_date, end_date, opt)
@@ -98,6 +98,7 @@ trades_return_type <- tribble(
   "USYC5Y30 Index", "Yield",
   "BF020530 Index", "Yield",
   "DEYC2Y10 Index", "Yield",
+  "USGGBE10 Index", "Yield",
   "GJGB10 Index", "Yield",
   ".1Y2S10S Index","Yield",
   "USDJPY Curncy", "Price",
@@ -133,12 +134,14 @@ trades_total <- trades_data_w_ret %>%
   transmute(date,
             #IRSD trades
             #Short 5y real yield
+            `IRSD_short_us_5Y_real` = `USGGT05Y Index` * 0.5/12 * 0.01,
             `IRSD_US_2S10_flattener` = -`USYC2Y10 Index` * 0.5/12 * 0.01 * 0.01,
             `IRSD_DE_2S10_flattener` = -`DEYC2Y10 Index` * 0.5/12 * 0.01 * 0.01,
             `IRSD_US_1Y2S10S_steepener` = `.1Y2S10S Index` * 0.5/12 * 0.01,
             `IRSD_long_dollar`    = 0.002 * (-`EURUSD Curncy` + `USDJPY Curncy` - `GBPUSD Curncy`),
             `IRSD_long_USDCNY` = 0.0025 * `USDCNY Curncy`,
             `IRSD_short_SPX` = - 0.005 * `SPX Index`,
+            `USGGBE10 Index` = `USGGBE10 Index` * 0.5/12 * 0.01,
 
             #PMAD trades
             `PMAD_US_2S5S30_butterfly` = -`BF020530 Index` * 1/12 * 0.01 * 0.01,
