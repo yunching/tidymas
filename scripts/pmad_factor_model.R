@@ -8,10 +8,12 @@ blpConnect()
 opt <- c("CDR"="5D")
 # opt <- c("periodicitySelection"= "DAILY", "nonTradingDayFillMethod"="PREVIOUS_VALUE")
 # We use 6 months' worth of daily data (6*20 = 120 data points)
-start_date <- "20220331"
-end_date <- "20220930"
+start_date <- "20220630"
+end_date <- "20221231"
 
 # TODO add inflation return type?
+# Yield returns are set up as yield changes, and later when multiplied by
+# duration sizing would give first order returns
 asset_return <- function(current_obs, prev_obs, calc_type) {
   ret <- NA
 
@@ -50,38 +52,35 @@ trades_ticker_list <- c("USGGT02Y Index",
                         "USYC5Y30 Index",
                         "BF020530 Index",
                         "DEYC2Y10 Index",
+                        "GDBR10 Index",
                         "GJGB10 Index",
                         ".1Y2S10S Index",
                         "USDJPY Curncy",
                         "USDCNY Curncy",
                         "EURUSD Curncy",
+                        "EURJPY Curncy",
                         "GBPUSD Curncy",
+                        "GBPAUD Curncy",
                         "AUDJPY Curncy",
                         "AUDUSD Curncy",
                         "AUDNZD Curncy",
                         "EURGBP Curncy",
+                        "EURAUD Curncy",
                         "AUDCAD Curncy",
-                        "SPX Index"
+                        "SPX Index",
+                        "SX5E Index",
+                        "XIN9I Index",
+                        "MXCN Index",
+                        "G0025 3M5Y BLC2 Curncy",
+                        "G0025 3M30Y BLC2 Curncy",
+                        "G0001 3M10Y BLC2 Curncy",
+                        "G0001 3M2Y BLC2 Curncy"
 ) %>% unique()
 
 trades_data <- fetch_bbg_data(trades_ticker_list, start_date, end_date, opt)
 
 # check data downloaded (by alphabetical order)
 trades_data$BBG_Ticker %>% unique() %>% sort() %>% as_tibble()
-
-# transform trades which are composite tickers
-# trades_data_transformed <- trades_data %>%
-#   select(BBG_Ticker, date, Close) %>%
-#   pivot_wider(names_from = BBG_Ticker, values_from = Close) %>%
-#   transmute(date,
-#             `USYC1030 Index`,
-#             `USYC5Y30 Index`,
-#             `SPX Index`,
-#             `5Y_IT_vs_ES` = `GTITL5Y Govt` - `GTESP5Y Govt`
-#             `Long_USD` = 1/3 * `USDEUR Curncy` + 1/3 * `USDGBP Curncy` + 1/3 * `USDAUD Curncy`
-#   ) %>%
-#   pivot_longer(-date, names_to = "BBG_Ticker", values_to = "Close") %>%
-#   group_by(BBG_Ticker)
 
 # lookup table controlling return calculations
 # Step 2 - Indicate return type "Price" or "Yield"
@@ -98,17 +97,28 @@ trades_return_type <- tribble(
   "BF020530 Index", "Yield",
   "DEYC2Y10 Index", "Yield",
   "GJGB10 Index", "Yield",
+  "GDBR10 Index", "Yield",
   ".1Y2S10S Index","Yield",
+  "G0025 3M5Y BLC2 Curncy", "Yield",
+  "G0025 3M30Y BLC2 Curncy", "Yield",
+  "G0001 3M10Y BLC2 Curncy", "Yield",
+  "G0001 3M2Y BLC2 Curncy", "Yield",
   "USDJPY Curncy", "Price",
   "USDCNY Curncy", "Price",
   "EURUSD Curncy", "Price",
+  "EURAUD Curncy", "Price",
+  "EURJPY Curncy", "Price",
   "GBPUSD Curncy", "Price",
+  "GBPAUD Curncy", "Price",
   "AUDJPY Curncy","Price",
   "AUDUSD Curncy", "Price",
   "AUDNZD Curncy", "Price",
   "EURGBP Curncy", "Price",
   "AUDCAD Curncy", "Price",
   "SPX Index", "Price",
+  "SX5E Index", "Price",
+  "XIN9I Index", "Price",
+  "MXCN Index", "Price"
 )
 
 trades_data_w_ret <- add_returns(trades_data, trades_return_type)
@@ -125,6 +135,7 @@ trades_data_w_ret <- add_returns(trades_data, trades_return_type)
 # Don't need negative sign for steepeners and outright shorts
 
 # when no sizes are provided, assume 1% R2 (FX + EQ) or 1 months (FI)
+# NB: TYX might have changed the default sizing - to double check
 
 trades_total <- trades_data_w_ret %>%
   select(BBG_Ticker, date, period_return) %>%
@@ -132,20 +143,28 @@ trades_total <- trades_data_w_ret %>%
   transmute(date,
             #IRSD trades
             #Short 5y real yield
-            `IRSD_short_us_5Y_real` = `USGGT05Y Index` * 0.5/12 * 0.01,
-            `IRSD_US_2S10_flattener` = -`USYC2Y10 Index` * 0.5/12 * 0.01 * 0.01,
-            `IRSD_DE_2S10_flattener` = -`DEYC2Y10 Index` * 0.5/12 * 0.01 * 0.01,
-            `IRSD_US_1Y2S10S_steepener` = `.1Y2S10S Index` * 0.5/12 * 0.01,
-            `IRSD_long_dollar`    = 0.002 * (-`EURUSD Curncy` + `USDJPY Curncy` - `GBPUSD Curncy`),
-            `IRSD_long_USDCNY` = 0.0025 * `USDCNY Curncy`,
-            `IRSD_short_SPX` = - 0.005 * `SPX Index`,
+            `IRSD_short_SPX_SX5E` = - 0.004 * `SPX Index` - 0.001 * `SX5E Index`,
+            `IRSD_US_3M5S30_steepener` = 0.25/12 * 0.01 * (`G0025 3M30Y BLC2 Curncy` - `G0025 3M5Y BLC2 Curncy`),
+            `IRSD_AU_3M2S10_steepener` = 0.25/12 * 0.01 * (`G0001 3M10Y BLC2 Curncy` - `G0001 3M2Y BLC2 Curncy`),
+            `IRSD_short_EUR_against_USD_AUD` = 0.2 * 0.01 * -(`EURUSD Curncy` + `EURAUD Curncy`) * 0.5,
+            `IRSD_short_GBP_against_USD_AUD` = 0.2 * 0.01 * -(`GBPUSD Curncy` + `GBPAUD Curncy`) * 0.5,
+            `IRSD_long_China_EQ` = 0.2 * 0.01 * (`XIN9I Index` + `MXCN Index`) * 0.5,
+
+            # `IRSD_short_us_5Y_real` = `USGGT05Y Index` * 0.5/12 * 0.01,
+            # `IRSD_DE_2S10_flattener` = -`DEYC2Y10 Index` * 0.5/12 * 0.01 * 0.01,
+            # `IRSD_US_1Y2S10S_steepener` = `.1Y2S10S Index` * 0.5/12 * 0.01,
+            # `IRSD_long_dollar`    = 0.002 * (-`EURUSD Curncy` + `USDJPY Curncy` - `GBPUSD Curncy`),
+            # `IRSD_long_USDCNY` = 0.0025 * `USDCNY Curncy`,
 
             #PMAD trades
             `PMAD_US_2S5S30_butterfly` = -`BF020530 Index` * 1/12 * 0.01 * 0.01,
-            `PMAD_long_US_30Y` = -`USGG30YR Index` * 1/12 * 0.01,
-            `PMAD_long_dollar`    = 0.001 * (-`EURUSD Curncy` + `USDJPY Curncy`),
-            `PMAD_short_AUDNZD`    = 0.001 * (-`AUDNZD Curncy`),
-            `PMAD_long_SPX` = 0.01 * (`SPX Index`),
+            `PMAD_US_2S10_steepener` = `USYC2Y10 Index` * 1/12 * 0.01 * 0.01,
+            `PMAD_long_bund_short_jgb` = (`GJGB10 Index` - `GDBR10 Index`) * 1/12 * 0.01,
+            `PMAD_short_EUR_against_USD_JPY` = 0.5 * 0.01 * -(`EURUSD Curncy` + `EURJPY Curncy`) * 0.5,
+            # `PMAD_long_US_30Y` = -`USGG30YR Index` * 1/12 * 0.01,
+            # `PMAD_long_dollar`    = 0.001 * (-`EURUSD Curncy` + `USDJPY Curncy`),
+            # `PMAD_short_AUDNZD`    = 0.001 * (-`AUDNZD Curncy`),
+            `PMAD_long_SPX` = 0.5 * 0.01 * (`SPX Index`),
 
   )
 
